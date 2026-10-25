@@ -1,0 +1,52 @@
+/* 'Questions for Bonnie' row (header.qh-mast) compacted to about HALF its height (Danny 13:00 AWST 24 Oct, t623u), instead of
+   removing it. Same content (Dad mark, title, FROM DAD pill, tagline), same colours (Dad's command-centre amber pill + teal tile);
+   only padding, margins, gaps, line-heights, mark size and font sizes are tightened. Text stays >= 12px. The row has no buttons.
+   Loaded after css/quiz-dad-head.css; selectors are one class more specific so they win regardless of order. */
+.q-head .qh-mast .qh-c{padding-top:2px;padding-bottom:2px;gap:0 .75rem}
+.q-head .qh-mast .dh-brand{line-height:1}
+.q-head .qh-mast .dad-mark{width:20px;height:20px;padding:1px;margin-right:.45rem;border-radius:6px}
+.q-head .qh-mast .dh-title{font-size:15px;line-height:1.1}
+.q-head .qh-mast .dh-pill{font-size:12px;line-height:1.1;letter-spacing:1.5px;padding:.1rem .45rem 0;margin-left:.45rem}
+.q-head .qh-mast .dh-sub{font-size:12.5px;line-height:1.2;padding-left:.4rem}
+@media (max-width:575px){
+  .q-head .qh-mast .qh-c{padding-top:1px;padding-bottom:1px;gap:2px .5rem}
+  .q-head .qh-mast .dad-mark{width:16px;height:16px;padding:1px;margin-right:.35rem;border-radius:5px}
+  .q-head .qh-mast .dh-title{font-size:14px}
+  .q-head .qh-mast .dh-pill{font-size:12px;letter-spacing:1px;padding:.05rem .4rem 0;margin-left:.4rem}
+  .q-head .qh-mast .dh-sub{font-size:12px;line-height:1.2}
+}
+/* 'FROM DAD' pill (span.dh-pill, data-copy=headPill) hidden in this row (Danny 13:01 AWST 24 Oct, t625u); the element stays in the
+   page. Dad mark + title + tagline unchanged. The intro's 'from Dad' line and the ticker's 'From Dad' tag are not touched. */
+.q-head .qh-mast .dh-pill{display:none}
+/* Dad's mark TWICE the size + tagline moved under the title (Danny t681u 18:09 AWST 24 Oct). The tagline (p.dh-sub, "Go with whatever
+   feels right to you.") was its own line below the row on phones and far right of the row on desktop; it now sits inside .dh-brand
+   (.dh-words) directly under "Questions for Bonnie", nudged .6rem right of the title's left edge. The mark spans both text lines.
+   Rendered mark box (content + 2px padding + 1px border each side): phones (<=575px) 20 -> 40px, wider 24 -> 48px. Pill stays hidden. */
+.q-head .qh-mast .qh-c{flex-wrap:nowrap}
+.q-head .qh-mast .dh-brand{align-items:center;min-width:0}
+.q-head .qh-mast .dad-mark{width:42px;height:42px;padding:2px;margin-right:.6rem;border-radius:12px}
+.q-head .qh-mast .dh-words{display:flex;flex-wrap:wrap;align-items:baseline;min-width:0}
+.q-head .qh-mast .dh-sub{flex:0 0 100%;margin:3px 0 0 .6rem;padding-left:.4rem}
+@media (max-width:575px){
+  .q-head .qh-mast .dad-mark{width:34px;height:34px;padding:2px;margin-right:.5rem;border-radius:10px}
+  .q-head .qh-mast .dh-sub{margin:2px 0 0 .55rem}
+}
+/* Title + tagline spacing tidied (Danny t682u 18:16 AWST 24 Oct): the gap between "Questions for Bonnie" and the tagline was uneven
+   (2px phones / 3px desktop; the Q's tail nearly touched the tagline on phones). Now one 4px gap at every width; the two-line block stays
+   centred on the mark (.dh-brand align-items:center), nudge, sizes and colours unchanged. */
+.q-head .qh-mast .dh-sub{margin-top:4px}
+@media (max-width:575px){.q-head .qh-mast .dh-sub{margin-top:4px}}
+/* Tagline TEXT left edge lined up with the title's "Q" (Danny t684u 18:20 AWST 24 Oct: "Horizontal is off"; right nudge removed).
+   The 2px orange bar stays, moved out into the gap between the mark and the text column: margin-left -5px = -(2px bar + 3px padding),
+   so the text starts exactly at the title's left edge. Vertical alignment and the 4px line gap unchanged. */
+
+.q-head .qh-mast .dh-sub{margin-left:-5px;padding-left:3px}
+@media (max-width:575px){.q-head .qh-mast .dh-sub{margin-left:-5px;padding-left:3px}}
+/* Optical correction (Danny t685u 18:24 AWST 24 Oct: "bottom line slightly too far to left"): ink-exact alignment with the round Q's
+   overshoot read too far left, so the tagline text sits 2px right of the Q's ink. Padding 3px -> 5px; the orange bar stays where it was. */
+.q-head .qh-mast .dh-sub{padding-left:5px}
+@media (max-width:575px){.q-head .qh-mast .dh-sub{padding-left:5px}}
+/* Orange bar back under the title (Danny t688u 18:35 AWST 24 Oct: "it's the vertical slash"): the bar's left edge lines up with the
+   title's Q and the tagline text starts right of it with the original ~6px gap (.4rem padding). Replaces the -5px pull-out / 5px nudge. */
+.q-head .qh-mast .dh-sub{margin-left:0;padding-left:6px}
+@media (max-width:575px){.q-head .qh-mast .dh-sub{margin-left:0;padding-left:6px}}

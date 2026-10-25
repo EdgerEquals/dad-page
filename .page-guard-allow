@@ -1,0 +1,25 @@
+# Carried over from EdgerEquals/simmie-chat .page-guard-allow (25 Oct 2026 move): only the approved lines for this page,
+# renamed questionnaire-preview.html -> index.html, with their original approval notes. History only: page-guard counts just
+# lines that are new in a push, so new removals still need Danny's yes.
+# Danny 02:50 AWST 24 Oct: questionnaire header replaced by the dashboard-structure header in the Simmie chat palette (supersedes Dad-palette header 53b7cda); ticker moved into it as a div (no nested header)
+index.html :: landmark:header
+index.html :: style:previews/shared/dad-head-quiz.css
+# approved by Danny 12:53 AWST 24 Oct (t619u): questionnaire held work live - Dad's palette header (chat-head-quiz.css -> css/quiz-dad-head.css), volume box removed (aside.vol-note, #vol-sound, bonnie-sound css/js), footer weather (#fwx) -> Moon-phase critters + tide/swell strip
+index.html :: style:previews/shared/chat-head-quiz.css
+index.html :: landmark:aside
+index.html :: id:vol-sound
+index.html :: script:previews/shared/bonnie-sound.js
+index.html :: script:previews/shared/bonnie-sound-quiz.js
+index.html :: style:previews/shared/bonnie-sound.css
+index.html :: id:fwx
+# approved by Danny 13:08 AWST 24 Oct (t631u): all preview pages and the whole previews/ folder deleted (live-only from now on); the questionnaire's still-used preview assets moved to css/ + js/ (Dad mark -> existing identical dash/img/dad-mark.svg); retired backdrop test page moderation-bg-preview.html deleted
+index.html :: script:previews/shared/dad-autodj-quiz.js
+index.html :: style:previews/shared/command-centre-quiz.css
+index.html :: style:previews/shared/command-centre.css
+index.html :: style:previews/shared/dad-dj-quiz.css
+index.html :: style:previews/shared/quiz-foot-lock.css
+index.html :: script:dash/js/tide-swell.js
+index.html :: script:js/dad-autodj-quiz.js
+index.html :: script:js/quiz-front-orbit.js
+index.html :: script:js/quiz-space-sweep.js
+index.html :: script:js/quiz-term-status.js

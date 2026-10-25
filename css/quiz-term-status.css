@@ -1,0 +1,108 @@
+/* Questionnaire only (Danny 13:18 AWST 24 Oct 2026, t637u/t638u/t639u, live, no preview).
+   1) The header's "From Dad · age 13" tag (#ttag, phone + desktop) is hidden (element kept, its text no longer shown) and replaced by a
+      terminal-style status pill (#tstat): small monospace text like the simmie$ prompt, cycling "status" <-> "live", with a breathing
+      teal dot (Dad's accent #0AF2FF). Words are stacked in a fixed 6ch box, so swapping them never shifts the layout.
+   2) Matrix terminal colours on the terminal elements only: matrix green #00FF41 for text + prompt, matrix red #FF0033 for accents
+      (input-focus underline, text selection, and the footer cursor while the status reads "live"). Rest of Dad's palette unchanged.
+   3) Footer simmie$ light (the block cursor after the prompt): pulses matrix green; turns matrix red while the pill reads "live".
+      Both follow html[data-term-status] set by js/quiz-term-status.js, so they flip together.
+   Timing (phi rules; CSS animations are scaled by the ratio pump, Dad's dial 0.75): "status" pulse PHI^2 = 2.618 s; dot breath
+   PHI^3.25 = 4.778 s; cursor blink unchanged (--phi-cursor, PHI^0.5 = 1.272 s); word cross-fade PHI^0.25 = 1.128 s / pump rate
+   (set by the JS, transitions are not pump-scaled); dwell status PHI^5.5 = 14.107 s, live PHI^5.25 = 12.508 s (JS, / pump rate).
+   Reduced motion: "status" shown statically, dot steady, no pulse. Paused with the page (body.paused). */
+:root{--mx-g:#00FF41;--mx-r:#FF0033;--ts-xf:1.504s}
+
+/* ---- 1) header status pill ---- */
+#ttag{display:none!important}
+.tick .tstat{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:4px;background:#020812;box-shadow:inset 0 0 0 1px #143A57;
+  font:400 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.2px;color:var(--mx-g);white-space:nowrap}
+.tstat .ts-dot{position:relative;flex:none;width:6px;height:6px;border-radius:50%;background:#0AF2FF;box-shadow:0 0 4px rgba(10,242,255,.65);
+  animation:tsBreath 4.778s ease-in-out -0.823s infinite}
+.tstat .ts-w{position:relative;display:inline-block;width:6ch;height:1em}
+.tstat .ts-w b{position:absolute;left:0;top:0;font-weight:400;transition:opacity var(--ts-xf) ease-in-out}
+.tstat .ts-s{opacity:1;color:var(--mx-g)}.tstat .ts-l{opacity:0;color:var(--mx-r)}
+/* t647u (Danny 13:29 AWST 24 Oct): "live" word in matrix red, "status" stays matrix green; colour swaps with the --ts-xf word cross-fade. */
+.tstat .ts-s i{font-style:normal;display:inline-block;animation:tsPulse 2.618s ease-in-out -1.451s infinite}
+html[data-term-status="live"] .tstat .ts-s{opacity:0}
+html[data-term-status="live"] .tstat .ts-l{opacity:1}
+@keyframes tsPulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes tsBreath{0%,100%{transform:scale(.8);opacity:.7;box-shadow:0 0 2px rgba(10,242,255,.4)}50%{transform:scale(1.1);opacity:1;box-shadow:0 0 6px 1px rgba(10,242,255,.75)}}
+@media(max-width:480px){.tick .tstat{font-size:10.5px;padding:3px 5px;gap:4px}}
+
+/* ---- 2) matrix terminal colours (bottom tty only) ---- */
+.foot .ttyl,.foot .tin input,.foot .tout .lp,.foot .tout .lc{color:var(--mx-g)}
+.foot .ttyl .pr{color:var(--mx-g);text-shadow:0 0 4px rgba(0,255,65,.45)}
+.foot .tout .ts{color:var(--mx-g);opacity:.6}
+.foot .ttybar .tt{color:var(--mx-g);opacity:.7}
+.foot .tin:focus-within{box-shadow:0 1px 0 0 var(--mx-r)}
+.foot .ttyl ::selection,.foot .tin input::selection{background:var(--mx-r);color:#000}
+
+/* ---- 3) footer simmie$ light: green, red while the status reads "live" ---- */
+.foot .tin .blk{background:var(--mx-g);box-shadow:0 0 4px rgba(0,255,65,.6);transition:background-color var(--ts-xf) ease-in-out,box-shadow var(--ts-xf) ease-in-out}
+html[data-term-status="live"] .foot .tin .blk{background:var(--mx-r);box-shadow:0 0 5px rgba(255,0,51,.7)}
+
+body.paused .tstat .ts-dot,body.paused .tstat .ts-s i{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.tstat .ts-dot,.tstat .ts-s i{animation:none!important}.tstat .ts-w b,.foot .tin .blk{transition:none!important}}
+
+/* ---- t650u (Danny 13:32 AWST 24 Oct): pill inside reads like the footer simmie$ line - monospace text + block cursor.
+   Sequence (js/quiz-term-status.js, html[data-term-phase]): cursor blinks x2 (PHI^0.5 each) -> "status" green, pulses x3 (PHI^2 each),
+   cursor steady after it -> clear, cursor x2 -> "live" red, pulses x3 -> clear ... All / RatioPump rate. Fixed 7ch box, no shift.
+   Quiet (offline / Rebella link down): muted grey-green "away", dim static cursor, grey dot, no glow, nothing moves. ---- */
+.tstat .ts-w{width:7ch;display:inline-flex;align-items:center;height:1em;overflow:hidden}
+.tstat .ts-w > b{display:none!important}
+.tstat .ts-txt{white-space:pre;color:var(--mx-g)}
+.tstat .ts-cur{display:inline-block;width:.6em;height:.95em;margin-left:1px;background:var(--mx-g);box-shadow:0 0 4px rgba(0,255,65,.6)}
+/* t651u: pill cursor = footer cursor animation exactly (cblink, var(--phi-cursor), steps(1), var(--phi-cursor-d)); JS locks its startTime to the footer's. Runs always, hidden by opacity:1 override outside cursor phases. */
+.tstat .ts-cur{animation:cblink var(--phi-cursor,1.272s) steps(1) var(--phi-cursor-d,0s) infinite}
+html:not([data-term-phase="cursor"]) .tstat .ts-cur{opacity:1!important}
+html[data-term-phase="status"] .tstat .ts-txt.ts-go{animation:tsPulse 2.618s ease-in-out infinite}
+html[data-term-phase="live"] .tstat .ts-txt{color:var(--mx-r);text-shadow:0 0 3px rgba(255,0,51,.35)}
+html[data-term-phase="live"] .tstat .ts-txt.ts-go{animation:tsPulse 2.618s ease-in-out infinite}
+html[data-term-phase="live"] .tstat .ts-cur{background:var(--mx-r);box-shadow:0 0 4px rgba(255,0,51,.6)}
+html[data-term-phase="quiet"] .tstat .ts-txt{color:#5E7A66;opacity:.85;text-shadow:none}
+html[data-term-phase="quiet"] .tstat .ts-cur{background:#3E4F47;box-shadow:none;opacity:.6}
+html[data-term-phase="quiet"] .tick .tstat{box-shadow:inset 0 0 0 1px #1E2A33}
+html[data-term-phase="quiet"] .tstat .ts-dot{animation:none;background:#4F6168;box-shadow:none;transform:scale(.8);opacity:.6}
+html[data-term-status="quiet"] .foot .tin .blk{background:#4F6168;box-shadow:none}
+body.paused .tstat .ts-txt,body.paused .tstat .ts-cur{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.tstat .ts-txt,.tstat .ts-cur{animation:none!important}}
+/* t653u (Danny 13:35 AWST 24 Oct): clearer matrix-green border; dimmed in quiet. */
+.tick .tstat{box-shadow:inset 0 0 0 1px rgba(0,255,65,.78),0 0 4px rgba(0,255,65,.22)}
+html[data-term-phase="quiet"] .tick .tstat{box-shadow:inset 0 0 0 1px rgba(0,255,65,.28)}
+/* t654u (Danny 13:35 AWST 24 Oct): wider pill + scrolling telemetry readout after the word/cursor.
+   Portrait (<=480px): pill ~3x (fixed 210px). Landscape/wider: fixed 172px so the middle ticker keeps most of the row.
+   Readout = existing page signals only (Rebella link check result + latency from its own fetch's Resource Timing entry, LINK light,
+   navigator.onLine, AWST clock). Scroll PHI^6 = 17.94 s per loop (CSS, pump-scaled), edge-faded. Quiet: dim static. */
+.tick .tstat{box-sizing:border-box;flex:0 0 auto;width:172px;overflow:hidden}
+@media(max-width:480px){.tick .tstat{width:210px}}
+.tstat .ts-tel{flex:1 1 0;min-width:0;overflow:hidden;white-space:nowrap;color:var(--mx-g);opacity:.8;font-size:.92em;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 88%,transparent)}
+.tstat .ts-tel span{display:inline-block;padding-left:4px;animation:tsTel 17.944s linear infinite}
+@keyframes tsTel{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+html[data-term-phase="quiet"] .tstat .ts-tel{color:#5E7A66;opacity:.6}
+html[data-term-phase="quiet"] .tstat .ts-tel span{animation:none}
+body.paused .tstat .ts-tel span{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.tstat .ts-tel span{animation:none!important}}
+/* t655u/t656u (Danny 13:36 AWST 24 Oct): both cursors wave greeny-blue from ONE shared clock: a registered --cur-col animated on :root
+   (PHI^4.125 = 7.279 s base, distinct from facts/faces PHI^4, pump-scaled like every CSS animation). Pill cursor and footer cursor both read var(--cur-col), so they are the
+   same colour at every moment. Cursors never go red any more (replaces t639u); red stays only on the 'live' word. Quiet: dimmed. */
+@property --cur-col{syntax:'<color>';inherits:true;initial-value:#00FF41}
+:root{animation:curWave 7.279s linear infinite}
+@keyframes curWave{0%,100%{--cur-col:#00FF41}25%{--cur-col:#00E5A8}50%{--cur-col:#00D4FF}75%{--cur-col:#39FF14}}
+.foot .tin .blk,html[data-term-status="live"] .foot .tin .blk,.tstat .ts-cur,html[data-term-phase="live"] .tstat .ts-cur{background:var(--cur-col);box-shadow:0 0 4px color-mix(in srgb,var(--cur-col) 60%,transparent)}
+html[data-term-status="quiet"] .foot .tin .blk,html[data-term-phase="quiet"] .tstat .ts-cur{background:color-mix(in srgb,var(--cur-col) 35%,#1A2420);box-shadow:none}
+@media(prefers-reduced-motion:reduce){:root{animation:none}}
+/* t657u (Danny 13:38 AWST 24 Oct): flexible width - grows into free row space, telemetry clips first; weather/emojis never pushed off
+   the top line (320px+). Border muted dim green. 'live' is the brightest thing on the pill: #FF2A4A + soft red glow; 'status' slightly dimmed. */
+.tick .tstat,.tick .tstat{flex:1 1 auto;width:auto;min-width:calc(7ch + 22px);max-width:300px}
+@media(max-width:480px){.tick .tstat{width:auto;max-width:none}}
+@media(min-width:481px){.tick .tstat{flex:0 1 190px;max-width:190px}}
+.tick .tstat{box-shadow:inset 0 0 0 1px rgba(46,139,87,.55)}
+html[data-term-phase="quiet"] .tick .tstat{box-shadow:inset 0 0 0 1px rgba(46,139,87,.25)}
+html[data-term-phase="status"] .tstat .ts-txt{opacity:.85}
+html[data-term-phase="live"] .tstat .ts-txt{color:#FF2A4A;text-shadow:0 0 4px rgba(255,42,74,.75),0 0 9px rgba(255,42,74,.4)}
+.tstat .ts-tel{opacity:.6}
+/* t656u fix: no colour transition on the footer cursor, so it tracks the shared --cur-col exactly with the pill cursor. */
+.foot .tin .blk,.tin .blk{transition:none!important}
+/* t657u fix: basis 0 so the pill only takes leftover row space (weather/emojis keep their line). */
+@media(max-width:480px){.tick .tstat{flex:1 1 0;min-width:calc(7ch + 22px)}.tick .wx{margin-left:8px}}
