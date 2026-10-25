@@ -490,7 +490,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
 <link rel="stylesheet" href="css/quiz-popups.css?v=1"><!-- pop-up panels for every tappable item in the page chrome (Danny t660u 13:43 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-tty-detail.css?v=1"><!-- Simmie tty detail back: bright dots, amber timestamps, dashed teal top rule, amber AWST · AGE (Danny 25 Oct 12:26 AWST) -->
 <link rel="stylesheet" href="css/dad-mark-zoom.css?v=4"><link rel="stylesheet" href="css/dad-mark-waves.css?v=1"><!-- radiating, reflecting waves around Dad's mark (Danny t719u) --><!-- tap-to-enlarge for Dad's mark (Danny t699u) and the Rebella logo (t701u), 25 Oct -->
-<link rel="stylesheet" href="css/quiz-light.css?v=1"><!-- light theme + footer theme switch (Danny t0u 25 Oct); every light rule is scoped to html[data-theme="light"] -->
+<link rel="stylesheet" href="css/quiz-light.css?v=2"><!-- light theme + footer theme switch (Danny t0u 25 Oct); every light rule is scoped to html[data-theme="light"] -->
 </head>
 <body>
 <video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp" data-src-webm="media/space-loop.webm" data-src-mp4="media/space-loop.mp4"></video><div class="bgloop-still" aria-hidden="true"></div>
@@ -578,7 +578,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
     <span class="ro" id="ro" aria-hidden="true"></span>
   </div></div>
   <div class="tty" id="tty">
-    <div class="ttybar"><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><span class="tt" aria-hidden="true"></span></div><button type="button" class="thm" id="thm" aria-pressed="false" aria-label="Light theme" title="Switch to light theme"><span class="sat" aria-hidden="true">&#x1F6F0;&#xFE0F;</span><i class="thm-o" aria-hidden="true"></i></button><!-- theme switch: the satellite moved out of the bar into its own button (Danny t0u) --><!-- t709u: dots -> live bar graphs + rolling readout, title text removed (js/quiz-tty2.js) -->
+    <div class="ttybar"><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><span class="tt" aria-hidden="true"></span></div><a class="dls" id="dls" href="dials.html" aria-label="Dial sandbox" title="Dial sandbox">&phi;</a><!-- dial sandbox, opens dials.html on tap only (Danny via Kids Club 22:07 AWST 25 Oct) --><button type="button" class="thm" id="thm" aria-pressed="false" aria-label="Light theme" title="Switch to light theme"><span class="sat" aria-hidden="true">&#x1F6F0;&#xFE0F;</span><i class="thm-o" aria-hidden="true"></i></button><!-- theme switch: the satellite moved out of the bar into its own button (Danny t0u) --><!-- t709u: dots -> live bar graphs + rolling readout, title text removed (js/quiz-tty2.js) -->
     <div class="ttybody">
       <span class="simmie" data-simmie id="footSimmie"></span>
       <div class="ttyl">

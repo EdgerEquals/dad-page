@@ -9,7 +9,14 @@
    moon/sun crossfade PHI^0 x PHI^-1.5 = 0.486 s; none under prefers-reduced-motion. */
 
 /* ---- the switch: the footer tty satellite (was decoration only), now a button; tiny moon (dark) / sun (light) beside it ---- */
-.foot .ttybar{padding-right:30px}
+.foot .ttybar{padding-right:46px}
+/* dial sandbox link (Danny via Kids Club, 22:07 AWST 25 Oct): a tiny phi just left of the satellite; plain link to dials.html, nothing loads until the tap */
+.foot .tty .dls{position:absolute;top:0;right:31px;z-index:3;display:block;width:15px;height:20px;padding:0 0 6px;border-radius:4px;text-align:center;text-decoration:none;
+  color:#85A6BB;font:700 10px/14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.foot .tty .dls:hover{color:#0AF2FF;text-shadow:0 0 4px rgba(10,242,255,.6)}
+.foot .tty .dls:focus-visible{outline:2px solid var(--dpc-accent,#0AF2FF);outline-offset:-2px}
+html[data-theme="light"] .foot .tty .dls{color:#1F5478}
+html[data-theme="light"] .foot .tty .dls:hover{color:#00707A;text-shadow:none}
 .foot .tty .thm{position:absolute;top:0;right:1px;z-index:3;display:flex;align-items:flex-start;justify-content:flex-end;gap:3px;
   width:30px;height:20px;margin:0;padding:0 4px 6px 2px;border:0;border-radius:4px;background:none;color:inherit;font:9px/14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
