@@ -162,12 +162,14 @@
     rFb.gain.setTargetAtTime(1, t + L, s); rFb.gain.setTargetAtTime(0, end, s);
     rOut.gain.setTargetAtTime(1, t + L, s); rOut.gain.setTargetAtTime(0, end, s); rDry.gain.setTargetAtTime(IPH, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
   }
-  function transition(go) {
+  function transition(go, o) {
     var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
     var st = E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
     var u = energy(), ri = clamp(S.r + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
+    var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth
+    try {
     var td = ts + (bd - bs) * bar, T = td - ts, tail = bar, s8 = Math.pow(PHI, -6);
     txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: st, bars: bd - bs, start: ts, drop: td, now: now };
     [lp.frequency, hp.frequency, eSend.gain, eFb.gain, wSend.gain, flW.gain, flFb.gain, flL.frequency, nzG.gain, nzBP.frequency].forEach(function (p) { hold(p, now); });
@@ -197,6 +199,7 @@
     // MIDI Bot review: the values before the sweep are logged at the call, and logging runs on past the hand-back (TXu) until the knobs
     // have settled again (a beat after apply() takes over), so the file ends at the resting brightness and sends, not mid-tail
     if (R) { ccNow(); txLog = setInterval(function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) clearInterval(txLog); }, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
+    } finally { wt = wt0; }
     sync(); return true;
   }
   // ---------- knob chips (same style as the pump knobs) ----------

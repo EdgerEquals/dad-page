@@ -154,7 +154,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=5', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=6', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -309,7 +309,7 @@
     var deg = pr[Math.floor(bar / g.bars) % pr.length], barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
-    if (first) tr.ax = peak && bar % 2 && tr.r() < IPH ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
+    if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < IPH ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
     var ch = first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
     // chords
@@ -372,15 +372,36 @@
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
+    if (old[0] && old[0].lastCh) tr.lastCh = old[0].lastCh.slice();      // the first chord is voiced from the outgoing track's last one
     fadeTrack(tr, true, t, len);
     old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); if (ox && ox.swap) { o.noBass = true; o.L.bass.out.gain.cancelScheduledValues(t); o.L.bass.out.gain.setTargetAtTime(0, t, Math.pow(PHI, -6)); }   // bass swap at the drop
       setTimeout(function () { kill(o); }, (t - ctx.currentTime + len) * 1000 + 300); });
-    TL.push([Date.now() + (t - ctx.currentTime) * MS + len * MS / 2, tr.bpm]);   // midpoint of the fade from where it starts (the drop on a transition), not the call while (TL.length > 1 && TL[1][0] < Date.now() - WIN) TL.shift();
+    TL.push([Date.now() + (t - ctx.currentTime) * MS + len * MS / 2, tr.bpm]); while (TL.length > 1 && TL[1][0] < Date.now() - WIN) TL.shift();   // midpoint of the fade from where it starts (the drop on a transition), not the call
     tracks.push(tr); fadingUntil = Date.now() + len * 1000; lastMood = c.p.mood;
     return tr;
   }
   function kill(tr) { tr.dead = true; tracks = tracks.filter(function (x) { return x !== tr; }); setTimeout(function () { try { tr.out.disconnect(); tr.wet.disconnect(); tr.rev.disconnect(); if (tr.lfo) tr.lfo.stop(); } catch (e) {} }, 400); }
   function applyVol(c, len) { if (bus) bus.gain.setTargetAtTime(c.vol, ctx.currentTime, Math.max(0.05, len / 3)); }
+  // EVERY CHANGE ON THE BAR GRID (MIDI Bot transitions design, Danny 16:30 AWST 26 Oct): automatic radio changes and dial changes go
+  // through the same bar-grid planner as the shuffle button (js/dj-fx.js transition(), its sweeps scaled by depth); before the effects
+  // chain has loaded, the change waits for the live track's next bar line. The outgoing track stops taking axis substitutes once a change
+  // is planned (tr.bridge), and the incoming track voices its first chord from the outgoing track's last one (lastCh, see voiced()).
+  var pendX = false;
+  function routed(fn, live) {
+    live = live || tracks.filter(function (x) { return !x.leaving && !x.dead; })[0]; if (!live || !playing || !ctx) return false;
+    var F = window.DadAutoDJ && DadAutoDJ.fx, go = function (ox) { if (!pendX || !playing) return; pendX = false; fn(ox); };
+    pendX = true; live.bridge = true;
+    if (F && F.transition && F.transition(go, { depth: depthAuto() })) return true;
+    var G = grid(); if (!G) { pendX = false; return false; }
+    var S16 = SPB * SPB, k = Math.ceil(G.step / S16) * S16, at = G.t + (k - G.step) * G.d16;
+    while (at < ctx.currentTime + Math.pow(PHI, -2)) { at += G.d16 * S16; }   // phi: the next bar line at least PHI^-2 s out
+    setTimeout(function () { go({ at: at, fade: Math.max(G.d16 * S16, compute().fade * IPH), swap: true }); }, Math.max(0, (at - ctx.currentTime - Math.pow(PHI, -2)) * MS));   // phi: a bar or PHI^-1 of the mood's fade
+    return true;
+  }
+  // how much of the transition styling an automatic or dial change carries: a gradient on the pumps (energy u) and the
+  // sophistication of the live track, PHI^-2 .. 1 (calm, plain tracks fade with little sweep; energetic, sophisticated ones get it all)
+  function depthAuto() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], u = energy(), s = tr && tr.s != null ? tr.s : IPH;
+    return Math.pow(PHI, -2 * (1 - (u + s) / 2)); }
   function boundary() {
     var c = compute();
     if (Date.now() < fadingUntil) { schedule(c.fade); paint(c); return; }   // never mid-fade
@@ -388,8 +409,8 @@
       var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
       var changed = !tr || c.genres.indexOf(tr.genre) < 0 || Math.abs(tr.bpm - c.bpm) > 0.5 || c.p.mood !== lastMood;
       var old = tr && (Date.now() - tr.born) / 1000 >= tr.trackLen;
-      if (changed || old) { tr = startTrack(c); tr.trackLen = c.trackLen; }
-      applyVol(c, c.fade); cur = c; cur.genre = tr.genre;
+      if ((changed || old) && !pendX) { if (!routed(function (ox) { var n = startTrack(compute(), ox && ox.fade, null, ox); n.trackLen = compute().trackLen; cur = compute(); cur.genre = n.genre; paint(cur); }, tr)) { tr = startTrack(c); tr.trackLen = c.trackLen; } }
+      applyVol(c, c.fade); cur = c; if (tr) cur.genre = tr.genre;
     } else { cur = c; }
     paint(c); schedule(c.fade);
   }
@@ -423,6 +444,7 @@
   function stop() {
     held = spec(); playing = false; pend = null; stalled = false; disarm();
     setTimeout(function () { if (!playing) elStop(); }, PHI * MS); session('paused');
+    pendX = false;
     if (ctx) { var t = ctx.currentTime; tracks.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, 1); setTimeout(function () { kill(o); }, 1300); }); }
     if (setBm) { document.documentElement.removeAttribute('data-bm'); setBm = false; }
     fadingUntil = 0; paint(compute()); save();
@@ -439,6 +461,7 @@
     if (p && p.then) p.then(check, check); else check();
   }
   function glide(ox) {                                                   // a change glides in over a PHI^3 s crossfade (rule 6), never a cut (or the transition's own fade)
+    if (!ox && playing && ctx && (pendX || routed(function (o) { glide(o || { fade: Math.pow(PHI, 3) }); }))) { paint(compute()); save(); return; }   // dial changes wait for the bar grid too (a change already planned picks them up)
     var c = compute();
     if (playing && ctx) { var tr = startTrack(c, ox && ox.fade || Math.pow(PHI, 3), null, ox); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
     else cur = c;
@@ -605,7 +628,7 @@
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
     level: rms, get out() { return { level: rms(), k_level: rmsOf(kMeter), ref: refS, k: kRef, nominal: nominal(), duck: duck ? duck.gain.value : 1, ducked: ducked }; },
-    get extras() { return !!X; }, notes: function () { return NL.slice(); }, lastMinute: lastMinute, midi: function () { return midiLib(); }, dump: function () { var t = spec(); return midiLib().then(function (L) { return L.build(lastMinute(), t ? t.bpm : compute().bpm, t && t.genre, TL.slice()).csv; }); },   // dev: midicsv of the last minute (MIDI Bot directions; loads the writer on demand) get primed() { return primed; },
+    get extras() { return !!X; }, notes: function () { return NL.slice(); }, lastMinute: lastMinute, midi: function () { return midiLib(); }, dump: function () { var t = spec(); return midiLib().then(function (L) { return L.build(lastMinute(), t ? t.bpm : compute().bpm, t && t.genre, TL.slice()).csv; }); }, get primed() { return primed; },   // dump: dev midicsv of the last minute (MIDI Bot directions; loads the writer on demand)
     get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
