@@ -165,7 +165,7 @@
     try { console.log('[dj-resume] ' + m); } catch (e) {} try { root.localStorage.setItem(LOGK, JSON.stringify(AU.log)); } catch (e) {} }
   function done() { return AU.ctx && AU.ctx.state === 'running' && elOn(); }
   function fadeIn() {
-    var D = kit(), g = D && D._kit.duck, c = AU.ctx; if (!g || !c) return;
+    var D = kit(), g = D && D._kit.duck, c = AU.ctx; if (!g || !c || (root.LogoRadio && root.LogoRadio.holding)) return;   // js/logo-radio.js holds it silent under the zoom
     var P = root.PageMusic, to = P && P.ducked ? IP : 1, t = c.currentTime;
     try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(to, t + IP); } catch (e) {}   // phi: PHI^-1 s fade-in
   }
