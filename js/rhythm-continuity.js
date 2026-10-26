@@ -139,4 +139,67 @@
     css('logo:dad', '.q-head .dad-zoom');                                                        // the logo's own CSS rhythm (pumps cover the rest)
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', late); else late();
+
+  // ---------- audio interruptions (Danny 16:04-16:11 AWST 26 Oct: the mic in another app stops the DJ, pressing send must bring it back) ----------
+  // iOS ends a dictation / call / Siri interruption without telling the page anything except: the AudioContext leaves 'interrupted'
+  // (or sits 'suspended'), the <audio> bridge gets pause then maybe play, the Media Session gets a play action, or the page comes back.
+  // Every one of those starts the same resume ladder: try now, then PHI^-2, PHI^-1, 1, PHI .. PHI^6 s (capped, repeating at the cap)
+  // until the context runs. Only while the DJ is on (his own pause sets playing false, so it is never undone). Once running: a PHI^-1 s
+  // fade-in on the duck stage and a catch-up to wall-clock time (the DJ's wake: jump + tick). A refused resume (no gesture) leaves the DJ
+  // stalled, which pulses its button (is-resuming) and resumes on the next tap anywhere; the ladder keeps trying meanwhile.
+  var AU = { ctx: null, el: null, rung: 0, t: 0, down: false, log: [] }, LAD0 = -2, LAD1 = 6;   // phi: ladder exponents PHI^-2 .. PHI^6
+  function kit() { var D = root.DadAutoDJ; return D && D._kit ? D : null; }
+  function wanted() { var D = kit(); return !!(D && D.playing); }
+  function note(m) { AU.log.push([Date.now(), m]); if (AU.log.length > 89) AU.log.splice(0, 34); }   // phi: Fibonacci log window
+  function running() { return AU.ctx && AU.ctx.state === 'running'; }
+  function fadeIn() {
+    var D = kit(), g = D && D._kit.duck, c = AU.ctx; if (!g || !c) return;
+    var P = root.PageMusic, to = P && P.ducked ? IP : 1, t = c.currentTime;
+    try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(to, t + IP); } catch (e) {}   // phi: PHI^-1 s fade-in
+  }
+  function settle() {                                                              // the context runs again: bring the sound back
+    var D = kit(); clearTimeout(AU.t); AU.t = 0; AU.rung = 0;
+    if (!AU.down) return; AU.down = false; note('resumed');
+    fadeIn();
+    try { if (D._kit.stalled) D._kit.resumeTap(); else D._kit.wake(); } catch (e) {}   // clears the pulse, re-plays the bridge, catches the rhythm up
+    try { var m = navigator.mediaSession; if (m) m.playbackState = 'playing'; } catch (e) {}
+  }
+  function attempt(why) {
+    var D = kit(); if (!D || !wanted() || !AU.ctx) { AU.down = false; clearTimeout(AU.t); AU.t = 0; return; }
+    if (running()) { if (AU.el && AU.el.paused) { try { var q0 = AU.el.play(); if (q0 && q0.catch) q0.catch(function () {}); } catch (e) {} } settle(); return; }   // the bridge is best effort: a running context is the sound
+    if (!AU.down) { AU.down = true; AU.rung = 0; note('down:' + why);
+      try { var g = D._kit.duck; if (g) { g.gain.cancelScheduledValues(AU.ctx.currentTime); g.gain.setValueAtTime(0, AU.ctx.currentTime); } } catch (e) {} }   // silent until the fade-in
+    note('try:' + why + ':' + AU.ctx.state);
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (AU.el && AU.el.paused && AU.rung > 2 && AU.el.srcObject) { try { var s = AU.el.srcObject; AU.el.srcObject = null; AU.el.srcObject = s; } catch (e) {} }   // a stale bridge after a long interruption: re-attach its stream
+    var p = null; try { p = AU.ctx.resume(); } catch (e) {}
+    if (AU.el && AU.el.paused) { try { var q = AU.el.play(); if (q && q.catch) q.catch(function () {}); } catch (e) {} }
+    function after() { if (running()) settle(); else { try { if (!D._kit.stalled) D._kit.wake(); } catch (e) {} ladder(); } }   // wake marks it stalled: pulse + next tap
+    if (p && p.then) p.then(after, after); else after();
+  }
+  function ladder() {
+    if (AU.t || !AU.down) return;
+    var n = Math.min(LAD0 + AU.rung, LAD1); AU.rung++;
+    AU.t = setTimeout(function () { AU.t = 0; attempt('ladder'); }, Math.pow(PHI, n) * MS);
+  }
+  function hook() {                                                                // attach to the DJ's context and bridge once they exist
+    var D = kit(); if (!D) return; var c = D._kit.ctx, a = D._kit.el;
+    if (c && c !== AU.ctx) { AU.ctx = c;
+      c.addEventListener('statechange', function () { note('state:' + c.state);
+        if (c.state === 'running') { if (AU.down) attempt('state'); } else if (wanted()) attempt('state'); }); }
+    if (a && a !== AU.el) { AU.el = a;
+      a.addEventListener('pause', function () { if (wanted()) { note('el:pause'); setTimeout(function () { attempt('el-pause'); }, Math.pow(PHI, LAD0) * MS); } });
+      a.addEventListener('play', function () { note('el:play'); if (wanted()) attempt('el-play'); }); }
+  }
+  function poke(why) { return function () { hook(); if (wanted() && (!running() || AU.down)) attempt(why); }; }
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden) poke('visible')(); });
+  root.addEventListener('pageshow', poke('pageshow'));
+  root.addEventListener('focus', poke('focus'));
+  doc.addEventListener('resume', poke('resume'));
+  ['touchend', 'click', 'keydown'].forEach(function (n) { doc.addEventListener(n, function () { setTimeout(hook, 0); }, true); });   // the DJ builds its context on a tap
+  setInterval(poke('beat'), CADENCE * MS);                                         // phi: a PHI^4 s check catches a silent interruption end
+  try { var MSn = navigator.mediaSession; if (MSn) { var sa = MSn.setActionHandler.bind(MSn);   // the lock screen / Control Center play button also restarts the ladder
+    MSn.setActionHandler = function (k, f) { return sa(k, k === 'play' && f ? function (d) { var r = f(d); hook(); setTimeout(poke('session-play'), 0); return r; } : f); }; } } catch (e) {}
+  root.RhythmContinuity.audio = { info: function () { return { state: AU.ctx && AU.ctx.state, down: AU.down, rung: AU.rung, el: AU.el ? { paused: AU.el.paused } : null }; },
+    log: function () { return AU.log.slice(); }, retry: function () { poke('manual')(); } };
 })(window);
