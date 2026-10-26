@@ -358,7 +358,8 @@
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
     if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
-    var dm = dm0 && typeof dm0.drive === 'number' ? dm0 : dimsOf(dimX(null));   // the six dimensions at the track's birth (restored with the track, so a reload rebuilds the same loop)
+    var dm = dm0 && typeof dm0.drive === 'number' ? dm0 : dimsOf(dimX(null));
+    if (dm === dm0 && isFinite(dm0.w)) { var dl = dimsOf(dimX(null)), wr = clamp(dm0.w, 0, 1); dm = {}; DIMS.forEach(function (d) { dm[d] = typeof dm0[d] === 'number' ? dl[d] + (dm0[d] - dl[d]) * wr : dl[d]; }); }   // reload: saved birth dims fade toward the live readings (catchUp)   // the six dimensions at the track's birth (restored with the track, so a reload rebuilds the same loop)
     var rr = rng((seed + GA) | 0); var hA = prog, hB = progB; prog = genLoop(hA, hB, dm, rr); progB = genLoop(hB, hA, dm, rr); var hb = harmRhythm(dm, rr);   // P2: this track's own loops and chord length
     var mp = clamp(modePos(g.scale) + (dm.brightness - 1 / 2) * DIAL.modeR, DIAL.modeLo, 1), mlo = Math.floor(mp), mf = mp - mlo, scLo = modeScale(mlo), scHi = modeScale(Math.min(1, mlo + 1));   // brightness -> mode
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
@@ -784,6 +785,14 @@
   var RC = null;
   function save() { if (RC) RC.save(); }
   function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; if (JSON.stringify(DIAL) !== DIAL0) o.dl = DIAL; return o; }
+  // RELOAD FADE (MIDI Bot rhythm study section 4, Danny 19:18 AWST): what a reload or logo tap restores (the first track's birth dims
+  // since 060ba87, and the rotation phase T0) fades toward the live readings with the gap: saved weight w = PHI^-(gap / (B PHI^k)),
+  // B = PHI^5 s (the breath slot), k = the resume dial (open range 3..7, mid 5: about two minutes per rung) plus its own phi pump
+  // (dj:resume, +-1 rung). Short gap: the same loop comes back; long gap: the live sky takes over smoothly. Catch-up only blends toward
+  // live, so it never adds drive or density of its own (shared.md L381 / L397: live feeds re-read, fundamentals carried).
+  var RK = (3 + 7) / 2, rsP = null;
+  function resumeW(e) { var P = window.PhiPumps; if (!rsP && P && P.node) rsP = P.node('dj:resume', 1, PHI, IPH, P.page, 5);
+    var pm = rsP ? clamp(rsP.modes(pumpAt()) || 0, -1, 1) : 0, g = Math.max(0, +e || 0); return Math.pow(PHI, -g / (Math.pow(PHI, 5) * Math.pow(PHI, RK + pm))); }
   function catchUp(e, s, mode) {
     if (mode === 'return') { wake(); return; }
     if (!s) return;
@@ -794,8 +803,9 @@
     if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
-    if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = s.T0;
-    if (s.on && AC) { pend = s.tr || {}; arm(); }
+    var w = resumeW(e), now = Date.now();
+    if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = now + (s.T0 - now) * w;   // the rotation phase fades toward a fresh start's (T0 = now) the same way
+    if (s.on && AC) { pend = s.tr ? Object.assign({}, s.tr) : {}; if (pend.dm && typeof pend.dm.drive === 'number') pend.dm = Object.assign({}, pend.dm, { w: w }); arm(); }
   }
   function reset() {                                                      // daily restart at local solar midnight: knobs back to live, fresh rotation
     Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); genreFlip = 0; T0 = Date.now(); held = null;
@@ -894,7 +904,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },
