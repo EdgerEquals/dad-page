@@ -37,3 +37,12 @@
 .dad-dj .dj-play.is-resuming .dj-led{animation:djpResume 2.618s ease-in-out infinite}
 @keyframes djpResume{50%{opacity:.382}}
 @media(prefers-reduced-motion:reduce){.dad-dj .dj-grp span{transition:none}.dad-dj .dj-play.is-resuming .dj-led{animation:none}}
+/* DJ effects section (Danny 14:34 AWST 26 Oct): same chips as the pump knobs, a quiet header with the random-effects button */
+.dad-dj .dj-fx{display:flex;flex-direction:column;gap:.25rem;margin-top:.3rem;padding-top:.3rem;border-top:1px solid rgba(214,236,239,.18)}
+.dad-dj .dj-fx-hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:#BFD9DD;font-size:.72rem}
+.dad-dj .dj-fx-note{opacity:.7}
+.dad-dj .dj-fxr{display:inline-flex;align-items:center;gap:4px;padding:.18rem .55rem;border-radius:999px;border:1px solid rgba(214,236,239,.45);background:transparent;color:#D6ECEF;font:inherit;font-size:.72rem;cursor:pointer;-webkit-touch-callout:none;user-select:none}
+.dad-dj .dj-fxr:focus-visible{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-fxr.is-mixing{animation:djfxr .618s ease}
+@keyframes djfxr{0%{box-shadow:0 0 0 0 rgba(242,165,65,.7)}100%{box-shadow:0 0 0 8px rgba(242,165,65,0)}}
+@media (prefers-reduced-motion:reduce){.dad-dj .dj-fxr.is-mixing{animation:none}}

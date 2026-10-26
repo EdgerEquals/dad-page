@@ -85,5 +85,5 @@
     return ' \u00B7 live: sun ' + Math.round(z.elev) + '\u00B0, moon ' + Math.round(z.moonLit * pct) + '% lit, season ' + Math.round(z.season * deg) + '\u00B0' +
       (P && P.page ? ', rhythm \u00D7' + P.page.out().toFixed(2) : '');
   }
-  K.extras({ hit: hit, reverb: reverb, sync: syncChips, live: liveLine, chips: function (el) { if (chips) return; chips = el; buildChips(); } });
+  K.extras({ ir: function () { return conv && conv.buffer; }, hit: hit, reverb: reverb, sync: syncChips, live: liveLine, chips: function (el) { if (chips) return; chips = el; buildChips(); } });
 })();
