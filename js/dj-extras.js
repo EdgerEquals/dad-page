@@ -35,21 +35,22 @@
   // NOISE LAYER (Danny 15:44-15:45 AWST 26 Oct): the hat + shaker noise goes through its own bus per track. The snare keeps its own level.
   // - IN/OUT: a faster pump pair (PHI^PHI.. and PHI^PHI^2.. s rungs) layered on the track's energy arc, so it comes and goes less predictably.
   // - SOUND: cutoff, Q, high-shelf tilt and stereo width each come from 2 pumps, so it keeps evolving.
-  // - CEILING: centred on PHI^-3 of the old maximum and moved by 2 pumps over PHI^-4..PHI^-2, never above PHI^-2 x old (rule 8; the
+  // - CEILING: centred on PHI^-4 of the old maximum and moved by 2 pumps over PHI^-5..PHI^-3, never above PHI^-3 x old (rule 8; the
   //   envelope moves underneath it). All nodes hang off the page pump tree (rule 9).
   var nzP = null, nzN = 0, DB = 20;                                       // unit: dB = 20 log10 of an amplitude ratio
   function nzPumps() {
     if (nzP) return nzP; var P = window.PhiPumps, root = P && P.page, mk = function (nm, n, k0, d, sd) { return P && P.node ? P.node(nm, n, k0, d, root, sd)
       : { modes: function (t) { var s = 0; for (var j = 0; j < n; j++) s += Math.sin(2 * Math.PI * t / Math.pow(PHI, k0 + j / 2) + 2 * Math.PI * (((j + 1 + sd) * IPH) % 1)); return s / n; } }; };
-    return (nzP = { a: mk('djnoise:a', 3, PHI, IPH, 1), b: mk('djnoise:b', 3, PHI * PHI, IPH, 2), c: mk('djnoise:c', 2, PHI * PHI * PHI, IPH * IPH, 3) });   // phi: rungs PHI^PHI, PHI^PHI^2, PHI^PHI^3 s
+    return (nzP = { a: mk('djnoise:a', 3, PHI, IPH, 1), b: mk('djnoise:b', 3, PHI * PHI, IPH, 2), c: mk('djnoise:c', 2, PHI * PHI * PHI, IPH * IPH, 3),   // phi: rungs PHI^PHI, PHI^PHI^2, PHI^PHI^3 s
+      d: mk('djnoise:d', 1, PHI + 1, IPH, 4), e: mk('djnoise:e', 1, PHI + 2, IPH, 5) });   // phi: two slower amplitude LFOs at PHI^-1 and PHI^-2 of pump a's rate (Danny 16:37): periods PHI^(PHI+1), PHI^(PHI+2) s
   }
   function nzBus(tr, t) {
     var c = C(), z = tr.nz, P = nzPumps(), now = (window.PhiPumps && PhiPumps.now) ? PhiPumps.now() : c.currentTime;
     if (!z) { z = tr.nz = { in: c.createGain(), sh: c.createBiquadFilter(), g: c.createGain() };
       z.sh.type = 'highshelf'; z.sh.frequency.value = FHI * Math.pow(PHI, -3); z.g.gain.value = 0; z.in.connect(z.sh); z.sh.connect(z.g); z.g.connect(tr.out); }   // phi: shelf PHI^-3 under the top
-    var a = P.a.modes(now), b = P.b.modes(now), m = P.c.modes(now), sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };   // unit: smoothstep 3x^2 - 2x^3
-    var io = Math.pow(PHI, -3) + (1 - Math.pow(PHI, -3)) * sm((1 + (a + IPH * b) / (1 + IPH)) / 2);       // in/out: two fast pumps, floor PHI^-3
-    var ceil = Math.pow(PHI, -3 + (m + IPH * a) / (1 + IPH));                                              // ceiling: centre PHI^-3, range PHI^-4..PHI^-2
+    var a = P.a.modes(now), b = P.b.modes(now), m = P.c.modes(now), d = P.d.modes(now), e = P.e.modes(now), sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };   // unit: smoothstep 3x^2 - 2x^3
+    var io = Math.pow(PHI, -3) + (1 - Math.pow(PHI, -3)) * sm((1 + (a + IPH * b + IPH * d + IPH * IPH * e) / (1 + 2 * IPH + IPH * IPH)) / 2);   // in/out: pump a beating against d, e (rates PHI^-1, PHI^-2 of a) plus b; floor PHI^-3
+    var ceil = Math.pow(PHI, -4 + (m + IPH * a) / (1 + IPH));                                              // ceiling: centre PHI^-4, range PHI^-5..PHI^-3 (Danny 16:37: one more phi step down)
     z.lvl = ceil * io; z.ceil = ceil; z.io = io;
     z.cf = Math.pow(PHI, (IPH * a + IPH * IPH * m) * PHI);                                                  // cutoff: about +-1 rung, 2 pumps
     z.q = Math.pow(PHI, IPH * b + IPH * IPH * a);                                                           // Q: about PHI^-1..PHI, 2 pumps
