@@ -233,7 +233,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=djthrow2b', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=djthrow3', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -450,14 +450,15 @@
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
     if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
-    if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
+    if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
-    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { if (k === 'kick' && peak) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = vl(s16, dyn) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down
+    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { if (k === 'kick' && peak) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = vl(s16, dyn) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down
     if (s16 % 4 === 0) beat(t, s16 === 0);
   }
   // ---------- note log for the MIDI export (Danny 14:48 AWST 26 Oct): the last minute of what played, pruned by wall time ----------
   // Each entry is [wall ms, part, MIDI note, velocity 0..1, seconds]; at most a minute of steps, a few KB. js/dj-midi.js writes it on tap.
   var NL = [], ccOld = {}, WIN = SPM * MS;                                            // unit: one minute
+  function kD(tr, t) { var F = window.DadAutoDJ && DadAutoDJ.fx; if (!tr.leaving && F && F.kick) F.kick(t); }   // the incoming track's kicks duck the throw's tail (delay-throw push 4)
   var GM = { kick: 36, snare: 38, hat: 42, shaker: 82, tom: 45 };       // cite: General MIDI Level 1 percussion key map (channel 10)
   function rec(part, m, t, d, v) {
     var w = Date.now() + (t - ctx.currentTime) * MS; NL.push([w, part, m, v, d]);
@@ -549,7 +550,8 @@
     var ped = home.map(pc).filter(function (p) { return old.indexOf(p) >= 0; }); if (!ped.length) ped = [hr];
     var n = Math.max(0, Math.round((drop - start) / dur)), segs = !piv || n < 2 ? [{ pcs: ped, root: ped[0] }] : [];
     for (var i = 0; piv && n >= 2 && i < n; i++) segs.push(i < n - 1 ? piv : V7);
-    lastBx = live.bx = { start: start, drop: drop, bar: dur, segs: segs, home: { pcs: home.map(pc), root: hr }, pre: pre, plan: segs.map(function (x) { return x === piv ? 'pivot' : x === V7 ? 'V7' : 'pedal'; }) };
+    var kD = Math.pow(PHI, PHI * PHI * clamp(live.s == null ? IPH : live.s, 0, 1)), kd = fifths(keySig(SCn, pre.root), keySig(live.sc, live.root)) / kD;   // key travel d / D, as travel() weighs it
+    lastBx = live.bx = { start: start, drop: drop, bar: dur, segs: segs, kt: kd, home: { pcs: home.map(pc), root: hr }, pre: pre, plan: segs.map(function (x) { return x === piv ? 'pivot' : x === V7 ? 'V7' : 'pedal'; }) };
   }
   // LANDING WAIT (Danny 16:30 'adjusted depending on mood, time of day ... they all sweep'): how long an automatic change takes to land,
   // 0 = the next bar .. 1 = a phrase (dj-fx BARS 1..8), from calm pumps and sophistication: calm, sophisticated tracks take their time.
@@ -796,7 +798,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },
