@@ -153,10 +153,39 @@
   // note from the next (Lydian +1 .. Locrian -5, sharps against the tonic). A track sits at p = its genre's own mode + (brightness - 1/2) x R;
   // the fraction of p is the share of chords that take the sharper neighbour (golden-sequence draw per chord), so between Ionian and
   // Mixolydian the 7th is sometimes natural, sometimes flat. R and the dark end are dials, at the middle of their ranges.
-  var DIAL = { modeR: (1 / 2 + 3) / 2, modeLo: (-4 - 5) / 2 };          // MIDI Bot open ranges 1: R from 1/2 to 3 steps; the dark end at Phrygian (-4) or Locrian (-5)
+  var DIAL = { modeR: (1 / 2 + 3) / 2, modeLo: (-4 - 5) / 2,           // MIDI Bot open ranges 1: R from 1/2 to 3 steps; the dark end at Phrygian (-4) or Locrian (-5)
+    loopLo: (0 + 1) / 2, loopHi: (2 + 3) / 2,                            // open range 4 (log2 chords per loop): shortest 1..2, longest 4..8
+    hrLo: (-1 + 0) / 2, hrHi: (1 + 2) / 2,                               // open range 5 (log2 bars per chord): fastest 1/2..1, slowest 2..4
+    rho0: (1 + 1 / 2) / 2, rho1: (-1 - 1 / 2) / 2 };                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
   function modeScale(k) { var m = SCALES.major.slice(); if (k > 0) m[3] += 1; for (var i = 0; i < -k && i < FLATS.length; i++) m[FLATS[i]] -= 1; return m; }   // cite: Lydian raises the 4th
+  // PROGRESSION GENERATOR (MIDI Bot scales + harmony plan P2, Danny 17:49 AWST): each track draws its own loop instead of only the
+  // genre's two fixed ones. Three readings, each a dimension, each weight travel()'s w = PHI^(-PHI^2 k / D), D = PHI^(PHI^2 tension):
+  // chords per loop L in {1, 2, 4, 8} near a target that falls as drive rises (grooves shuttle, phrases run on); bars per chord in
+  // {1/2, 1, 2, 4} near a target that rises with space; and each next root over the six root-interval classes, k = 0 for the
+  // direction rho favours and 1 for its mirror, rho = rho0 .. rho1 across drive (common practice .. rock-standard). The genre's own loop
+  // stays as the home: each slot keeps the home chord (k = 0) or wanders (k = 1), so low tension sounds like today and the loop repeats
+  // exactly once drawn. Slot 0 is always the home's first chord (the bridge lands there). Its own random stream (seed + GA), so the
+  // track's other draws are unchanged.
+  // cite: common-practice root motions ascending 4th, descending 3rd, ascending 2nd; rock's mirror image (Stephenson 2002, via
+  // de Clercq & Temperley 2011, Popular Music 30(1) p. 49); two-chord shuttles (Tagg, via Hein 2021); loops in EDM (Faraldo et al. 2016)
+  var RM = [3, -2, 1], LOOPS = [1, 2, 4, 8], HBARS = [1 / 2, 1, 2, 4];   // cite: those three root motions in scale steps; 4/4 hypermeter loop lengths; harmonic-rhythm rungs
+  function wPick(opt, kOf, D, x) { var w = opt.map(function (o) { return Math.pow(PHI, -PHI * PHI * kOf(o) / D); }), sum = w.reduce(function (a, b) { return a + b; }, 0); x *= sum;
+    for (var i = 0; i < opt.length; i++) { x -= w[i]; if (x <= 0) return opt[i]; } return opt[opt.length - 1]; }
+  function genLoop(home, homeB, dm, rr) {                                 // rr: the loop's own seeded stream
+    var D = Math.pow(PHI, PHI * PHI * dm.tension), tL = DIAL.loopLo + (1 - dm.drive) * (DIAL.loopHi - DIAL.loopLo);
+    var L = wPick(LOOPS, function (n) { return Math.abs(Math.log2(n) - tL); }, D, rr()), src = L > home.length ? home.concat(homeB) : home;
+    var rho = DIAL.rho0 + (DIAL.rho1 - DIAL.rho0) * dm.drive, steps = RM.concat(RM.map(function (m) { return -m; }));   // the six classes: the favoured three, then their mirrors
+    var out = [src[0]];
+    for (var i = 1; i < L; i++) {
+      var h = src[i % src.length]; if (rr() < 1 / (1 + Math.pow(PHI, -PHI * PHI / D))) { rr(); out.push(h); continue; }   // keep the home chord (w 1 against the wander's PHI^(-PHI^2 / D))
+      var mv = wPick(steps, function (m) { return RM.indexOf(m) >= 0 ? (1 - rho) / 2 : (1 + rho) / 2; }, D, rr());
+      out.push((((out[i - 1] + mv) % 7) + 7) % 7);                       // unit: 7 scale degrees
+    }
+    return out;
+  }
+  function harmRhythm(dm, rr) { var t = DIAL.hrLo + dm.space * (DIAL.hrHi - DIAL.hrLo); return wPick(HBARS, function (b) { return Math.abs(Math.log2(b) - t); }, Math.pow(PHI, PHI * PHI * dm.tension), rr()); }
   function modePos(sc) { return 1 - FIFTHS.indexOf(sc); }               // a genre scale's place: lydian +1, major 0, dorian -2, minor -3
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -325,11 +354,12 @@
     for (var o = -6; o < 6; o++) { var w = Math.pow(PHI, -PHI * PHI * fifths(keySig(sc, base + o), ks) / D); opt.push([o, w]); sum += w; }   // unit: the twelve roots around the genre's own
     var x = pick * sum; for (var i = 0; i < opt.length; i++) { x -= opt[i][1]; if (x <= 0) return base + opt[i][0]; } return base;
   }
-  function makeTrack(genre, bpm, seed, prev, root0) {
+  function makeTrack(genre, bpm, seed, prev, root0, dm0) {
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
     if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
-    var dm = dimsOf(dimX(null));                                  // the six dimensions at the track's birth (one rung either way: PHI^(2d - 1))
+    var dm = dm0 && typeof dm0.drive === 'number' ? dm0 : dimsOf(dimX(null));   // the six dimensions at the track's birth (restored with the track, so a reload rebuilds the same loop)
+    var rr = rng((seed + GA) | 0); var hA = prog, hB = progB; prog = genLoop(hA, hB, dm, rr); progB = genLoop(hB, hA, dm, rr); var hb = harmRhythm(dm, rr);   // P2: this track's own loops and chord length
     var mp = clamp(modePos(g.scale) + (dm.brightness - 1 / 2) * DIAL.modeR, DIAL.modeLo, 1), mlo = Math.floor(mp), mf = mp - mlo, scLo = modeScale(mlo), scHi = modeScale(Math.min(1, mlo + 1));   // brightness -> mode
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
       var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density + 2 * dm.density - 1);   // mix: density rung; data: density
@@ -345,7 +375,7 @@
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
     var L = { drums: lay(xo), lead: lay(xo), bass: lay(out), pad: lay(out) };
-    var T = { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
+    var T = { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
   // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
@@ -392,14 +422,15 @@
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
     var a0 = ageOf(tr, t), secB = a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
     if (s16 === 0 && secB !== tr.secB) { tr.secB = secB; tr.secBar = bar; }
-    var deg = pr[Math.floor(bar / g.bars) % pr.length], barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
+    var slot = Math.max(SPB * SPB / 2, Math.round(SPB * SPB * (tr.hb || g.bars))), ci = Math.floor(st / slot);   // unit: sixteenths per chord (half a bar at the fastest)
+    var deg = pr[ci % pr.length], barLen = dur16 * slot, first = st % slot === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
-    if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
+    if (first) tr.ax = peak && !tr.bridge && !tr.leaving && ci % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
     var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
     if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
-    if (first && !bs && tr.scHi) tr.scNow = frac((bar + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
+    if (first && !bs && tr.scHi) tr.scNow = frac((ci + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
     var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.scNow || tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
     // chords
     if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, 1); });
@@ -470,7 +501,7 @@
     var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] ? ox.pre : null;   // the bridge already chose the next genre, seed and key
     var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : pickG(c, genreFlip++), t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
-    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null);
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null, sp && sp.dm);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
@@ -510,7 +541,7 @@
     return { genre: genre, seed: seed, root: root, prog: preProg(genre, seed) };
   }
   function planBridge(live, pre, start, drop) {
-    if (!live || !pre) return; var SCn = SCALES[GEN[pre.genre].scale], dur = SPM / live.bpm * SPB * live.g.bars;   // unit: a bar of the live track
+    if (!live || !pre) return; var SCn = SCALES[GEN[pre.genre].scale], dur = SPM / live.bpm * SPB * (live.hb || live.g.bars);   // unit: a bar of the live track
     var home = chordNotes(SCn, pre.root, pre.prog[0], 0), hr = pc(home[0]), old = live.sc.map(function (x) { return pc(live.root + x); });
     var tri = function (d) { return chordNotes(SCn, pre.root, d, 0).map(pc); }, inOld = function (ps) { return ps.every(function (p) { return old.indexOf(p) >= 0; }); };
     var piv = null; [1, 3, 5, 0, 4, 2].some(function (d) { var t = tri(d); if (inOld(t) && pc(t[0]) !== hr) { piv = { pcs: t, root: t[0] }; return true; } return false; });   // unit: scale degrees ii, IV, vi, I, V, iii
@@ -559,7 +590,7 @@
   var pend = null, stalled = false, held = null, GA = 0x9E3779B9, SEEDS = 4294967296;   // phi: golden-ratio hash (2^32 / PHI) steps the seed per skipped track; unit: 2^32 seeds
   function stepsIn(sec, bpm) { return Math.max(0, Math.floor(sec * bpm / SPM * SPB)); }
   function spec() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
-    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root } : (pend || held); }
+    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root, dm: tr.dm } : (pend || held); }
   function advance(sp, c) {                                               // whole track lengths that passed while away, then the remainder
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
@@ -773,7 +804,7 @@
     get harmonyBridge() { return lastBx ? { plan: lastBx.plan, segs: lastBx.segs, home: lastBx.home, pre: lastBx.pre, start: lastBx.start, drop: lastBx.drop } : null; },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get dials() { return JSON.parse(JSON.stringify(DIAL)); }, dial: function (k, v) { if (DIAL.hasOwnProperty(k) && isFinite(v)) { DIAL[k] = +v; save(); } return DIAL[k]; },
-    get track() { var t = spec(); return t ? { mode: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).mode, genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd, soph: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).s } : null; },
+    get track() { var t = spec(), lv = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}; return t ? { loop: lv.prog && { a: lv.prog, b: lv.progB, bars: lv.hb }, mode: lv.mode, genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd, soph: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).s } : null; },
     get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
