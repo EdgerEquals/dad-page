@@ -161,7 +161,9 @@
   var DIAL = { modeR: (1 / 2 + 3) / 2, modeLo: (-4 - 5) / 2,           // MIDI Bot open ranges 1: R from 1/2 to 3 steps; the dark end at Phrygian (-4) or Locrian (-5)
     loopLo: (0 + 1) / 2, loopHi: (2 + 3) / 2,                            // open range 4 (log2 chords per loop): shortest 1..2, longest 4..8
     hrLo: (-1 + 0) / 2, hrHi: (1 + 2) / 2,                               // open range 5 (log2 bars per chord): fastest 1/2..1, slowest 2..4
-    rho0: (1 + 1 / 2) / 2, rho1: (-1 - 1 / 2) / 2 };                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
+    rho0: (1 + 1 / 2) / 2, rho1: (-1 - 1 / 2) / 2,
+    balD: PHI, balC: IPH };                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+  var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
   function modeScale(k) { var m = SCALES.major.slice(); if (k > 0) m[3] += 1; for (var i = 0; i < -k && i < FLATS.length; i++) m[FLATS[i]] -= 1; return m; }   // cite: Lydian raises the 4th
@@ -326,6 +328,13 @@
   function voice(tr, type, f, t, dur, vel, opt) {
     opt = opt || {};
     var rel = opt.rel || 0.2, a = opt.a || 0.005, end = t + dur + rel * 5, g = ctx.createGain(), lp = ctx.createBiquadFilter(), crowd = nlive > CROWD;
+    // ORGAN FIX (Danny 20:15 AWST 26 Oct, 'Yes, send the organ fix'; MIDI Bot amplitude sweep V2 (b)): a balance gradient on every note,
+    // vel x PHI^(-D (sigma - centre) w m). sigma = the note's own sustain share (attack + hold) / duration from its envelope; w = sin^2 of its
+    // place across the hearing range (1 in the mid register, falling to the sub and the very top); m = sin^2(pi e), the energy arc's mid-ness.
+    // So sustained mid-register voices (the chord pad, the organ) come down mid-build and plucks, bells, piano and melody come up; at the
+    // arc's ends (m = 0) nothing moves. D and the centre are saved dials (DIAL.balD, DIAL.balC). All ratios of the pumps' arc and phi.
+    var TKb = tr.tk || tr; if (TKb.e != null) { var sgm = clamp((a + (opt.hold != null ? opt.hold : 0.01)) / Math.max(dur, a), 0, 1), xr = clamp(Math.log(f / FLO) / Math.log(FHI / FLO), 0, 1);
+      vel *= Math.pow(PHI, -DIAL.balD * (sgm - DIAL.balC) * Math.pow(Math.sin(Math.PI * xr), 2) * Math.pow(Math.sin(Math.PI * TKb.e), 2)); }
     lp.type = 'lowpass'; lp.frequency.setValueAtTime(opt.cut || tr.g.cut * PHI, t); if (opt.sweep) lp.frequency.setTargetAtTime(opt.cut * Math.pow(PHI, -3), t, opt.sweep);   // phi: sweep down three rungs
     var sus = a > Math.pow(PHI, -5) || (opt.hold || 0) > dur * IPH, bass = opt.cut && opt.cut < tr.g.cut;   // phi: sustained = slow attack or long hold
     var fm = null; if (opt.fm) { var mo = osc('sine', f * opt.fm.r, t, end); fm = ctx.createGain(); fm.gain.setValueAtTime(f * opt.fm.i0, t); fm.gain.setTargetAtTime(f * opt.fm.i1, t, opt.fm.tau); mo.connect(fm); }   // FM: one modulator per note (index i0 -> i1, tau)
@@ -556,9 +565,9 @@
     if (first && !bs && tr.scHi) tr.scNow = frac((ci + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
     var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.scNow || tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
     // chords
-    if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, 1); });
+    if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, Math.sqrt(3 / ch.length))   /* organ fix (a): equal-power chord count, the triad voiced() starts from over n notes, like voice()'s vel / sqrt(copies) */; });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
-      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn)); });   // phi: strum spread PHI^-4 of a sixteenth
+      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn) * Math.sqrt(3 / ch.length)); });   // phi: strum spread PHI^-4 of a sixteenth
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
     if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
