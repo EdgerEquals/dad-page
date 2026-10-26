@@ -164,14 +164,21 @@
   }
   var primed = false, PRIME = ['touchend', 'click', 'keydown'], idleT = 0;
   function prime() {                                                      // first touch anywhere: unlock audio without making a sound
-    if (primed) return; primed = true; PRIME.forEach(function (n) { document.removeEventListener(n, prime, true); });
+    if (primed) return; primed = true; PRIME.forEach(function (n) { document.removeEventListener(n, prime, true); }); document.removeEventListener('pointerdown', primeP, true); document.removeEventListener('pointerup', primeP, true);
     if (!ensure()) return;
-    try { ctx.resume(); } catch (e) {}
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // iOS: the ring / silent switch doesn't mute the page
+    try { ctx.resume(); } catch (e) {}                                    // synchronously, inside the gesture, before anything async
     if (el) try { var p = el.play(); if (p && p.then) p.then(function () { if (!playing) el.pause(); }, function () {}); } catch (e) {}
     clearTimeout(idleT); idleT = setTimeout(function () { if (!playing && ctx && !pend) try { ctx.suspend(); } catch (e) {} }, Math.pow(PHI, 6) * MS);   // phi: rest the idle context after PHI^6 s
     if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
   }
-  PRIME.forEach(function (n) { document.addEventListener(n, prime, true); });
+  // iPhone unlock (shared.md S-0017, Steve; Danny 17:04 AWST 26 Oct): touch unlocks on finger LIFT (pointerup / touchend; iOS does not count a
+  // touch pointerdown as a gesture), a mouse on pointerdown, keys on keydown (click stays as the fallback). Everything that needs no tap is
+  // primed before it at idle: the graph and a SUSPENDED AudioContext, the media bridge, audioSession 'playback'; nothing starts.
+  function primeP(e) { if (e.type === 'pointerdown' ? e.pointerType === 'mouse' : e.pointerType !== 'mouse') prime(); }
+  PRIME.forEach(function (n) { document.addEventListener(n, prime, true); }); document.addEventListener('pointerdown', primeP, true); document.addEventListener('pointerup', primeP, true);
+  function prebuild() { if (ctx || !AC) return; if (ensure()) { try { if (ctx.state === 'running' && !playing) ctx.suspend(); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }   // start nothing
+  if (window.LoadTiers && LoadTiers.add) LoadTiers.add(2, prebuild, 'dj prime', { id: 'dj' });
   function ensure() {
     if (ctx || !AC) return ctx;
     try {

@@ -149,7 +149,7 @@
   // sets playing false, so it is never undone). As soon as the context runs, the sound comes back with a PHI^-1 s fade-in on the duck
   // stage and the rhythm is caught up to now (the DJ's wake: jump + tick). A closed context, or one still stuck after the whole ladder,
   // is rebuilt (fresh graph, same track position; dry path, the effects chain returns on reload). Refused (no gesture): one gentle
-  // 'tap to bring the sound back' button (not the pulse, never silence), and the first pointerdown / touchend anywhere is a resume gesture.
+  // 'tap to bring the sound back' button (not the pulse, never silence), and the first finger lift (pointerup / touchend), mouse press or key anywhere is a resume gesture (S-0017).
   // Every try is logged (try number, state before -> after, bridge paused) to the console and to localStorage 'dadRhythm.audiolog.v1'
   // (this device only; the last Fibonacci 89 lines) so the next failure shows which step stalled: RhythmContinuity.audio.log().
   // Tap-rung beat: quick feedback = B x PHI^-10 (shared.md timing table), with the dashboard's breath slot B = PHI^5 (rule 3 loop slot)
@@ -210,7 +210,7 @@
     AU.t = setTimeout(function () { AU.t = 0; attempt('ladder'); }, TAP * Math.pow(PHI, k) * MS);   // phi: beat x PHI^k, k = 0 .. 5
   }
   function later(why) { if (AU.wait) return; AU.wait = setTimeout(function () { AU.wait = 0; attempt(why); }, TAP * MS); }   // one tap-rung beat first
-  function gesture(e) {                                                            // pointerdown / touchend anywhere: inside the gesture, resume + play now
+  function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
     hook(); if (!wanted() || !AU.ctx || (done() && !AU.down)) return;
     var now = Date.now(); if (now - AU.g < IP * MS) return; AU.g = now;           // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
     note('gesture ' + e.type + ': ' + st()); if (st() === 'closed') rebuild('gesture, closed');
@@ -220,7 +220,8 @@
     var D = kit(); try { if (D && D._kit.stalled) D._kit.resumeTap(); } catch (er) {}
     clearTimeout(AU.t); AU.t = 0; setTimeout(function () { attempt('gesture'); }, 0);
   }
-  ['pointerdown', 'touchend'].forEach(function (n) { doc.addEventListener(n, gesture, true); });
+  ['pointerdown', 'pointerup', 'touchend', 'keydown'].forEach(function (n) { doc.addEventListener(n, function (e) {   // iPhone unlock (S-0017): touch on lift, mouse on press, keys
+    if (e.type === 'pointerdown' && e.pointerType !== 'mouse') return; if (e.type === 'pointerup' && e.pointerType === 'mouse') return; gesture(e); }, true); });
   // the one gentle button: fixed just under the header (measured), palette colours, reader text size; the DJ's pulse rests while it shows
   function showBack() {
     if (AU.btn) return; var b = doc.createElement('button'); b.type = 'button'; b.className = 'sound-back'; b.textContent = 'tap to bring the sound back';
