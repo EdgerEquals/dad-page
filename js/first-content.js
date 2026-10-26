@@ -16,19 +16,19 @@
   function r(n) { return +p(n).toFixed(4); }                                          // rung as a CSS number
   var main = doc.getElementById('home-main'), hb = doc.querySelector('.q-head .dad-zoom'), hi = hb && hb.querySelector('.dad-mark');
   if (!main || !hb || !hi || doc.querySelector('.fc')) return;
-  var U = 'min(100vw,100svh * ' + r(-1) + ')';                                       // anchor: the viewport's short side (height x PHI^-1 so wide screens stay calm)
+  var U = 'var(--fc-u,var(--hw-u,min(100vw,100svh * ' + r(-1) + ')))';   // fit: js/home-windows.js measures the header-to-footer box and sets --hw-u / --fc-u                                       // anchor: the viewport's short side (height x PHI^-1 so wide screens stay calm)
   var T = r(-2) + 's';                                                                // PHI^-2 s: the zoom's own open time
   var css =
-    '.fc{position:relative;z-index:1;display:flex;justify-content:center;margin-top:calc(' + U + ' * ' + r(-2) + ');pointer-events:none}' +
-    '.fc-card{pointer-events:auto;-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;align-items:center;' +
+    '.fc{position:relative;z-index:1;display:flex;justify-content:center;margin-top:calc(' + U + ' * ' + r(-5) + ');pointer-events:none}' +
+    '.fc-card{flex:none;pointer-events:auto;-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;align-items:center;' +
       'gap:calc(' + U + ' * ' + r(-8) + ');padding:calc(' + U + ' * ' + r(-6) + ') calc(' + U + ' * ' + r(-5) + ');margin:0;' +
       'background:transparent;border:1px solid rgba(31,84,120,' + r(-1) + ');border-radius:calc(' + U + ' * ' + r(-6) + ');' +
       'color:#9DBCCE;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;' +
-      'transition:border-color ' + T + ' ease,box-shadow ' + T + ' ease,transform ' + T + ' ease}' +
+      'transition:border-color ' + T + ' ease,box-shadow ' + T + ' ease,transform ' + r(-5) + 's ease}' +   // press inside the 0.1 s tap rail (PHI^-5 s)
     '.fc-mark{display:block;width:calc(' + U + ' * ' + r(-3) + ');height:calc(' + U + ' * ' + r(-3) + ');' +
       'filter:drop-shadow(0 0 calc(' + U + ' * ' + r(-8) + ') rgba(10,242,255,' + r(-3) + '))}' +
-    '.fc-t{display:block;font-size:calc(1em * ' + r(0) + ');letter-spacing:calc(1em * ' + r(-6) + ');color:#9DBCCE;line-height:' + r(1) + '}' +
-    '.fc-s{display:block;font-size:calc(1em * ' + r(-1) + ');letter-spacing:calc(1em * ' + r(-4) + ');text-transform:uppercase;color:#85A6BB}' +
+    '.fc-t{display:block;font-size:1rem;letter-spacing:calc(1em * ' + r(-6) + ');color:#9DBCCE;line-height:' + r(1) + '}' +
+    '.fc-s{display:block;font-size:calc(1rem * ' + r(-1 / 2) + ');letter-spacing:calc(1em * ' + r(-4) + ');text-transform:uppercase;color:#85A6BB}' +
     '@media (hover:hover){.fc-card:hover{border-color:#0AF2FF;box-shadow:0 0 calc(' + U + ' * ' + r(-6) + ') rgba(10,242,255,' + r(-2) + ')}}' +
     '.fc-card:active{transform:scale(' + (1 - r(-6)).toFixed(4) + ')}' +
     '.fc-card:focus{outline:none}.fc-card:focus-visible{border-color:#0AF2FF;box-shadow:0 0 0 calc(' + U + ' * ' + r(-9) + ') #0AF2FF}' +
@@ -42,7 +42,7 @@
   var im = doc.createElement('img'); im.className = 'fc-mark'; im.alt = ''; im.decoding = 'async'; im.src = hi.src;
   var t = doc.createElement('span'); t.className = 'fc-t'; t.textContent = 'EdgerEquals';
   var s = doc.createElement('span'); s.className = 'fc-s'; s.textContent = 'logo';
-  b.appendChild(im); b.appendChild(t); b.appendChild(s); sec.appendChild(b); main.appendChild(sec);
+  b.appendChild(im); b.appendChild(t); b.appendChild(s); sec.appendChild(b); main.insertBefore(sec, main.querySelector('.hw'));   // first, above the home windows (js/home-windows.js) whichever loads first
   // live mark: follow the header mark's src (slim static first, the animated head mark once tier 3 swaps it in; same cached file)
   if (root.MutationObserver) new MutationObserver(function () { if (im.src !== hi.src) im.src = hi.src; }).observe(hi, { attributes: true, attributeFilter: ['src'] });
   b.addEventListener('click', function (e) {
