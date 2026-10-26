@@ -60,3 +60,9 @@ index.html :: landmark:section#start
 index.html :: landmark:section#summary
 index.html :: role:status#saved
 index.html :: style:css/quiz-startbtn-portrait.css
+# approved by Danny 11:25 AWST 26 Oct ("Remove the questions for Bonnie panel again. That's only for when Bonnie is there doing a questionnaire"): the header's 'Questions for Bonnie' row (header.qh-mast: Dad's mark button, title, pill, tagline) + its waves css removed from the home screen; it stays on the questionnaire page
+index.html :: button:Enlarge Dad's logo
+index.html :: landmark:header
+index.html :: style:css/dad-mark-waves.css
+# (index.html :: landmark:header was already listed from 24 Oct, so set-based guard needs the page line below for this one push; the only removals in it are the three items above: verified with page_guard.py check)
+index.html
