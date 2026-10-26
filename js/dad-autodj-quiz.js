@@ -267,9 +267,11 @@
       var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
       revIn = ctx.createGain(); revIn.gain.value = 0;                     // the reverb (and its impulse) arrives with js/dj-extras.js and glides in
       duck = ctx.createGain(); duck.gain.value = ducked ? IPH : 1;           // the logo duck sits after the meter's tap, so the meter reads undipped
-      fxDry = ctx.createGain(); bus.connect(fxDry); fxDry.connect(master); master.connect(comp); comp.connect(duck); duck.connect(ctx.destination); out = duck; bridge(); if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
-      meter = ctx.createAnalyser(); meter.fftSize = 2048; comp.connect(meter);              // level check for tests only
-      kMeter = ctx.createAnalyser(); kw(ctx, comp).connect(kMeter);                          // undipped, K-weighted: the level the logos follow
+      glueC = comp; glueT = ctx.createGain(); ceilN = ctx.createWaveShaper(); ceilN.oversample = '4x'; ceilN.curve = ceilCurve(CEIL || IPH);   // glue trim, then the master ceiling, before the duck (S1)
+      fxDry = ctx.createGain(); bus.connect(fxDry); fxDry.connect(master); master.connect(comp); comp.connect(glueT); glueT.connect(ceilN); ceilN.connect(duck); duck.connect(ctx.destination); out = duck; bridge(); if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
+      meter = ctx.createAnalyser(); meter.fftSize = 2048; ceilN.connect(meter);             // level check for tests only (what passes the ceiling, undipped)
+      kMeter = ctx.createAnalyser(); kw(ctx, glueT).connect(kMeter);                         // undipped, K-weighted: the level the logos follow
+      kPre = ctx.createAnalyser(); kw(ctx, master).connect(kPre);                            // the same reading before the glue: its threshold and trim
     } catch (e) { ctx = null; }
     return ctx;
   }
@@ -887,7 +889,30 @@
   }
   function duckTo(on) { ducked = !!on; if (duck) duck.gain.setTargetAtTime(on ? IPH : 1, ctx.currentTime, on ? IPH * IPH : IPH); }   // rule 6: down tau PHI^-2 s, up tau PHI^-1 s
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
-  every(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
+  every(function () { if (playing && !document.hidden) { ref(); glue(); } }, PHI * MS);   // phi: keep learning k (and set the glue) every PHI s while the music plays
+  // MASTER CEILING + GLUE (MIDI Bot dynamics spec S1, Danny 19:23 AWST 26 Oct 'yes, send ... ceiling'; Danny 19:11 AWST via Kids Club: 'it
+  // can get really loud'). ONE ceiling, always on: comp -> C tanh(x / C) (oversample 4x) -> duck, the same curve as the throw loop's tSh.
+  // C is shared.md's loudness ceiling rail: the rail is full scale (js/logo-sound.js cap(): never past full scale) and the logo sits one
+  // phi step above the music under it (logo = music x PHI), so the music's ceiling is the rail x PHI^-1. tanh never reaches C, so no voice,
+  // effect, echo or mix can pass it. DadAutoDJ.ceiling reads / moves it (the amplitude matrix's top row, later).
+  // GLUE: the existing master compressor becomes a gradient, G = s(density) s(drive)^PHI^-1 u^PHI^-1 (busy, driven, lively -> pop and soul
+  // high; piano, ambient, cinematic near 0): ratio PHI^(PHI G) (1 .. 2.2), knee = the spec default x PHI^-G, attack d16 x PHI^(-2-G),
+  // release beat x PHI^-G (both tempo-locked to the grid), threshold = the running K-weighted level going in + PHI^(2-G) dB. The W3C
+  // compressor adds its own make-up gain to everything (that was the old +0.3 dB); the trim after it takes the make-up back out, so the
+  // glue's output level never sits above its input level (trim = level in / level out, at most 1): glue shapes, it never makes louder.
+  // Every move glides over one beat (rule 6). Before the first level reading it keeps today's values.
+  var CEIL = IPH, ceilN = null, glueC = null, glueT = null, kPre = null, preS = 0, postS = 0, glueG = null;   // phi: rail (full scale) x PHI^-1
+  function ceilCurve(c) { var n = 4097, cv = new Float32Array(n); for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; cv[i] = c * Math.tanh(x / c); } return cv; }   // unit: 2^12 + 1 points over -1..1
+  function glue() {
+    if (!glueC || !ctx || ctx.state !== 'running') return; var g = grid(); if (!g) return;
+    var a = rmsOf(kPre), b = rmsOf(kMeter) / Math.max(glueT.gain.value, Math.pow(PHI, -8)), k = 1 - Math.exp(-1 / PHI);   // b: the glue's own output, before the trim; phi: tau PHI s at one reading per PHI s
+    preS = preS ? preS + (a - preS) * k : a; postS = postS ? postS + (b - postS) * k : b; if (!(preS > 0) || !(postS > 0)) return;
+    var D = dimsOf(dimX(null)), u = energy(), G = D.density * Math.pow(D.drive, IPH) * Math.pow(u, IPH), t = ctx.currentTime, beat = g.d16 * SPB, KNEE = 30;   // unit: 30 dB, the W3C spec's default knee
+    var th = Math.max(-100, Math.min(0, 20 * Math.log10(preS) + Math.pow(PHI, 2 - G)));   // unit: dB
+    glueT.gain.setTargetAtTime(Math.min(1, preS / postS), t, beat);
+    glueC.ratio.setTargetAtTime(Math.pow(PHI, PHI * G), t, beat); glueC.knee.setTargetAtTime(KNEE * Math.pow(PHI, -G), t, beat); glueC.threshold.setTargetAtTime(th, t, beat);
+    glueC.attack.setTargetAtTime(g.d16 * Math.pow(PHI, -2 - G), t, beat); glueC.release.setTargetAtTime(beat * Math.pow(PHI, -G), t, beat); glueG = G;
+  }
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
   var MIDIURL = 'js/dj-midi.js?v=midifix1', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
@@ -918,6 +943,8 @@
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
     level: rms, get out() { return { level: rms(), k_level: rmsOf(kMeter), ref: refS, k: kRef, nominal: nominal(), duck: duck ? duck.gain.value : 1, ducked: ducked }; },
     get extras() { return !!X; }, notes: function () { return NL.slice(); }, lastMinute: lastMinute, midi: function () { return midiLib(); }, dump: function () { var t = spec(); return midiLib().then(function (L) { return L.build(lastMinute(), t ? t.bpm : compute().bpm, t && t.genre, TL.slice()).csv; }); }, get primed() { return primed; },   // dump: dev midicsv of the last minute (MIDI Bot directions; loads the writer on demand)
-    get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; } };
+    get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; },
+    get ceiling() { return CEIL; }, set ceiling(c) { if (!(c > 0)) return; CEIL = Math.min(1, c); if (ceilN) try { ceilN.curve = ceilCurve(CEIL); } catch (e) {} },
+    get glue() { return glueC ? { G: glueG, trim: glueT.gain.value, ratio: glueC.ratio.value, knee: glueC.knee.value, threshold: glueC.threshold.value, attack: glueC.attack.value, release: glueC.release.value, reduction: glueC.reduction } : null; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
