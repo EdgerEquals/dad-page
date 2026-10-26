@@ -39,7 +39,7 @@
     count++;
     var A = root.PhiAxes, H = innerHeight, h = el.getBoundingClientRect().height || 1, kk = k();   // unit: measured box
     var side = Math.sin(count * TAU * IP);                                // phi: golden-angle drift, the bend's side and size vary slowly
-    var x0 = A ? A.at(0, 1 - 2 * Math.pow(IP, 4)).x : innerWidth * Math.pow(IP, 4);   // axis B near its bottom-left end (= the inline PHI^-4 column)
+    var L0 = A ? A.frame.x0 : 0, x0 = L0 + ((A ? A.at(0, 1 - 2 * Math.pow(IP, 4)).x : innerWidth * Math.pow(IP, 4)) - L0) / 2;   // unit: half of the axis-B column's distance from the safe left edge (Danny 17:12; = the inline left)
     var bend = (A ? A.dir(Math.pow(IP, 5), 0).x : innerWidth * Math.pow(IP, 5)) * side * kk;   // phi: drift along axis A, PHI^-5 of its half, pumped depth
     var lean = Math.atan2(2 * bend, H + h);                               // unit: drift = height^2, so its end slope is 2 x bend / climb
     [el, gl].forEach(function (n) { n.getAnimations().forEach(function (a) { a.cancel(); }); n.style.animation = 'none'; });
