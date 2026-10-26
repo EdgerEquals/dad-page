@@ -1,6 +1,6 @@
 /* LIVE (Danny 12:39 AWST 24 Oct; was the questionnaire-held preview): Dad's DJ pill (Danny 24 Oct 2026 11:06 AWST). Toggles the Dad's DJ pop-up under the pinned header.
    Opens/closes on the pill; closes on the X, Esc, or a tap/click outside. Closing only hides the panel, so music keeps playing.
-   Pill label 'DJ' (Danny 14:10 AWST 26 Oct); the small mix and MIDI-export buttons beside it (js/dad-autodj-quiz.js) do not close the pop-up.
+   Pill label 'DJ' (Danny 14:10 AWST 26 Oct), now the music-note button (Danny 15:27, css/dj-buttons.css) with 'DJ' kept for screen readers; the small mix and MIDI-export buttons beside it (js/dad-autodj-quiz.js) do not close the pop-up.
    aria-expanded on the pill; focus moves into the panel on open and back to the pill on close (X / Esc). */
 (function(){
   var pill=document.getElementById('dj-pill'),pop=document.getElementById('qh-djpop');if(!pill||!pop)return;
@@ -20,4 +20,9 @@
     pill.classList.toggle('is-playing',on);pill.classList.toggle('is-resuming',wait);
     pill.setAttribute('aria-label',wait?'DJ (on, tap anywhere to resume the sound)':on?'DJ (music on)':'DJ');}
   if(play)new MutationObserver(sync).observe(play,{attributes:true,attributeFilter:['aria-pressed','class']});sync();
+  // music button (Danny 15:27 AWST 26 Oct): the glow keeps the DJ's beat (css/dj-buttons.css --djb-beat; drift = beat x PHI^4, as Bonnie's music-glow.js).
+  // Re-read only at a drift-cycle boundary, so the pulse never jumps mid-swell.
+  function beat(){try{var t=window.DadAutoDJ&&DadAutoDJ.track;if(t&&t.bpm>0)document.documentElement.style.setProperty('--djb-beat',(60/t.bpm)+'s');}catch(e){}}   // unit: s per min
+  pill.addEventListener('animationiteration',function(e){if(e.animationName==='djb-drift')beat();});
+  if(play)new MutationObserver(beat).observe(play,{attributes:true,attributeFilter:['aria-pressed']});
 })();
