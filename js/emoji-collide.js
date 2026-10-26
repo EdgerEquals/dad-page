@@ -26,6 +26,9 @@
    knock the emoji off live; flames and vaporise burn it up, its energy goes into the debris and fades, nothing follows.
    ENERGY CHAIN (rule 15): energy = drawn area x measured speed^2; each body's debris and effect spread with its share of the pair's energy. The rocket, when hit, spins out on fire: a flame rides it, drawn smoke follows
    over it at PHI^-1 of its path and a fireball blooms at the impact, trailing at PHI^-3 (so it is mostly left behind).
+   ROCKETBOOM (Danny 20:23): every rocket hit gets the drawn fireball (never held by the hit gate), sized to the rocket's drawn size and
+   energy at that moment; the spun-out rocket stays live (E PHI^-1, shrinking), so its next hit explodes smaller; the smoke follows it,
+   sized to its size at every instant.
    Cost: one rAF loop capped at PHI^-6 s, rects of ~20-40 elements, a spatial grid, a swept test (no tunnelling between ticks);
    effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades. */
 (function () {
@@ -108,14 +111,14 @@
       var on = B.filter(function (b) { return !b.gone && now > b.until && measure(b, now); }).concat(DB.filter(function (b) { return now > b.until && measure(b, now); }));
       var open = live < MAXFX && now - lastHit > GAPS * MS;                 // the gate holds back fresh hits; a chain (a knocked-off emoji) is never held
       var cell = 0; on.forEach(function (b) { cell = Math.max(cell, b.r * 2 + Math.hypot(b.x - b.px, b.y - b.py)); });   // unit: one cell holds the biggest swept circle
-      if (cell && (open || DB.length)) {
+      if (cell && (open || DB.length || on.some(function (b) { return b.rk; }))) {   // rocketboom: a rocket hit is never held back
         var G = {}, key = function (i, j) { return i + ',' + j; }, done = false;
         on.forEach(function (b, n) { var i = Math.floor(b.x / cell), j = Math.floor(b.y / cell), q = key(i, j); (G[q] = G[q] || []).push(n); b.ci = i; b.cj = j; });
         for (var n = 0; n < on.length && !done; n++) {
           var a = on[n];
           for (var di = -1; di <= 1 && !done; di++) for (var dj = -1; dj <= 1 && !done; dj++) {
             var g = G[key(a.ci + di, a.cj + dj)]; if (!g) continue;
-            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || (!open && !a.virt && !c.virt) || (a.pair && a.pair === c.pair) || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || liftoff(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
+            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || (!open && !a.virt && !c.virt && !a.rk && !c.rk) || (a.pair && a.pair === c.pair) || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || liftoff(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
           }
         }
       }
@@ -206,7 +209,7 @@
     var gp = cur; setTimeout(function () { var o = cur; cur = gp && gp.isConnected ? gp : null; puffs(x, base - H * IP, S, dx, kk); cur = o; }, life * (1 - Math.pow(IP, 3)));   // phi: collapses into the smoke as the last PHI^-3 of the burn dies
   }
   // ---------- energy, ringing, chains, the rocket on fire (rockethit, Danny 19:42 / 19:44 AWST 26 Oct) ----------
-  var cur = null, DB = [], pairs = 0, gens = {}, RD = IP, RC = PHI * PHI, NR = 0;   // phi: ring depth PHI^-1; the knocked-off emoji rings PHI^2 times over its PHI^2 s life, its effect PHI x as fast (they beat); keys: one per tick
+  var cur = null, booms = [], DB = [], pairs = 0, gens = {}, RD = IP, RC = PHI * PHI, NR = 0;   // phi: ring depth PHI^-1; the knocked-off emoji rings PHI^2 times over its PHI^2 s life, its effect PHI x as fast (they beat); keys: one per tick
   function done(e) { var p = e.parentNode; e.remove(); if (p && p !== L && !p.firstChild && p._end) p.remove(); }
   function ring(E, u, c) { return E * Math.exp(-PHI * u) * (1 - u) * (1 + RD * Math.cos(TAU * c * u)) / (1 + RD); }   // phi: damped, ringing c times over its life; 1 at the hit for E = 1
   function keys(ms) { return Math.max(1, Math.ceil(ms / TICK)); }          // unit: one key per collide tick (PHI^-6 s) of the animation
@@ -222,24 +225,25 @@
   function slidePath(x, y, dx, dy, S, w) { return function (v) { var q = 1 - (1 - v) * (1 - v), d = S * PHI * PHI * (1 + w) * q; return [x + dx * d, y + dy * d]; }; }   // phi: deflected PHI^2 (1 + w) sizes, slowing (ease-out)
   // the emoji knocked off: a drawn copy on the spin-out (or deflection) path, size + opacity on the ringing envelope at f; it stays live with E PHI^-1
   function knock(b, dx, dy, w, E, gen, pair, spin, live) {
-    var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), P = (spin ? spinPath : slidePath)(b.x, b.y, dx, dy, S, w), sp = (dx >= 0 ? 1 : -1) * TAU * (spin ? PHI * PHI * (1 + w) : IP), e = bit('', glyphOf(b), 0, 0, S), f = [], i;   // phi: spin-out PHI^2 turns, a deflection PHI^-1 turn
+    var S = Math.max(b.fs, 1), S0 = b.rk ? S / E : S, ms = MS * PHI * PHI * k(), P = (spin ? spinPath : slidePath)(b.x, b.y, dx, dy, S, w), sp = (dx >= 0 ? 1 : -1) * TAU * (spin ? PHI * PHI * (1 + w) : IP), e = bit('', glyphOf(b), 0, 0, S0), f = [], i;   // rocketboom: the rocket's copy starts at its drawn size and shrinks on its energy   // phi: spin-out PHI^2 turns, a deflection PHI^-1 turn
     for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: T(p[0], p[1], 0, sp * v * v, a), opacity: Math.min(1, a) }); }
     var an = fly(e, f, ms, 'linear');
-    if (live && E * IP >= IP * IP) DB.push({ virt: true, el: e, hide: e, an: an, E: E * IP, gen: gen, pair: pair, kd: '', x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: performance.now() + MS * Math.pow(IP, 3) });   // phi: live after PHI^-3 s, while E PHI^-1 >= PHI^-2
+    if (live && E * IP >= IP * IP) DB.push({ virt: true, el: e, hide: e, an: an, E: E * IP, gen: gen, pair: pair, rk: b.rk, kd: '', x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: performance.now() + MS * Math.pow(IP, 3) });   // phi: live after PHI^-3 s, while E PHI^-1 >= PHI^-2
     return P;
   }
   function rocket(b, dx, dy, w, E, gen, pair) {                            // the rocket spins out on fire
-    var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), x = b.x, y = b.y, P = knock(b, dx, dy, w, E, gen, pair, true, false), i, j, e, f;   // a burning rocket is burnt up: it spins out but causes no further hits
+    var S = Math.max(b.fs, 1), S0 = S / E, ms = MS * PHI * PHI * k(), x = b.x, y = b.y, P = knock(b, dx, dy, w, E, gen, pair, true, true), i, j, e, f;   // rocketboom (Danny 20:23): S = its drawn size now; the spun-out rocket stays live, E PHI^-1, smaller, and explodes again (smaller) if it hits
+    booms.push({ S: S, E: E, x: x, y: y, gen: gen }); if (booms.length > 8) booms.shift();   // info(): the last explosions' drawn size + energy
     if (RM) return;
-    e = doc.createElement('i'); e.className = 'ec-th'; e.style.width = S * IP + 'px'; e.style.height = S * PHI + 'px'; L.appendChild(e); f = [];   // phi: a flame rides it
-    for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: 'translate(' + p[0] + 'px,' + (p[1] + S * IP * IP) + 'px) translate(-50%,-100%) rotate(' + jit(i, 1) * TAU / 34 + 'rad) scale(' + a * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) + ')', opacity: Math.min(1, a) }); }   // phi: 1/34 turn flicker, PHI^-3 lick
+    e = doc.createElement('i'); e.className = 'ec-th'; e.style.width = S0 * IP + 'px'; e.style.height = S0 * PHI + 'px'; L.appendChild(e); f = [];   // phi: a flame rides it
+    for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: 'translate(' + p[0] + 'px,' + (p[1] + S0 * a * IP * IP) + 'px) translate(-50%,-100%) rotate(' + jit(i, 1) * TAU / 34 + 'rad) scale(' + a * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) + ')', opacity: Math.min(1, a) }); }   // phi: 1/34 turn flicker, PHI^-3 lick
     burn(e, f, ms);
     var np = Math.round(PHI * PHI * (1 + E));                               // phi: puffs from the energy (5 at E = 1)
-    for (j = 0; j < np; j++) {                                             // drawn smoke follows over it at PHI^-1 of its path, each puff later and bigger
-      e = bit('ec-puff', '', 0, 0, S * IP); f = []; var dl = ms * Math.pow(IP, 3) * j;   // phi: a puff every PHI^-3 of the flight
-      for (i = 0, NR = keys(ms); i <= NR; i++) { var u = i / NR, tt = Math.min(1, (dl + u * ms) / ms), q = P(tt), a2 = ring(E, u, RC * PHI);
-        f.push({ offset: u, transform: T(x + (q[0] - x) * IP, y + (q[1] - y) * IP - S * IP * u, 0, 0, (IP + PHI * u) * a2), opacity: Math.min(1, a2) * (1 - Math.pow(IP, 3)) }); }   // phi: swells PHI^-1 -> PHI, rises PHI^-1 sizes, rings at f PHI
-      burn(e, f, ms, dl);
+    for (j = 0; j < np; j++) {                                             // rocketboom: drawn smoke FOLLOWS the rocket, each puff PHI^-5 of the flight further behind, sized to the rocket's size now
+      var lag = (j + 1) * Math.pow(IP, 5); e = bit('ec-puff', '', 0, 0, S0); f = [];
+      for (i = 0, NR = keys(ms); i <= NR; i++) { var u = i / NR, tt = Math.max(0, u - lag), q = P(tt), a2 = ring(E, u, RC);   // unit: a2 = the rocket's own scale at this instant
+        f.push({ offset: u, transform: T(q[0], q[1] - S0 * a2 * IP * (u - tt) / lag * IP, 0, 0, a2 * (1 + j * IP * IP)), opacity: Math.min(1, a2 / E) * (1 - Math.pow(IP, 3)) * Math.pow(IP, j * IP) }); }   // phi: rises PHI^-2 of the rocket's size, older puffs PHI^-2 wider and fainter
+      burn(e, f, ms);
     }
     e = bit('ec-fg', '', 0, 0, S * PHI); f = [];                            // the fireball blooms at the impact and trails at PHI^-3
     for (i = 0, NR = keys(ms); i <= NR; i++) { var uu = i / NR, r = P(uu), a3 = ring(E, uu, RC * PHI), bl = uu < Math.pow(IP, 4) ? uu / Math.pow(IP, 4) : 1;   // phi: blooms over PHI^-4 of its life
@@ -274,7 +278,7 @@
         e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3)); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, 0, IP), opacity: 0 }], MS * IP * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
     }
   }
-  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens }; },
+  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens, booms: booms }; },
     chains: function () { return DB.map(function (q) { return { E: q.E, gen: q.gen, x: Math.round(q.x), y: Math.round(q.y) }; }); },   // debug: knocked-off emojis still live
     test: function (fx, x, y, s) { play(fx || 'burst', { x: x || innerWidth / 2, y: y || innerHeight / 2, fs: s || 32, el: { textContent: '\uD83D\uDEF8' } }, 1, 0, 1 - IP); } };   // unit: debug only, centre of the screen
   scan(); go();
