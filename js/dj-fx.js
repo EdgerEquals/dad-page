@@ -251,9 +251,22 @@
     rFb.gain.setTargetAtTime(1, t + L, s); rFb.gain.setTargetAtTime(0, end, s);
     rOut.gain.setTargetAtTime(1, t + L, s); rOut.gain.setTargetAtTime(0, end, s); rDry.gain.setTargetAtTime(IPH, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
   }
+  // AUTO SWEEP (Danny 20:03 AWST 26 Oct: 'when the transition is set to auto just sweep through all of the parameters and anything can
+  // show up at the next transition across any genre'): with the Transition dial on auto, every style can come at every transition,
+  // drawn on the golden sequence (stream per parameter, like the rhythm plan's gold()), and the wait and depth are drawn across their
+  // full ranges. Energy stays a gentle tilt, never a gate: style weight PHI^-|u - its energy place| (at most PHI between any two), and
+  // the pumped wait / depth keep a PHI^-2 share of the draw. A style picked on the dial is unchanged. Key travel, bridge, bar grid as before.
+  var txN = 0;
+  function autoSweep() { return !(nudge.trans | 0); }
+  function gdraw(k) { return frac((txN + 1) * IPH + (seed || 0) * IPH * IPH + k * Math.pow(IPH, 3)); }   // golden sequence, stream k
+  function sweepStyle(u) { var n = AUTO.length, w = AUTO.map(function (st, j) { return Math.pow(PHI, -Math.abs(u - j / (n - 1))); }), x = gdraw(1) * w.reduce(function (a, b) { return a + b; }, 0);
+    for (var j = 0; j < n; j++) { x -= w[j]; if (x <= 0) return AUTO[j]; } return AUTO[n - 1]; }
   function transition(go, o) {
     var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
-    var st = E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
+    var sw = autoSweep(); if (sw) { txN++; var u0 = energy(), g2 = gdraw(2), g3 = gdraw(3), q2 = IPH * IPH;
+      o = { wait: g2 * (1 - q2) + (o && o.wait != null ? clamp(o.wait, 0, 1) : u0) * q2,
+            depth: Math.pow(Math.pow(PHI, -2 * (1 - g3)), 1 - q2) * Math.pow(o && o.depth != null ? clamp(o.depth, IPH * IPH, 1) : 1, q2) }; }
+    var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
     var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
@@ -371,7 +384,7 @@
   EV(rollTick, Math.pow(PHI, -4) * MS);
   EV(chopTick, Math.pow(PHI, -4) * MS);                          // phi: chop look-ahead every PHI^-4 s                          // phi: roll look-ahead every PHI^-4 s
   build();
-  D.fx = { random: function (hold) { if (hold) draw(null); else fxGo(); }, kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
+  D.fx = { autoSweep: autoSweep, get txN() { return txN; }, random: function (hold) { if (hold) draw(null); else fxGo(); }, kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
     set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
     pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s

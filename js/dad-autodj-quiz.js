@@ -144,6 +144,11 @@
     for (var i = 0; i < S16; i++) if (['kick', 'snare', 'hat', 'shaker', 'tom'].some(function (d) { return g[d] && g[d][i % g[d].length] !== '.'; })) n++;
     return { drive: n / S16, brightness: 1 - FIFTHS.indexOf(g.scale) / (FIFTHS.length - 1) }; }
   function pickG(c, n) {                                                  // the n-th genre of c.genres
+    var F = window.DadAutoDJ && DadAutoDJ.fx; if (F && F.autoSweep && F.autoSweep() && c.dims) {   // auto sweep (Danny 20:03): any genre in GEN can come next; weather and a set mood only tilt the odds
+      var all = Object.keys(GEN), d0 = c.dims, D0 = Math.pow(PHI, PHI * PHI * d0.tension), ml = c.genres.length < all.length ? c.genres : [];
+      var w0 = all.map(function (k) { var h = home(k); return Math.pow(PHI, -(Math.abs(d0.drive - h.drive) + Math.abs(d0.brightness - h.brightness)) / D0) * (ml.indexOf(k) >= 0 ? PHI : 1); });   // phi: the closeness weight flattened by PHI^2; mood list x PHI
+      var x0 = frac((n + 1) * IPH) * w0.reduce(function (a, b) { return a + b; }, 0); for (var i0 = 0; i0 < all.length; i0++) { x0 -= w0[i0]; if (x0 <= 0) return all[i0]; } return all[all.length - 1];
+    }
     var gs = c.genres; if (gs.length < 2 || !c.dims) return gs[((n % gs.length) + gs.length) % gs.length];
     if (gs.length < Object.keys(GEN).length) return gs[((n % gs.length) + gs.length) % gs.length];   // a mood's own short list keeps its rotation
     var d = c.dims, D = Math.pow(PHI, PHI * PHI * d.tension), w = gs.map(function (k) { var h = home(k); return Math.pow(PHI, -PHI * PHI * (Math.abs(d.drive - h.drive) + Math.abs(d.brightness - h.brightness)) / D); });
@@ -233,7 +238,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=headrandom1', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=autosweep1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
   var VURL = 'js/dj-voice.js?v=djvoice1', vReq = false, VH = null;
@@ -681,7 +686,7 @@
     if (Date.now() < fadingUntil) { schedule(c.fade); paint(c); return; }   // never mid-fade
     if (playing && ctx) {
       var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
-      var changed = !tr || c.genres.indexOf(tr.genre) < 0 || Math.abs(tr.bpm - c.bpm) > 0.5 || c.p.mood !== lastMood;
+      var swp = window.DadAutoDJ && DadAutoDJ.fx && DadAutoDJ.fx.autoSweep && DadAutoDJ.fx.autoSweep(), changed = !tr || (!swp && c.genres.indexOf(tr.genre) < 0) || Math.abs(tr.bpm - c.bpm) > 0.5 || c.p.mood !== lastMood;
       var old = tr && (Date.now() - tr.born) / 1000 >= tr.trackLen;
       if ((changed || old) && !pendX) { if (!routed(function (ox) { var n = startTrack(compute(), ox && ox.fade, null, ox); n.trackLen = compute().trackLen; cur = compute(); cur.genre = n.genre; paint(cur); }, tr)) { tr = startTrack(c); tr.trackLen = c.trackLen; } }
       applyVol(c, c.fade); cur = c; if (tr) cur.genre = tr.genre;
