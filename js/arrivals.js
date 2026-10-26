@@ -19,7 +19,7 @@
   function dial(id, def) { try { var d = JSON.parse(localStorage.getItem('dadSceneDials.v1') || '{}'); return d[id] != null ? +d[id] : def; } catch (e) { return def; } }
   var SPEED = dial('arrspeed', 0), GAP = Math.pow(IP, dial('arrstagger', 2)), N0 = dial('arrstart', 5);   // phi: rung shift 0, stagger PHI^-2 s, start PHI^-5
   var REG = [                                                             // selector, gesture, importance (1 scenery .. 5 the site's function)
-    ['.foot > .note', 'bounce', 5], ['.ttybody', 'soft', 4],              // the footer's reading lines arrive slowest (Danny: the chat line); the bottom line's row,
+    ['.foot > .note', 'bounce', 5],                                     // .ttybody (the chat box) moved to the inline assemble-in (loadfirst, Danny 18:57 AWST 26 Oct): 1 s once, not 4.2 s              // the footer's reading lines arrive slowest (Danny: the chat line); the bottom line's row,
                                                                           // not #footLine itself (foot-line.js fades that one per item), critters ride along
     ['.pl-layer', 'soft', 2], ['.sm-b', 'pop', 1], ['.tsl-layer', 'soft', 1], ['.es-layer', 'bang', 1], ['.qs-layer', 'soft', 1],
     ['#mxrain', 'soft', 1]];
@@ -46,9 +46,9 @@
   }
   // frequency sweep for the element's own CSS / WAAPI animations (one capped timer per arrival, gone when settled)
   function rates(el, at, D) {
-    if (!el.getAnimations) return; var start = performance.now() + at, step = MS * Math.pow(IP, 7);   // phi: PHI^-7 s steps
+    if (!el.getAnimations) return; var start = performance.now() + at, step = MS * Math.pow(IP, 7), list = null, n = 0;   // phi: PHI^-7 s steps
     var id = setInterval(function () { var u = (performance.now() - start) / D; if (u < 0) u = 0; var r = u >= 1 ? 1 : Math.pow(PHI, -N0 * (1 - u));
-      var list = []; try { list = el.getAnimations({ subtree: true }); } catch (e) {}
+      if (!list || ++n % 13 === 0) { try { list = el.getAnimations({ subtree: true }); } catch (e) { list = []; } }   // loadfirst: re-query every Fibonacci 13th step, not every step (each query forced a style recalc)
       list.forEach(function (a) { if (a.effect && a.effect.getTiming && a.effect.getTiming().duration === 'auto') return; try { if (a.updatePlaybackRate) a.updatePlaybackRate(r); else a.playbackRate = r; } catch (e) {} });
       if (u >= 1) clearInterval(id); }, step);
   }
