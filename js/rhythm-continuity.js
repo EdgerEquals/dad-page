@@ -15,7 +15,7 @@
         RhythmContinuity.peek(name)  the stored snapshot (today only) before its owner has loaded, e.g. to paint the DJ pill 'on'
         RhythmContinuity.sun(ms?)    { elev, depth, day, season, moon }  the sky clocks below, read on demand
         RhythmContinuity.saveNow(), .names(), .info()
-   Storage: localStorage 'dadRhythm.v1' only, on this device. No network, no names, no typed text.
+   Storage: localStorage, one key per layer (dadRhythm.day.v1 / .radio.v1 / .fund.v1, the resume dial below), on this device only. No network, no names, no typed text.
    Cadence: one save every PHI^4 s (the page pump's fastest mode, js/phi-pumps.js k0 = 4), plus visibilitychange (hidden), pagehide
    and freeze. Returns are caught on visibilitychange (visible), pageshow (bfcache) and resume.
    DAILY RESTART (no clock time): local apparent solar time = UT days + longitude / one turn + equation of time / one turn.
@@ -30,7 +30,7 @@
   var MS = 1e3, MS_DAY = 864e5, JD_UNIX = 2440587.5, JD_2000 = 2451545, CENTURY = 36525;   // unit/cite: ms per s, SI day; Meeus ch. 7
   var POINT = { lat: -32.0, lon: 115.9 };                                          // anchor: shared layer's one coarse city point (Perth, 0.1 deg)
   var SYN = 29.530588853, NEW0 = Date.UTC(2000, 0, 6, 18, 14);                     // cite: Meeus 49.1 synodic month; new moon 2000-01-06 18:14 UT
-  var KEY = 'dadRhythm.v1', CADENCE = Math.pow(PHI, 4);                            // phi: save every PHI^4 s (page pump's fastest mode)
+  var CADENCE = Math.pow(PHI, 4);                                                 // phi: save every PHI^4 s (page pump's fastest mode)
 
   // ---------- sky clocks (sun height, solar day, season, moon) ----------
   function sun(ms) {
@@ -49,69 +49,109 @@
              season: ((lam / TAU) % 1 + 1) % 1, moon: moon, moonLit: (1 - Math.cos(TAU * moon)) / 2 };
   }
 
-  // ---------- store ----------
-  var R = {}, order = [], stored = null, hideAt = 0, snaps = {}, today = sun().day, timer = 0;
-  try { stored = JSON.parse(root.localStorage.getItem(KEY) || 'null'); } catch (e) { stored = null; }
-  var fresh = !stored || stored.day !== today, prev = fresh && stored && stored.r ? stored.r : null;   // a new solar day since the last save: daily restart
-  if (fresh) stored = { day: today, at: Date.now(), r: {}, t: {} };
-  if (!stored.t) stored.t = {};                                                      // per-rhythm save time, so a late-loading rhythm counts its own time away
-  function snapAll() { var o = {}; order.forEach(function (n) { try { var s = R[n].save && R[n].save(); if (s != null) o[n] = s; } catch (e) {} }); return o; }
-  function write() {
-    var o = snapAll(), r = (stored && stored.r) || {}, t = (stored && stored.t) || {}, now = Date.now();
-    Object.keys(o).forEach(function (n) { r[n] = o[n]; t[n] = now; });            // keep snapshots (and their times) of rhythms not loaded yet
-    stored = { day: today, at: now, r: r, t: t };
-    try { root.localStorage.setItem(KEY, JSON.stringify(stored)); } catch (e) {}
+  // ---------- store: the RESUME DIAL (shared.md 'Rhythms keep going', Danny 16:46 + Steve's S-0017 tweaks folded in 17:04 AWST 26 Oct) ----------
+  // Write rich, read light, one localStorage key per layer:
+  //   dadRhythm.day.v1    the day anchor: this solar day's starting instant (solar midnight, from UT + longitude, so time zones and daylight
+  //                       saving can't move it), worked out ONCE per day and stored as one number with the day's length. Every tree clock
+  //                       runs on plain elapsed time from it; nothing reads apparent solar time again until the day ticks over.
+  //   dadRhythm.radio.v1  the radio: the DJ's on/off + station seeds + track spec, its effects seeds, whether sound was playing, the time taken.
+  //   dadRhythm.fund.v1   the fundamentals: one warped-time number per pump-tree level (five) + any other registered rhythm's choices.
+  // Not stored at all (rebuilt from time): the sky snapshot and dial rate (re-read from the date and feeds), and every scene clock: scene
+  // phases, CSS loops and the background video run on pump-tree time = elapsed since the anchor + the level-0 warp.
+  // The dial has two stops, picked on load from measured conditions only:
+  //   'radio'  a new solar day since the save, or the clock looks wrong (time since the save negative or longer than the stored day):
+  //            only the radio's choices carry (fresh track), the tree starts unwarped from the anchor. The fundamentals key is never read.
+  //   'fund'   otherwise (the default): radio + fundamentals, the cascade exact. The radio catches up to now (where it would be had it kept
+  //            going); when sound was playing its own track position (taken from the audio clock) is the base, the elapsed time is added.
+  // A missing or unreadable layer steps down to 'radio' and never blocks the page. Old single key dadRhythm.v1 is read once and removed.
+  var KD = 'dadRhythm.day.v1', KR = 'dadRhythm.radio.v1', KF = 'dadRhythm.fund.v1', OLD = 'dadRhythm.v1', LEVELS = 5;   // five pump-tree levels (Fibonacci 13/8/5/3/2)
+  var RADIO = { dj: 1, djfx: 1 }, DERIVED = { sky: 1, dials: 1 }, TREE = /^(scene:|logo:)/;
+  function rd(k) { try { return JSON.parse(root.localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function wr(k, v) { try { root.localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function anchorFor(ms) {                                                         // solar midnight that starts ms's solar day, and the day's length
+    var s = sun(ms), day = s.day, t = ms - (s.solarDays - day) * MS_DAY; t -= (sun(t).solarDays - day) * MS_DAY;   // two fixed-point steps
+    var t1 = t + MS_DAY; t1 -= (sun(t1).solarDays - (day + 1)) * MS_DAY; t1 -= (sun(t1).solarDays - (day + 1)) * MS_DAY;
+    return { day: day, t0: Math.round(t), len: Math.round(t1 - t) };
   }
-  function restart() {                                                             // every registered rhythm together
+  var R = {}, order = [], hideAt = 0, hidePlaying = false, snaps = {}, today = sun().day, timer = 0, now0 = Date.now(), w = [];
+  var A = rd(KD); if (!A || A.day !== today || !(A.len > 0)) { A = anchorFor(now0); wr(KD, A); }
+  var radio = rd(KR), fund = null, old = null, stop = 'radio', why = 'nothing saved';
+  if (!radio) { old = rd(OLD); if (old && old.r) { radio = { day: old.day, at: old.at, r: { dj: old.r.dj, djfx: old.r.djfx }, t: old.t || {} };
+    fund = { day: old.day, at: old.at, w: null, r: {}, t: old.t || {} }; Object.keys(old.r).forEach(function (n) { if (!RADIO[n] && !DERIVED[n] && !TREE.test(n) && n !== 'pumps') fund.r[n] = old.r[n]; });
+    } }   // migrated once (the old pumps clock was page-load time, so the tree starts unwarped); the old key goes on the first write
+  var gap = radio ? now0 - radio.at : NaN;
+  if (radio && radio.day !== today) why = 'new solar day: only the radio choice carries';
+  else if (radio && !(gap >= 0 && gap <= A.len)) why = 'clock looks wrong (time since the save ' + Math.round(gap / MS) + ' s): radio only';
+  else if (radio) { if (!old) fund = rd(KF); if (fund && fund.day === today) { stop = 'fund'; why = 'fundamentals + five level timings (exact)'; } else { fund = null; why = 'fundamentals missing: radio only'; } }
+  for (var L = 0; L < LEVELS; L++) w[L] = 0;
+  if (stop === 'fund' && fund.w) fund.w.forEach(function (v, i) { if (isFinite(v) && i < LEVELS) w[i] = v; });
+  var restartRadio = !!radio && stop === 'radio' && why !== 'nothing saved', bytes = 0;
+  try { bytes = (root.localStorage.getItem(KD) || '').length + (root.localStorage.getItem(KR) || '').length + (stop === 'fund' && !old ? (root.localStorage.getItem(KF) || '').length : 0); } catch (e) {}
+  var DIAL = { stop: stop, why: why, gapSec: isFinite(gap) ? gap / MS : null, bytesRead: bytes, anchor: A, migrated: !!old };
+  function tree(Lv) { return (Date.now() - A.t0) / MS + (w[Lv | 0] || 0); }       // pump-tree time (s): elapsed since the day anchor + that level's warp
+  var kept = { r: (radio && radio.r) || {}, t: (radio && radio.t) || {}, f: (fund && fund.r) || {}, ft: (fund && fund.t) || {} };
+  function snapAll() { var o = {}; order.forEach(function (n) { if (DERIVED[n] || TREE.test(n)) return; try { var s = R[n].save && R[n].save(); if (s != null) o[n] = s; } catch (e) {} }); return o; }
+  function playingNow() { var D = root.DadAutoDJ; return !!(D && D.playing); }
+  function write(o) {
+    o = o && !o.type ? o : snapAll(); var now = Date.now();
+    Object.keys(o).forEach(function (n) {
+      if (n === 'pumps') { if (o[n] && isFinite(o[n].t)) { var base = (now - A.t0) / MS; for (var i = 0; i < LEVELS; i++) w[i] = o[n].t - base; } return; }   // live tree: one clock today, so the five warps match until taps warp levels apart
+      if (RADIO[n]) { kept.r[n] = o[n]; kept.t[n] = now; } else { kept.f[n] = o[n]; kept.ft[n] = now; } });
+    wr(KR, { day: today, at: now, r: kept.r, t: kept.t, play: playingNow() });
+    wr(KF, { day: today, at: now, w: w.map(function (v) { return Math.round(v * MS) / MS; }), r: kept.f, t: kept.ft });   // unit: ms resolution
+    if (old) { try { root.localStorage.removeItem(OLD); } catch (e) {} old = null; }
+  }
+  function restart() {                                                             // every registered rhythm together, at local solar midnight
+    A = anchorFor(Date.now()); today = A.day; wr(KD, A); for (var i = 0; i < LEVELS; i++) w[i] = 0;
     order.forEach(function (n) { try { R[n].reset && R[n].reset(); } catch (e) {} });
-    stored = { day: today, at: Date.now(), r: {}, t: {} }; write();
+    kept = { r: kept.r, t: {}, f: {}, ft: {} }; write();
     try { doc.dispatchEvent(new CustomEvent('rhythm:restart', { detail: { day: today } })); } catch (e) {}
   }
   function beat() {
     clearTimeout(timer); timer = 0;
-    var d = sun().day; if (d !== today) { today = d; restart(); } else if (!doc.hidden) write();
+    var d = sun().day; if (d !== today) restart(); else if (!doc.hidden) write();
     timer = setTimeout(beat, CADENCE * MS);
   }
 
   // ---------- register ----------
   function register(name, h) {
     if (!R[name]) order.push(name); R[name] = h;
-    var s = stored && stored.r && stored.r[name];
-    var at = (stored.t && stored.t[name]) || stored.at;
-    if (s != null && h.catchUp) { try { h.catchUp(Math.max(0, (Date.now() - at) / MS), s, 'cold'); } catch (e) {} }
-    else if (prev && prev[name] != null && h.catchUp) { try { h.catchUp(0, prev[name], 'restart'); } catch (e) {} }   // yesterday's state: only choices carry (e.g. DJ on)
+    if (!h.catchUp || DERIVED[name]) return { save: write };
+    try {
+      if (TREE.test(name)) h.catchUp(0, null, 'tree');                            // scene clocks: set from pump-tree time, nothing read
+      else if (name === 'pumps') h.catchUp(0, { t: tree(0) }, 'cold');            // the tree itself: anchor elapsed + level-0 warp
+      else if (RADIO[name]) { var s = kept.r[name]; if (s != null) { if (restartRadio) h.catchUp(0, s, 'restart'); else if (stop === 'fund' || why === 'nothing saved') h.catchUp(Math.max(0, (Date.now() - (kept.t[name] || radio.at)) / MS), s, 'cold'); } }
+      else if (stop === 'fund' && kept.f[name] != null) h.catchUp(Math.max(0, (Date.now() - (kept.ft[name] || fund.at)) / MS), kept.f[name], 'cold');
+    } catch (e) {}
     return { save: write };
   }
-  function phase(name, get, set) {
-    return register(name, { save: function () { return { t: get() }; },
-      catchUp: function (e, s, mode) { if (mode !== 'restart' && s && isFinite(s.t)) set(s.t + e); }, reset: function () { set(0); } });
+  function phase(name, get, set) {                                                 // scene phase on pump-tree time
+    return register(name, { save: function () { return null; }, catchUp: function () { set(tree(0)); }, reset: function () { set(tree(0)); } });
   }
   function el(x) { return typeof x === 'string' ? doc.querySelector(x) : x; }
   function anims(x) { var n = el(x); return n && n.getAnimations ? n.getAnimations({ subtree: true }) : []; }
-  function css(name, x) {
-    return register(name, { save: function () { var A = anims(x); return A.length ? { t: A.map(function (a) { return a.currentTime; }) } : null; },   // none (e.g. paused while hidden): keep the last one
-      catchUp: function (e, s, mode) { if (mode === 'restart' || !s || !s.t) return; var at = Date.now();
-        function apply() { var k = e + (Date.now() - at) / MS; anims(x).forEach(function (a, i) {
-          var t = s.t[i]; if (t == null || !isFinite(t)) return; try { a.currentTime = t + k * MS * (a.playbackRate || 1); } catch (er) {} }); }
-        if (anims(x).length) apply(); else requestAnimationFrame(function () { requestAnimationFrame(apply); }); },   // the layer re-starts its animations on return
-      reset: function () { anims(x).forEach(function (a) { try { a.currentTime = 0; } catch (er) {} }); } });
+  function css(name, x) {                                                          // CSS / Web Animations on pump-tree time
+    function apply() { var t = tree(0) * MS; anims(x).forEach(function (a) { try { a.currentTime = t * (a.playbackRate || 1); } catch (er) {} }); }
+    function go() { if (anims(x).length) apply(); else requestAnimationFrame(function () { requestAnimationFrame(apply); }); }   // the layer re-starts its animations on return
+    return register(name, { save: function () { return null; }, catchUp: go, reset: go });
   }
-  function video(name, v) {
-    function seek(t) { function go() { var D = v.duration; if (!(D > 0) || !isFinite(t)) return; try { v.currentTime = ((t % D) + D) % D; } catch (er) {} }
+  function video(name, v) {                                                        // looping <video> on pump-tree time
+    function seek() { function go() { var D = v.duration, t = tree(0) * (v.playbackRate || 1); if (!(D > 0)) return; try { v.currentTime = ((t % D) + D) % D; } catch (er) {} }
       if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true }); }
-    return register(name, { save: function () { return v.readyState >= 1 ? { t: v.currentTime, r: v.playbackRate || 1 } : null; },
-      catchUp: function (e, s, mode) { if (mode !== 'restart' && s && isFinite(s.t)) seek(s.t + e * (s.r || 1)); }, reset: function () { seek(0); } });
+    return register(name, { save: function () { return null; }, catchUp: seek, reset: seek });
   }
 
   // ---------- lifecycle ----------
-  function away() { if (!hideAt) { hideAt = Date.now(); snaps = snapAll(); } write(); }
+  function away() { if (!hideAt) { hideAt = Date.now(); hidePlaying = playingNow(); snaps = snapAll(); } write(snaps); }
   function back(ev) {
     if (ev && ev.type === 'pageshow' && !ev.persisted) return;
-    var d = sun().day; if (d !== today) { today = d; hideAt = 0; restart(); return; }
+    var d = sun().day; if (d !== today) { hideAt = 0; restart(); return; }
     if (!hideAt) return;
-    var now = Date.now(), e = Math.max(0, (now - hideAt) / MS), s = snaps; hideAt = 0; snaps = {};
-    order.forEach(function (n) { try { if (!R[n].catchUp) return;                // no snapshot at hide: fall back to the last saved one and its own time
-      if (s[n] != null) R[n].catchUp(e, s[n], 'return'); else R[n].catchUp(Math.max(0, (now - ((stored.t && stored.t[n]) || now)) / MS), stored.r[n], 'return'); } catch (er) {} });
+    var now = Date.now(), g = now - hideAt, e = g >= 0 && g <= A.len ? g / MS : 0, s = snaps; hideAt = 0; snaps = {};   // clock looks wrong: no fast-forward
+    order.forEach(function (n) { try { if (!R[n].catchUp) return;
+      if (TREE.test(n)) R[n].catchUp(0, null, 'tree'); else if (DERIVED[n]) R[n].catchUp(e, null, 'return');
+      else if (n === 'pumps') R[n].catchUp(0, { t: tree(0) }, 'return-tree');
+      else R[n].catchUp(e, s[n] != null ? s[n] : (RADIO[n] ? kept.r[n] : kept.f[n]), 'return'); } catch (er) {} });
     write();
   }
   doc.addEventListener('visibilitychange', function () { if (doc.hidden) away(); else back(); });
@@ -121,9 +161,10 @@
   doc.addEventListener('resume', back);
   timer = setTimeout(beat, CADENCE * MS);
 
-  root.RhythmContinuity = { register: register, phase: phase, css: css, video: video, sun: sun, saveNow: write,
-    peek: function (n) { return stored && stored.r ? stored.r[n] : undefined; }, names: function () { return order.slice(); },
-    info: function () { return { key: KEY, day: today, restartedToday: fresh, savedAt: stored && stored.at, cadence: CADENCE, rhythms: order.slice() }; } };
+  root.RhythmContinuity = { register: register, phase: phase, css: css, video: video, sun: sun, tree: tree, saveNow: function () { write(); },
+    peek: function (n) { return kept.r[n] !== undefined ? kept.r[n] : kept.f[n]; }, names: function () { return order.slice(); },
+    dial: function () { return JSON.parse(JSON.stringify(DIAL)); },
+    info: function () { return { keys: [KD, KR, KF], day: today, stop: DIAL.stop, why: DIAL.why, anchor: A, warps: w.slice(), savedAt: radio && radio.at, cadence: CADENCE, rhythms: order.slice() }; } };
 
   // ---------- page-owned rhythms that need no file of their own ----------
   // sky + season clocks: computed from the date itself, so catching up is just a re-read; on a return, tell the page's feeds to refresh
