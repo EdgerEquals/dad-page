@@ -260,7 +260,7 @@
     var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth
     try {
     var td = ts + (bd - bs) * bar, T = td - ts, tail = bar, s8 = Math.pow(PHI, -6);
-    txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: st, bars: bd - bs, start: ts, drop: td, now: now };
+    txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: st, bars: bd - bs, start: ts, drop: td, now: now, dp: dp };   // dp: the pumped depth (the voice's light-build bump reads it)
     [lp.frequency, hp.frequency, eSend.gain, eFb.gain, wSend.gain, flW.gain, flFb.gain, flL.frequency, nzG.gain, nzBP.frequency].forEach(function (p) { hold(p, now); });
     var w;
     if ((w = wt(S, 'hp'))) { hp.frequency.setValueAtTime(Math.max(FLO, hp.frequency.value), ts); hp.frequency.exponentialRampToValueAtTime(FLO * Math.pow(PHI, SPB + PHI * PHI * w), td);   // phi: HP sweep up to FLO PHI^(4+PHI^2 w)
