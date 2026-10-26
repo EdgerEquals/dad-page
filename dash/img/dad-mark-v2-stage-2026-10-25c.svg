@@ -30,11 +30,11 @@
 .v{transform-box:view-box;transform-origin:32px 32px}
 .pc{opacity:.72}
 /* start state (Danny 14:55 AWST 26 Oct): system + both precessions start at 0, so the rings open crossed at the design pose (-20deg / +25deg, 1/8 turn apart), not collapsed */
-#dm-sys{animation:spin var(--t-system) linear infinite}
+#dm-sys{animation:none}/* ATOM: no whole-system spin, it would carry the orbitals off their quantised angles */
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes unspin{to{transform:rotate(-360deg)}}
-#pr1{animation:unspin var(--t-prec-outer) linear infinite}
-#pr2{animation:unspin var(--t-prec-inner) linear infinite}
+#pr1,#pr2{animation:larmor var(--t-prec-outer) ease-in-out infinite alternate}@keyframes larmor{from{transform:rotate(-6.57deg) scale(1,.854)}to{transform:rotate(6.57deg) scale(1,1.146)}}
+/* ATOM (Danny 16:13 / 16:15 AWST 26 Oct): the rings are hydrogen 2p orbitals, m = +1 / -1, tilted at the quantised angles cos(theta) = m / sqrt(l(l+1)) = 45 / 135 deg (js/atom-ref-data.js). They never spin away from those angles: the Larmor precession is seen edge-on as a small wobble of tilt (45 x PHI^-4 deg) and apparent shape (PHI^-4) about the quantised pose */
 .strata{animation:breathe ease-in-out infinite alternate}
 #br1{animation-duration:var(--t-strata-outer);animation-delay:calc(var(--t-strata-outer) * -0.090)}
 #br2{animation-duration:var(--t-strata-inner);animation-delay:calc(var(--t-strata-inner) * -0.708)}
@@ -111,7 +111,7 @@
  <g fill="#6F93AB"><circle class="tw" cx="12.0" cy="50.3" r=".45" style="animation-delay:calc(var(--t-blink) * -0.618)"/><circle class="tw" cx="34.2" cy="6.9" r=".45" style="animation-delay:calc(var(--t-blink) * -0.236)"/><circle class="tw" cx="49.2" cy="54.4" r=".45" style="animation-delay:calc(var(--t-blink) * -0.854)"/><circle class="tw" cx="6.0" cy="27.4" r=".45" style="animation-delay:calc(var(--t-blink) * -0.472)"/><circle class="tw" cx="52.6" cy="18.9" r=".45" style="animation-delay:calc(var(--t-blink) * -0.090)"/><circle class="tw" cx="24.9" cy="58.6" r=".45" style="animation-delay:calc(var(--t-blink) * -0.708)"/><circle class="tw" cx="20.2" cy="9.3" r=".45" style="animation-delay:calc(var(--t-blink) * -0.326)"/></g>
 </g>
 <g id="dm-orbits" fill="none" stroke-linecap="round" stroke-linejoin="round">
- <g id="pr1" class="v"><g transform="rotate(-20 32 32)">
+ <g id="pr1" class="v"><g transform="rotate(-45 32 32)">
   <g id="fd1" class="v">
    <g class="pc" filter="url(#pencil)" stroke="#C9B79C">
     <use href="#fB" stroke-width=".16" opacity=".22"/>
@@ -130,7 +130,7 @@
   <g id="t1" stroke="#1F8FC0" filter="url(#neon)" opacity=".55"><ellipse class="trail" pathLength="100" cx="32" cy="32" rx="29" ry="11" stroke-width="1.6" stroke-dasharray="5 95" style="--l:5"/><ellipse class="trail" pathLength="100" cx="32" cy="32" rx="29" ry="11" stroke-width="1" opacity=".45" stroke-dasharray="12 88" style="--l:12"/></g>
   <g id="o1b" class="body"><circle class="tw" r="3.1" stroke="#1F8FC0" stroke-width=".5" style="animation-delay:calc(var(--t-blink) * -0.854)"/><circle r="1.6" fill="#7FA6BE" filter="url(#neon)"/><circle r="2.2" fill="none" stroke="#00C896" stroke-width=".35" opacity=".45"/></g>
  </g></g>
- <g id="pr2" class="v"><g transform="rotate(25 32 32)">
+ <g id="pr2" class="v"><g transform="rotate(45 32 32)">
   <g id="hx">
    <g class="pc" filter="url(#pencil)" stroke="#C9B79C"><use href="#hM" stroke-width=".15" opacity=".3"/><use href="#hF" stroke-width=".26" opacity=".75"/></g>
    <use href="#hF" id="hxF" class="flow" stroke="#5F86A0" stroke-width=".4" filter="url(#soft)" opacity=".85"/>
