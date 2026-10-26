@@ -166,7 +166,7 @@
   function transition(go, o) {
     var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
     var st = E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
-    var u = energy(), ri = clamp(S.r + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // pump nudge of up to a rung
+    var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
     var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth

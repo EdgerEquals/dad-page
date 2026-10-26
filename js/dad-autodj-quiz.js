@@ -154,7 +154,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=7', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=8', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -337,7 +337,9 @@
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
     if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < IPH ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
-    var ch = first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
+    var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
+    if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
+    var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
     // chords
     if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, 1); });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
@@ -393,9 +395,10 @@
   // ---------- the DJ ----------
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
   function startTrack(c, fade, sp, ox) {
-    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
+    var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] ? ox.pre : null;   // the bridge already chose the next genre, seed and key
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
-    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0, prev, sp && sp.root);
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
@@ -413,15 +416,49 @@
   // through the same bar-grid planner as the shuffle button (js/dj-fx.js transition(), its sweeps scaled by depth); before the effects
   // chain has loaded, the change waits for the live track's next bar line. The outgoing track stops taking axis substitutes once a change
   // is planned (tr.bridge), and the incoming track voices its first chord from the outgoing track's last one (lastCh, see voiced()).
-  var pendX = false;
+  var pendX = false, lastBx = null;
+  // THE BRIDGE (MIDI Bot transitions design #3: pivot / dominant / home). When a change is planned, the next track's genre, seed, key and
+  // first chord are drawn at once (pre), so over the bars to the drop the outgoing track plays a chord both keys share (preferring ii, IV,
+  // vi of the new key), then the dominant seventh of the landing chord, and after the drop the landing chord itself while it fades.
+  // One bar, or no shared chord: the landing chord's tones the old key also has, held as a pedal (common-tone modulation).
+  // cite: common chord / pivot modulation, common-tone modulation, dominant seventh resolution
+  // (en.wikipedia.org/wiki/Common_chord_(music), /Modulation_(music), /Dominant_seventh_chord)
+  function pc(n) { return ((n % 12) + 12) % 12; }                          // unit: 12 pitch classes
+  function nearRoot(tr, p) { var r = tr.root + pc(p - tr.root); return r - tr.root > 6 ? r - 12 : r; }   // unit: nearest within a half octave
+  function voicePcs(tr, pcs) {                                            // each pitch class at the octave nearest the last chord's centre
+    var ref = tr.lastCh && tr.lastCh.length ? tr.lastCh.reduce(function (a, b) { return a + b; }, 0) / tr.lastCh.length : tr.root + 7;   // unit: a fifth above the root
+    return (tr.lastCh = pcs.map(function (p) { var n = ref + pc(p - ref); return n - ref > 6 ? n - 12 : n; }).sort(function (a, b) { return a - b; }));   // unit: half octave
+  }
+  function preProg(genre, seed) { var r = rng(seed), g = GEN[genre]; r(); return g.progs[Math.floor(r() * g.progs.length)]; }   // makeTrack's own draw order
+  function preNext(live, mix) {
+    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = gs[fl % gs.length], g = GEN[genre];
+    var seed = (Math.random() * SEEDS) | 0, root = live && live.sc ? travel(SCALES[g.scale], g.root, live, frac(seed * IPH)) : g.root;
+    return { genre: genre, seed: seed, root: root, prog: preProg(genre, seed) };
+  }
+  function planBridge(live, pre, start, drop) {
+    if (!live || !pre) return; var SCn = SCALES[GEN[pre.genre].scale], dur = SPM / live.bpm * SPB * live.g.bars;   // unit: a bar of the live track
+    var home = chordNotes(SCn, pre.root, pre.prog[0], 0), hr = pc(home[0]), old = live.sc.map(function (x) { return pc(live.root + x); });
+    var tri = function (d) { return chordNotes(SCn, pre.root, d, 0).map(pc); }, inOld = function (ps) { return ps.every(function (p) { return old.indexOf(p) >= 0; }); };
+    var piv = null; [1, 3, 5, 0, 4, 2].some(function (d) { var t = tri(d); if (inOld(t) && pc(t[0]) !== hr) { piv = { pcs: t, root: t[0] }; return true; } return false; });   // unit: scale degrees ii, IV, vi, I, V, iii
+    var V7 = { pcs: [7, 11, 2, 5].map(function (x) { return pc(hr + x); }), root: pc(hr + 7) };   // cite: dominant seventh on the fifth above the landing root
+    var ped = home.map(pc).filter(function (p) { return old.indexOf(p) >= 0; }); if (!ped.length) ped = [hr];
+    var n = Math.max(0, Math.round((drop - start) / dur)), segs = !piv || n < 2 ? [{ pcs: ped, root: ped[0] }] : [];
+    for (var i = 0; piv && n >= 2 && i < n; i++) segs.push(i < n - 1 ? piv : V7);
+    lastBx = live.bx = { start: start, drop: drop, bar: dur, segs: segs, home: { pcs: home.map(pc), root: hr }, pre: pre, plan: segs.map(function (x) { return x === piv ? 'pivot' : x === V7 ? 'V7' : 'pedal'; }) };
+  }
+  // LANDING WAIT (Danny 16:30 'adjusted depending on mood, time of day ... they all sweep'): how long an automatic change takes to land,
+  // 0 = the next bar .. 1 = a phrase (dj-fx BARS 1..8), from calm pumps and sophistication: calm, sophisticated tracks take their time.
+  function waitAuto() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], u = energy(), s = tr && tr.s != null ? tr.s : IPH;
+    return clamp(IPH * (1 - u) + IPH * IPH * s, 0, 1); }
   function routed(fn, live) {
     live = live || tracks.filter(function (x) { return !x.leaving && !x.dead; })[0]; if (!live || !playing || !ctx) return false;
-    var F = window.DadAutoDJ && DadAutoDJ.fx, go = function (ox) { if (!pendX || !playing) return; pendX = false; fn(ox); };
+    var F = window.DadAutoDJ && DadAutoDJ.fx, pre = preNext(live), go = function (ox) { if (!pendX || !playing) return; pendX = false; ox = ox || {}; ox.pre = pre; fn(ox); };
     pendX = true; live.bridge = true;
-    if (F && F.transition && F.transition(go, { depth: depthAuto() })) return true;
+    if (F && F.transition && F.transition(go, { depth: depthAuto(), wait: waitAuto() })) { var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); return true; }
     var G = grid(); if (!G) { pendX = false; return false; }
     var S16 = SPB * SPB, k = Math.ceil(G.step / S16) * S16, at = G.t + (k - G.step) * G.d16;
     while (at < ctx.currentTime + Math.pow(PHI, -2)) { at += G.d16 * S16; }   // phi: the next bar line at least PHI^-2 s out
+    planBridge(live, pre, at, at);
     setTimeout(function () { go({ at: at, fade: Math.max(G.d16 * S16, compute().fade * IPH), swap: true }); }, Math.max(0, (at - ctx.currentTime - Math.pow(PHI, -2)) * MS));   // phi: a bar or PHI^-1 of the mood's fade
     return true;
   }
@@ -518,7 +555,8 @@
   // runs the sweeps, and calls back just before the drop; the new track starts ON the drop with the style's fade and a bass swap.
   function mixGo() {
     var s = mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1, F = window.DadAutoDJ && DadAutoDJ.fx;
-    if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { remix(s, ox); })) { if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
+    var live = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], pre = live ? preNext(live, s) : null;
+    if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { if (ox && pre) ox.pre = pre; remix(s, ox); })) { if (live) { live.bridge = true; var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); } if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
     remix(s);
   }
   var mixBtn = null;
@@ -656,6 +694,7 @@
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
+    get harmonyBridge() { return lastBx ? { plan: lastBx.plan, segs: lastBx.segs, home: lastBx.home, pre: lastBx.pre, start: lastBx.start, drop: lastBx.drop } : null; },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd, soph: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).s } : null; },
     get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },
