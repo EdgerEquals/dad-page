@@ -72,7 +72,7 @@
   function compute(p) {
     p = p || pumps();
     var s = p.tp + p.wp + p.up + p.mp, S = PAR.map(function (x, i) { return sOf(p, i); }), sf = S[0] + M.cascade, sb = S[1], sv = S[2], sl = S[3];   // mix: per-parameter coupling
-    var vol = clamp(0.55 * Math.pow(PHI, -sv / 4), 0.25, 0.8);
+    var vol = clamp(IPH * Math.pow(PHI, -sv / 4), 0.25, 0.8);   // phi: base level PHI^-1 (was a fixed 0.55)
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
     return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + sb / 2) * Math.pow(PHI, M.tempo), 62, 157),
              vol: vol, trackLen: Math.pow(PHI, 7.5 + sl), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed };
@@ -80,6 +80,7 @@
 
   // ---------- music theory + genre table ----------
   var SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], lydian: [0, 2, 4, 6, 7, 9, 11] };
+  var COLOUR = { penta: [0, 2, 4, 7, 9], penta_m: [0, 3, 5, 7, 10], whole: [0, 2, 4, 6, 8, 10] };   // cite: 12-TET pentatonic (major/minor) and whole-tone sets (en.wikipedia.org/wiki/Pentatonic_scale, /Whole-tone_scale)
   //  chords: pad | strum | stab | ep | arp ; bass: hold | roots | walk | eighths | octave ; drums: 16-step strings (x loud, o soft)
   var GEN = {
     ambient:     { scale: 'lydian', root: 50, progs: [[0, 4, 5, 3], [0, 5, 3, 4]], bars: 2, chords: 'pad', wave: 'sine', cut: 1500, bass: 'hold', bwave: 'sine', mel: 0.10, lead: 'bell', rev: 0.55 },
@@ -101,7 +102,7 @@
   };
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  function chordNotes(sc, root, deg, sev) { var n = [], c = sev ? 4 : 3; for (var i = 0; i < c; i++) { var d = deg + i * 2; n.push(root + sc[d % 7] + 12 * Math.floor(d / 7)); } return n; }
+  function chordNotes(sc, root, deg, sev, cnt) { var n = [], c = cnt || (sev ? 4 : 3); for (var i = 0; i < c; i++) { var d = deg + i * 2; n.push(root + sc[d % 7] + 12 * Math.floor(d / 7)); } return n; }
 
   // ---------- audio graph ----------
   var AC = window.AudioContext || window.webkitAudioContext;
@@ -135,7 +136,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=2';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=3';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -168,7 +169,7 @@
     try {
       ctx = new AC();
       master = ctx.createGain(); master.gain.value = sliderVol();           // the volume slider
-      bus = ctx.createGain(); bus.gain.value = 0.55;                       // the pump volume
+      bus = ctx.createGain(); bus.gain.value = IPH;                       // the pump volume
       var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
       revIn = ctx.createGain(); revIn.gain.value = 0;                     // the reverb (and its impulse) arrives with js/dj-extras.js and glides in
       duck = ctx.createGain(); duck.gain.value = ducked ? IPH : 1;           // the logo duck sits after the meter's tap, so the meter reads undipped
@@ -185,7 +186,7 @@
   function voice(tr, type, f, t, dur, vel, opt) {
     opt = opt || {};
     var end = t + dur + (opt.rel || 0.2) * 5, g = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.setValueAtTime(opt.cut || 2400, t); if (opt.sweep) lp.frequency.setTargetAtTime(opt.cut * 0.25, t, opt.sweep);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(opt.cut || tr.g.cut * PHI, t); if (opt.sweep) lp.frequency.setTargetAtTime(opt.cut * 0.25, t, opt.sweep);
     var o = osc(type, f, t, end); o.connect(lp);
     if (opt.det) { var o2 = osc(type, f, t, end); o2.detune.value = opt.det; o2.connect(lp); }
     lp.connect(g); env(g, t, opt.a || 0.005, vel, opt.hold != null ? opt.hold : 0.01, opt.rel || 0.2); g.connect(tr.out);
@@ -193,9 +194,9 @@
   }
   var INST = {
     pad:   function (tr, f, t, d, v) { voice(tr, tr.g.wave, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
-    pluck: function (tr, f, t, d, v) { voice(tr, tr.g.wave || 'triangle', f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: (tr.g.cut || 2400) * 1.6, sweep: 0.08, rev: 0.4 }); },
+    pluck: function (tr, f, t, d, v) { voice(tr, tr.g.wave || 'triangle', f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
     bass:  function (tr, f, t, d, v) { if (tr.g.bwave === 'piano') return (INST.piano || INST.pluck)(tr, f, t, d, v * 1.2);
-                                       voice(tr, tr.g.bwave, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * 0.8, rel: 0.08, cut: 600 }); }
+                                       voice(tr, tr.g.bwave, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * 0.8, rel: 0.08, cut: tr.g.cut * IPH }); }
   };
   // ---------- a track: one generated piece (genre + BPM + seed) ----------
   function makeTrack(genre, bpm, seed) {
@@ -205,37 +206,76 @@
       var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density);   // mix: density rung
       if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13); mel.push(deg); } else mel.push(null);
     }
+    var u = energy(), gx = Object.create(g); gx.cut = mtof(root + 12) * Math.pow(PHI, PHI * PHI + 2 * u - 1);   // phi: brightness = PHI^(PHI^2 +- 1 rung) over the root (rule 8: no fixed cut)
     var out = ctx.createGain(); out.gain.value = 0.0001; out.connect(bus);
     var wet = ctx.createGain(); wet.gain.value = 0.0001; wet.connect(revIn);                    // reverb send, faded with the track
     var rv = ctx.createGain(); rv.gain.value = g.rev; rv.connect(wet);
     var xo = ctx.createGain(); xo.gain.value = XL; xo.connect(out);                                // extras (leads, drums) glide in here
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
-    return { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: g, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: g, out: xo, rev: rv }, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
+    var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
+    var L = { drums: lay(xo), lead: lay(xo), bass: lay(out), pad: lay(out) };
+    return { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
   }
+  // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
+  // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
+  // a = PHI^-1, breaks down to PHI^-2 by PHI^-1 + PHI^-3, then lifts a little into the outro. Drums, lead and bass follow e;
+  // pads follow PHI^-2 + (1 - e) x PHI (so the peak keeps a little harmony). Each bar glides there (setTarget, tau = a bar x PHI^-1).
+  function energy() { var p = pumps(); return 1 / (1 + Math.pow(PHI, p.tp + p.wp + p.up + p.mp)); }   // pump energy u in (0,1), shared with js/dj-fx.js
+  function arc(a) {
+    var lo = IPH * IPH, pk = IPH, bd = IPH + Math.pow(PHI, -3), q = Math.PI / 2, s2 = function (x) { var y = Math.sin(q * clamp(x, 0, 1)); return y * y; };
+    if (a <= pk) return lo + (1 - lo) * s2(a / pk);
+    if (a <= bd) return lo + (1 - lo) * (1 - s2((a - pk) / (bd - pk)));
+    return lo + (IPH - lo) * s2((a - bd) / (1 - bd));
+  }
+  function ageOf(tr) { return clamp((Date.now() - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }
+  function shape(tr, t, barLen) {                                         // once a bar: glide the layers to the arc
+    var a = ageOf(tr), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
+    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(Math.sqrt(e), t, tau);
+    tr.L.pad.out.gain.setTargetAtTime(clamp(IPH * IPH + (1 - e) * PHI, 0, 1), t, tau);
+  }
+  // VOICE LEADING + EXTENSIONS: 3 + a pump-ratio count of stacked thirds (triad, 7th, 9th); of the inversions (+-12 per note) the one
+  // that moves least from the last chord is played, held near the root-position register.
+  function voiced(tr, deg) {
+    var x = clamp((1 - tr.u) + (tr.g.sev ? IPH : 0) + (tr.bd ? IPH * IPH : 0), 0, 1), n = 3 + Math.round(2 * x);   // unit: a triad plus up to two more thirds
+    var base = chordNotes(tr.sc, tr.root, deg, 0, n), mean = function (a) { return a.reduce(function (s, v) { return s + v; }, 0) / a.length; }, m0 = mean(base);
+    if (!tr.lastCh) return (tr.lastCh = base);
+    var best = base, bc = Infinity, prev = tr.lastCh.slice().sort(function (p, q) { return p - q; });
+    for (var k = 0; k < n; k++) for (var o = -1; o <= 1; o++) {
+      var c = base.map(function (v, i) { return v + 12 * ((i < k ? 1 : 0) + o); }).sort(function (p, q) { return p - q; });   // unit: octave
+      var cost = c.reduce(function (s, v) { var d = Infinity; prev.forEach(function (w) { d = Math.min(d, Math.abs(v - w)); }); return s + d; }, 0) + Math.abs(mean(c) - m0) * IPH;
+      if (cost < bc) { bc = cost; best = c; }
+    }
+    return (tr.lastCh = best);
+  }
+  // GOLDEN SWING + VELOCITY LADDER: long:short = PHI:1 at full drive (sw = PHI^-3 x drive, drive = pump energy); accents
+  // PHI^-(metric depth): downbeat 1, beat PHI^-1, eighth PHI^-2, sixteenth PHI^-3, times the routed pump dynamics.
+  function depth(s16) { return s16 % 16 === 0 ? 0 : s16 % SPB === 0 ? 1 : s16 % 2 === 0 ? 2 : 3; }   // unit: metric depth in a 4/4 bar of sixteenths
+  function vl(s16, dyn) { return Math.pow(PHI, -depth(s16)) * (dyn || 1); }
   function playStep(tr, t) {
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
-    var deg = tr.prog[Math.floor(bar / g.bars) % tr.prog.length], ch = chordNotes(tr.sc, tr.root, deg, g.sev);
-    var barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
+    var deg = tr.prog[Math.floor(bar / g.bars) % tr.prog.length], barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
+    if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
+    var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
+    var ch = first || !tr.ch ? (tr.ch = voiced(tr, deg)) : tr.ch, root0 = chordNotes(tr.sc, tr.root, deg, 0)[0];
     // chords
-    if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr, n + 12, t, barLen, 1); });
+    if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, 1); });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
-      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * 0.012 : 0), dur16 * (g.chords === 'ep' ? 5 : 2), s16 ? 0.8 : 1); });
-    if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, s16 % 8 ? 0.6 : 0.9); }
+      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn)); });   // phi: strum spread PHI^-4 of a sixteenth
+    if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
     if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]); pl('chords', INST.square, tr.x, a2[s16 % a2.length] + 24, t, dur16 * 0.8, 0.45); }
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
-    var bn = ch[0] - 12;
-    if (g.bass === 'hold' && first) pl('bass', INST.bass, tr, bn, t, barLen * 0.9, 1);
-    if (g.bass === 'roots' && (s16 === 0 || s16 === 8)) pl('bass', INST.bass, tr, s16 ? ch[2] - 12 : bn, t, dur16 * 6, 1);
-    if (g.bass === 'walk' && [0, 3, 6, 8, 11, 14].indexOf(s16) >= 0) pl('bass', INST.bass, tr, s16 === 0 ? bn : ch[[0, 1, 2, 1, 2, 0][[0, 3, 6, 8, 11, 14].indexOf(s16)]] - 12, t, dur16 * 2, 0.9);
-    if (g.bass === 'eighths' && s16 % 2 === 0) pl('bass', INST.bass, tr, bn, t, dur16 * 1.5, s16 % 4 ? 0.7 : 1);
-    if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, 0.9);
+    var bn = root0 - 12;
+    if (g.bass === 'hold' && first) pl('bass', INST.bass, tr.L.bass, bn, t, barLen * 0.9, vl(s16, dyn));
+    if (g.bass === 'roots' && (s16 === 0 || s16 === 8)) pl('bass', INST.bass, tr.L.bass, s16 ? ch[2 % ch.length] - 12 : bn, t, dur16 * 6, vl(s16, dyn));
+    if (g.bass === 'walk' && [0, 3, 6, 8, 11, 14].indexOf(s16) >= 0) pl('bass', INST.bass, tr.L.bass, s16 === 0 ? bn : ch[[0, 1, 2, 1, 2, 0][[0, 3, 6, 8, 11, 14].indexOf(s16)]] - 12, t, dur16 * 2, vl(s16, dyn));
+    if (g.bass === 'eighths' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn, t, dur16 * 1.5, vl(s16, dyn));
+    if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     // melody (Dad's tune): motif from the seed, a note shifted now and then
-    var md = tr.mel[st % 32];
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; pl('lead', INST[g.lead], tr.x, tr.root + tr.sc[md % 7] + 12 * Math.floor(md / 7) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    var md = tr.mel[st % 32], lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.sc, ln = lsc.length;
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; pl('lead', INST[g.lead], tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
-    var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
-    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = (v === 'x' ? 1 : 0.55) * dyn; X.hit(tr.x, k, t, hv); rec('drums', GM[k], t, dur16, hv); } });
+    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = vl(s16, dyn) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv); rec('drums', GM[k], t, dur16, hv); } });   // phi: soft hits a rung down
     if (s16 % 4 === 0) beat(t, s16 === 0);
   }
   // ---------- note log for the MIDI export (Danny 14:48 AWST 26 Oct): the last minute of what played, pruned by wall time ----------
@@ -247,7 +287,7 @@
     while (NL.length && NL[0][0] < w - WIN - SPM * MS / SPB) NL.shift();   // keep a little over a minute (look-ahead slack)
   }
   function pl(part, inst, tr, m, t, d, v) { inst(tr, mtof(m), t, d, v); rec(part, m, t, d, v); }
-  function stepLen(tr) { var d = 60 / tr.bpm / 4, sw = tr.g.swing || 0; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }
+  function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
 
   // ---------- scheduler (look-ahead) ----------
   var tracks = [], sched = 0;
@@ -476,7 +516,7 @@
       idle: function (c) { if (!playing) cur = c; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
-    get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step } : null; },
+    get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd } : null; },
     get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },

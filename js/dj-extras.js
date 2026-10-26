@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   var D = window.DadAutoDJ, K = D && D._kit; if (!K) return;
-  var PHI = (1 + Math.sqrt(5)) / 2;                                       // phi: the golden ratio
+  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, FLO = 20, FHI = 20000;   // phi: the golden ratio; cite: human hearing 20 Hz - 20 kHz (drum pitches as phi rungs on it)                                       // phi: the golden ratio
   var ctx = null, voice = K.voice, osc = K.osc, env = K.env, INST = K.INST, LADDER = K.LADDER, eff = K.eff, liveOf = K.liveOf, nudge = K.nudge,
       setTo = K.setTo, compute = K.compute, paint = K.paint, save = K.save, chips = null;
   function C() { return ctx || (ctx = K.ctx); }
@@ -34,14 +34,14 @@
   function hit(tr, kind, t, v) {
     var g = C().createGain(); g.connect(tr.out);
     if (kind === 'kick' || kind === 'tom') {
-      var o = C().createOscillator(), f0 = kind === 'kick' ? 130 : 95, f1 = kind === 'kick' ? 42 : 62, dec = kind === 'kick' ? 0.12 : 0.35;
+      var o = C().createOscillator(), f0 = FLO * Math.pow(PHI, kind === 'kick' ? 2 * PHI + IPH : 2 * PHI), f1 = FLO * Math.pow(PHI, kind === 'kick' ? PHI : PHI + IPH), dec = kind === 'kick' ? 0.12 : 0.35;
       o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dec); o.connect(g);
       g.gain.setValueAtTime(v * (kind === 'kick' ? 0.55 : 0.4), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dec * 2.5); o.start(t); o.stop(t + dec * 3);
       return;
     }
     var src = C().createBufferSource(), f = C().createBiquadFilter(); src.buffer = noise(); src.connect(f); f.connect(g);
     var len = kind === 'snare' ? 0.16 : kind === 'shaker' ? 0.06 : 0.035;
-    f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = kind === 'snare' ? 1800 : kind === 'shaker' ? 5200 : 7500;
+    f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = FHI * Math.pow(PHI, kind === 'snare' ? -5 : kind === 'shaker' ? -3 : -2);   // phi: bands PHI^-n under the top of hearing
     g.gain.setValueAtTime(v * (kind === 'snare' ? 0.22 : kind === 'shaker' ? 0.05 : 0.06), t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
     src.start(t, Math.random() * 0.5); src.stop(t + len + 0.02);
   }
