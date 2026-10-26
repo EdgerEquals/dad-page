@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light"><meta name="theme-color" id="thmc" content="#000000"><!-- firstpaint (Danny 13:36 AWST 26 Oct, "all white at first"): Safari tints its bars and the blank before first paint from this; black = the dark body, #EEF4F8 = the light body (quiz-light.css) -->
 <style>:root{color-scheme:dark}html[data-theme="light"]{color-scheme:light}body{background-color:#161B1F}html[data-theme="light"] body{background-color:#EEF4F8}html,body{height:100%;overflow:hidden;overscroll-behavior:none}</style><!-- whiteline 3 (Danny 13:26 AWST 26 Oct): home is ONE screen (content ends ~250 px, footer fixed), so the document never scrolls: iOS has no scroll indicator to flash down the right edge, whatever load-time layout does --><!-- default canvas + scrollbars dark from byte one; NO html background (that stops the body background propagating and blanks the z<0 scene) -->
 <script>try{if(localStorage.getItem("dadQuizTheme")==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}(function(){var d=document.documentElement,m=document.getElementById("thmc");function f(){if(m)m.content=d.getAttribute("data-theme")==="light"?"#EEF4F8":"#000000";}f();if(window.MutationObserver)new MutationObserver(f).observe(d,{attributes:true,attributeFilter:["data-theme"]});})();</script><!-- light theme before first paint (Danny t0u 25 Oct; switch = footer tty satellite, js/quiz-theme.js) -->
-<script src="js/phi-sun.js?v=1" defer></script><!-- rule 13 shared Sun anchor + sky constants (Danny 12:34 AWST 26 Oct) -->
+<script src="js/phi-sun.js?v=2" defer></script><!-- rule 13 shared Sun anchor + sky constants (Danny 12:34 AWST 26 Oct) -->
 <script id="phi-timing">
 /* PHI TIMING (shared module; same file on every Bonnie site/preview).
    Standing rules: /home/box/.config/phi-timing-rules.md (set by Danny, 2026-10-23). Summary, follow it in future builds:
@@ -479,8 +479,8 @@ body.paused .home-code::before{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.rain{display:none}.tile .sp{display:none!important}.tile.swap{animation:none}.btn,.tile{transition:none}}
 /* ---- Space loop background (trial, preview only): fixed full-page video at 30% behind all content; poster only for reduced motion ---- */
 .bgloop,.bgloop-still{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:.3}
-.bgloop{object-fit:cover;object-position:calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)}   /* rule 13: video Sun on the shared anchor at any aspect */
-.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=4") calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)/cover no-repeat}
+.bgloop{object-fit:cover;object-position:calc(var(--vsun-x,var(--sun-x,1)) * 100%) calc(var(--vsun-y,var(--sun-y,0)) * 100%)}   /* rule 13: video Sun on the shared anchor at any aspect */
+.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=4") calc(var(--vsun-x,var(--sun-x,1)) * 100%) calc(var(--vsun-y,var(--sun-y,0)) * 100%)/cover no-repeat}
 @media(orientation:landscape){.bgloop-still{background-image:url("media/space-loop-land-poster.webp?v=2")}}
 @media(prefers-reduced-motion:reduce){.bgloop{display:none}.bgloop-still{display:block}}
 </style>
@@ -1056,7 +1056,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=orbitvis1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=djpersist1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=sweeplock1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=earthnode1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=orbitvis1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=djpersist1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=sceneanchors1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=sceneanchors1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>

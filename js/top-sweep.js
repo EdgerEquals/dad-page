@@ -46,7 +46,7 @@
   ss.setProperty('--per', PER + 's'); ss.setProperty('--ceil', CEIL); ss.setProperty('--gc', CEIL * IP);
   ss.setProperty('--g0', IP); ss.setProperty('--gw', (Math.pow(IP, 4) * PCT) + 'vmin');   // phi: glow disc PHI^-4 of the viewport
   s.style.fontSize = (Math.pow(IP, 6) * PCT) + 'vmin';                    // phi: sun glyph PHI^-6 of the viewport
-  sun.appendChild(g); sun.appendChild(s); L.appendChild(sun);
+  sun.appendChild(g); sun.appendChild(s);   // 15:22 (Danny 26 Oct): the Sun glyph now lives in the ping layer (Earth-sized, the Earth orbits it); not drawn here
 
   // planets: periods = Fibonacci loops, radii by Kepler III
   var DEF = [['\uD83E\uDE90', 2], ['\uD83C\uDF11', 3], ['\uD83C\uDF15', 5]];   // phi: Fibonacci loop counts (ringed planet, dark and bright moon-planets)
