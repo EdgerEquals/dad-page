@@ -4,7 +4,8 @@
    circles meet, both vanish and each is replaced, at its own rendered size, by one of five drawn effects:
      burst      a 💥 flash and sparks flung out           (the most violent hits)
      vaporise   it breaks into small copies of itself that scatter
-     flames     it burns: a flickering 🔥, embers rising
+     flames     it catches fire (firefx, Danny 19:10 AWST 26 Oct): a shimmering glow, five licking tongues in blackbody colours
+                (4000 K root to 1000 K tips), embers that drift up and wink out, then it burns down into the smoke
      smoke      it goes up in grey puffs
      spin-out   it tumbles away, spinning faster, falling (glancing hits)
    The physics picks the effect: the closing speed in body sizes per second sets the violence (soft hit = smoke .. hard hit =
@@ -32,6 +33,11 @@
     '.ec-l{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;contain:strict}' +   // unit: just under the launcher's top layer
     '.ec-l>*{position:absolute;left:0;top:0;line-height:1;will-change:transform,opacity;font-style:normal}' +
     '.ec-dot{border-radius:50%;background:radial-gradient(circle closest-side,#fff,#ffd700 38.2%,rgba(255,99,0,.618) 61.8%,transparent)}' +   // phi: 38.2 / 61.8 stops; anchor: white-hot to the Sun glow gold
+    '.ec-fg{border-radius:50%;background:radial-gradient(circle closest-side,rgba(255,209,163,.854),rgba(255,137,18,.618) 38.2%,rgba(255,56,0,.236) 61.8%,transparent)}' +   // phi: stops + alphas; cite: blackbody 4000 K #ffd1a3, 2000 K #ff8912, 1000 K #ff3800 (Charity, vendian.org)
+    '.ec-th,.ec-tc{border-radius:50% 50% 38.2% 38.2%/76.4% 76.4% 23.6% 23.6%;transform-origin:50% 100%}' +   // phi: a flame tongue, narrow tip, round root
+    '.ec-th{background:radial-gradient(ellipse 50% 100% at 50% 100%,#ffd1a3,#ffa148 38.2%,#ff6d00 61.8%,rgba(255,56,0,0))}' +   // phi: stops; cite: blackbody 4000 K, 2500 K, 1500 K, 1000 K (Charity, vendian.org)
+    '.ec-tc{background:radial-gradient(ellipse 50% 100% at 50% 100%,#ffa148,#ff6d00 38.2%,#ff3800 61.8%,rgba(255,56,0,0))}' +   // phi: stops; cite: blackbody 2500 K, 1500 K, 1000 K (cooler flank tongues)
+    '.ec-em{border-radius:50%;background:radial-gradient(circle closest-side,#ff8912,#ff3800 61.8%,transparent)}' +   // phi: stop; cite: blackbody 2000 K -> 1000 K ember
     '.ec-puff{border-radius:50%;background:radial-gradient(circle closest-side,rgba(170,176,180,.618),rgba(120,126,130,.382) 61.8%,transparent)}';   // phi: stops + alphas; anchor: smoke grey, the rain's blue-grey
   var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
   var L = doc.createElement('div'); L.className = 'ec-l'; L.setAttribute('aria-hidden', 'true'); doc.body.appendChild(L);
@@ -144,6 +150,41 @@
   function fly(e, frames, ms, ease) { frames = hold(frames); live++; var an = e.animate(frames, { duration: ms, easing: ease || 'ease-out', fill: 'forwards' }); an.onfinish = an.oncancel = function () { live--; e.remove(); }; return an; }
   function T(x, y, s, r, sc) { return 'translate(' + x + 'px,' + y + 'px) translate(-50%,-50%) rotate(' + (r || 0) + 'rad) scale(' + (sc == null ? 1 : sc) + ')'; }   // unit: centred on the point
   function glyphOf(b) { var t = (b.el.textContent || '').trim(); return /\p{Extended_Pictographic}/u.test(t) ? t : '\u2728'; }   // a drawn streak breaks into sparkles
+  function puffs(x, y, S, dx, kk) { var i, n, d, e;
+      for (i = 0, n = 5; i < n; i++) { d = S * PHI * (1 + i * IP);         // phi: 5 puffs, each higher and later
+        e = bit('ec-puff', '', 0, 0, S * IP); fly(e, [{ transform: T(x, y, 0, 0, IP), opacity: 1 - Math.pow(IP, 3) }, { transform: T(x + dx * S * IP * (1 + i * IP), y - d, 0, 0, PHI * PHI), opacity: 0 }], MS * PHI * PHI * (1 + i * IP * IP) * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)');   // phi: puffs swell PHI^2, drift with the debris line
+      } }
+  // ---------- fire (firefx, Danny 19:10 AWST 26 Oct: "the fire is a bit naf") ----------
+  // Colour follows blackbody order, hottest at the root: cite: Mitchell Charity, 'What color is a blackbody?' (vendian.org, CIE 1964
+  // 10-deg, sRGB): 4000 K #ffd1a3, 2500 K #ffa148, 2000 K #ff8912, 1500 K #ff6d00, 1000 K #ff3800. Hot tongues run 4000 K -> 1500 K,
+  // the cooler outer tongues 2500 K -> 1000 K, the glow 4000 K -> 1000 K; then the existing smoke. Pieces: 1 glow, 5 tongues, 3 embers
+  // (Fibonacci), all transform + opacity WAAPI in the effect layer. Every wobble is golden-sequence jitter, frac((i + seed) PHI).
+  function jit(i, s) { var v = (i + s) * PHI; return 2 * (v - Math.floor(v)) - 1; }   // phi: golden-sequence noise, -1..1
+  function burn(e, fr, ms, delay) { live++; var an = e.animate(fr, { duration: ms, delay: delay || 0, easing: 'linear', fill: 'both' }); an.onfinish = an.oncancel = function () { live--; e.remove(); }; return an; }
+  function fire(b, x, y, S, dx, dy, w, kk) {
+    var life = MS * Math.pow(PHI, 1 + w) * kk, H = S * Math.pow(PHI, w), base = y + S * IP * IP, i, j, n = 21, e, f;   // phi: burns PHI^(1+w) s (pumped), flames PHI^w of its drawn size; unit: root just below its centre
+    function env(u) { return u < Math.pow(IP, 4) ? u / Math.pow(IP, 4) : Math.pow(Math.max(0, (1 - u) / (1 - Math.pow(IP, 4))), IP); }   // phi: catches in PHI^-4 of its life, then burns down
+    e = bit('ec-fg', '', 0, 0, S * PHI); f = [];                            // glow: heat shimmer in its flicker
+    for (i = 0; i <= n; i++) { var u = i / n, g = env(u); f.push({ offset: u, transform: T(x, base - H * IP * IP, 0, 0, (IP + (1 - IP) * g) * (1 + Math.pow(IP, 4) * jit(i, 1))), opacity: g * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) }); }   // phi: swells with the burn, PHI^-4 shimmer, PHI^-3 flicker
+    burn(e, f, life);
+    for (j = 0; j < 5; j++) {                                              // 5 tongues: 3 hot in the middle, 2 cooler flanks that catch later and die sooner
+      var hot = j < 3, side = hot ? j - 1 : (j === 3 ? -1 : 1) * PHI, wd = S * (hot ? IP : IP * IP), ht = H * (hot ? PHI : 1);   // phi: tall hot tongues PHI x its flame height, flanks PHI^-1 of that
+      var del = hot ? life * Math.pow(IP, 5) * j : life * Math.pow(IP, 3), dur = hot ? life - del : life * IP;   // phi: staggered catch
+      e = doc.createElement('i'); e.className = hot ? 'ec-th' : 'ec-tc'; e.style.width = wd + 'px'; e.style.height = ht + 'px'; L.appendChild(e); f = [];
+      for (i = 0; i <= n; i++) { var v = i / n, gg = env(v), lick = (1 + jit(i, j * PHI)) / 2;   // unit: 0..1 lick height this frame
+        var px = x + side * S * Math.pow(IP, 3) + jit(i, j + IP) * S * Math.pow(IP, 4), py = base - lick * ht * Math.pow(IP, 4);   // phi: spaced PHI^-3 sizes apart, PHI^-4 sway, licks up PHI^-4 of its height
+        f.push({ offset: v, transform: 'translate(' + px + 'px,' + py + 'px) translate(-50%,-100%) rotate(' + (jit(i, j) * TAU / 34 + dx * TAU / 89) + 'rad) scale(' + (gg * (1 - Math.pow(IP, 3) * lick)) + ',' + (gg * (IP * IP + (1 - IP * IP) * lick)) + ')',   // phi: 1/34 turn flicker, leans 1/89 turn with the debris; thin as it licks tall
+          opacity: Math.min(1, gg * PHI) * (1 - Math.pow(IP, 4) * lick) }); }
+      burn(e, f, dur, del);
+    }
+    for (j = 0; j < 3; j++) {                                              // 3 embers drift up, sway and wink out
+      var d = H * PHI * (1 + j * IP), ed = life * (IP * IP + j * Math.pow(IP, 3)), el = life * IP;   // phi: each higher and later
+      e = bit('ec-em', '', 0, 0, S * Math.pow(IP, 4)); f = [];
+      for (i = 0; i <= 8; i++) { var q = i / 8; f.push({ offset: q, transform: T(x + (jit(i, j + 3) * IP + dx * q) * S * IP, base - d * q, 0, 0, 1 - IP * q), opacity: q > 0 && q < 1 ? (i % 3 ? 1 : IP) * (1 - q * q) : 0 }); }   // phi: sparks out of the fire, winks (every third frame dims to PHI^-1), fades as q^2
+      burn(e, f, el, ed);
+    }
+    setTimeout(function () { puffs(x, base - H * IP, S, dx, kk); }, life * (1 - Math.pow(IP, 3)));   // phi: collapses into the smoke as the last PHI^-3 of the burn dies
+  }
   function play(fx, b, dx, dy, w) {
     made[fx]++;
     var x = b.x, y = b.y, S = Math.max(b.fs, 1), kk = k(), i, n, e, a, d;   // unit: the body's drawn size, at least a pixel
@@ -160,16 +201,10 @@
         a = Math.atan2(dy, dx) + (i * TAU * IP * IP % TAU - TAU / 2) * IP; d = S * (IP + (i * IP % 1)) * PHI * (1 + w);   // phi: golden-angle spread, golden-sequence distances
         e = bit('', g, 0, 0, S * IP); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, TAU * (i % 2 ? 1 : -1) * IP, IP * IP), opacity: 0 }], MS * PHI * kk);   // phi: fragments PHI^-1 the size, shrink as they go
       }
-    } else if (fx === 'flames') {
-      e = bit('', '\uD83D\uDD25', 0, 0, S);
-      var fr = []; for (i = 0, n = 13; i <= n; i++) { var u = i / n, f = Math.sin(u * Math.PI); fr.push({ offset: u, transform: T(x, y - S * IP * IP * u, 0, (i % 2 ? 1 : -1) * TAU / 89 * f, IP + (1 - IP) * f * (1 + (i % 3 ? IP * IP : 0))), opacity: f < IP * IP && u > 1 / 2 ? f * PHI * PHI : 1 }); }   // phi: flicker, flame flares then dies down; 1/89 turn sway
-      fly(e, fr, MS * PHI * PHI * kk, 'linear');                           // phi: burns PHI^2 s
-      for (i = 0; i < 3; i++) { d = S * PHI * (1 + i * IP); e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3));   // phi: 3 embers rising
-        fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + dx * S * IP * (i - 1), y - d, 0, 0, IP), opacity: 0 }], MS * PHI * (1 + i * IP) * kk); }
+    } else if (fx === 'flames') {                                          // real fire (firefx, Danny 19:10 AWST 26 Oct): glow + licking tongues + embers, burns down into the smoke
+      fire(b, x, y, S, dx, dy, w, kk);
     } else if (fx === 'smoke') {
-      for (i = 0, n = 5; i < n; i++) { d = S * PHI * (1 + i * IP);         // phi: 5 puffs, each higher and later
-        e = bit('ec-puff', '', 0, 0, S * IP); fly(e, [{ transform: T(x, y, 0, 0, IP), opacity: 1 - Math.pow(IP, 3) }, { transform: T(x + dx * S * IP * (1 + i * IP), y - d, 0, 0, PHI * PHI), opacity: 0 }], MS * PHI * PHI * (1 + i * IP * IP) * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)');   // phi: puffs swell PHI^2, drift with the debris line
-      }
+      puffs(x, y, S, dx, kk);
     } else {                                                               // spin-out: tumble away along the debris line, falling (projectile: steady across, gravity down)
       e = bit('', glyphOf(b), 0, 0, S); var fs = []; var spin = (dx >= 0 ? 1 : -1) * TAU * PHI * PHI * (1 + w);   // phi: PHI^2 turns, more for a harder hit
       for (i = 0, n = 21; i <= n; i++) { var v = i / n; fs.push({ offset: v, transform: T(x + dx * S * PHI * PHI * v, y + dy * S * PHI * v + innerHeight * IP * v * v, 0, spin * v * v, 1 - (1 - IP) * v), opacity: 1 - v * v * v }); }   // unit: across ~ t, gravity ~ t^2 (Newton); spin ~ t^2 (it spins up)
