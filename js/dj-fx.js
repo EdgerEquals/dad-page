@@ -22,7 +22,7 @@
   // ---------- the chain (built once) ----------
   var inp = g(1), rDry = g(1), rIn = g(0), rDel = c.createDelay(PHI), rFb = g(0), rOut = g(0), rAmp = g(1), mixA = g(1);
   var lp = c.createBiquadFilter(), hp = c.createBiquadFilter(), post = g(1), post2 = g(1);
-  var eSend = g(0), eDel = c.createDelay(PHI), eFb = g(0), eRet = g(1), wSend = g(0), wConv = c.createConvolver(), cDry = g(1), shp = c.createWaveShaper(), cWet = g(0), out = g(0);
+  var eSend = g(0), eDel = c.createDelay(PHI * PHI), eFb = g(0), eRet = g(1), wSend = g(0), wConv = c.createConvolver(), cDry = g(1), shp = c.createWaveShaper(), cWet = g(0), out = g(0);
   lp.type = 'lowpass'; lp.frequency.value = FHI; hp.type = 'highpass'; hp.frequency.value = FLO;
   inp.connect(rDry); rDry.connect(mixA); inp.connect(rIn); rIn.connect(rDel); rDel.connect(rFb); rFb.connect(rDel); rDel.connect(rOut); rOut.connect(rAmp); rAmp.connect(mixA);
   // SCATTER (Danny 15:07 AWST 26 Oct: 'a little bit too much of the scatter ... modulate the amplitude faster than how often it's playing'):
@@ -30,7 +30,17 @@
   // at PHI^2 x the rate rolls are triggered (so no two rolls land at the same level). The dry beat dips only to PHI^-1 under a roll.
   var RB = IPH, lfo = c.createOscillator(), lfoD = g(RB * IPH); rAmp.gain.value = RB; lfo.type = 'sine'; lfo.frequency.value = 0; lfo.connect(lfoD); lfoD.connect(rAmp.gain); lfo.start();
   mixA.connect(lp); lp.connect(hp); hp.connect(post); post.connect(post2);
-  post.connect(eSend); eSend.connect(eDel); eDel.connect(eFb); eFb.connect(eDel); eDel.connect(eRet); eRet.connect(post2);
+  // SAFE ECHO LOOP (MIDI Bot delay-throw design push 1, Danny 18:34 AWST): the echo knob, the chaospad's echo corner and the transition
+  // echo all ride one loop, eDel -> tLP -> tSh -> (eFb -> eDel) and (eRet -> tChop -> tDuck -> post2). tLP's Q is PHI^-1 (linear), so its
+  // response never peaks above 1 (Web Audio's default Q peaks at 1.25 and would take the capped loop near runaway); the saturator
+  // C tanh(x / C) sits last in the loop, so the return never passes C = PHI^-2 of full scale; every feedback write is capped at PHI^-1/2.
+  // At rest the loop is transparent below C (LP open, chop and duck at 1). Max delay PHI^2 s so a half-note fits at the slowest tempo.
+  // cite: 60 dB / ceiling sims in /workspace/midi-drafts/dj-delay-throw-2026-10-26.md section 3; Q in dB (W3C Web Audio API, BiquadFilterNode)
+  var FBC = Math.pow(PHI, -1 / 2), CEIL = IPH * IPH, tLP = c.createBiquadFilter(), tSh = c.createWaveShaper(), tChop = g(1), tDuck = g(1);   // phi: feedback cap, ceiling
+  tLP.type = 'lowpass'; tLP.frequency.value = FHI; tLP.Q.value = 20 * Math.log10(IPH);   // unit: Web Audio's Q is in dB (Q linear PHI^-1 = -4.18 dB)
+  (function () { var n = 4097, cv = new Float32Array(n); for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; cv[i] = CEIL * Math.tanh(x / CEIL); } tSh.curve = cv; })();   // unit: 2^12 + 1 points over -1..1
+  function fbTo(v) { return Math.min(FBC, Math.max(0, v)); }
+  post.connect(eSend); eSend.connect(eDel); eDel.connect(tLP); tLP.connect(tSh); tSh.connect(eFb); eFb.connect(eDel); tSh.connect(eRet); eRet.connect(tChop); tChop.connect(tDuck); tDuck.connect(post2);
   post.connect(wSend); wSend.connect(wConv); wConv.connect(post2);
   post2.connect(cDry); cDry.connect(out); post2.connect(shp); shp.connect(cWet); cWet.connect(out);
   // FLANGER + RISER (transitions only, Danny 15:44; 'flounder' = flanger): a short swept delay with feedback beside the dry path, and a
@@ -112,7 +122,7 @@
       eRet.gain.setTargetAtTime(0, now, q); eFb.gain.setTargetAtTime(0, now, q);
       eDel.delayTime.setValueAtTime(dT, now + q * PHI * PHI); eRet.gain.setTargetAtTime(1, now + q * PHI * PHI, IPH);   // phi: jump once the tail is down (PHI^-4 s)
     }
-    to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(e * IPH, now + q * PHI * PHI, tau || IPH);
+    to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(fbTo(e * IPH), now + q * PHI * PHI, tau || IPH);
     to(wSend.gain, wConv.buffer ? E.wash.v * IPH : 0, tau);
     var cr = E.crush.v * (K.chip ? K.chip() : 1), b = cr ?   // bit-crush rides the chip share (Danny 16:53)
        Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
@@ -188,8 +198,8 @@
       flFb.gain.setValueAtTime(w * IPH * IPH, ts); flFb.gain.setTargetAtTime(0, td + tail, tail * IPH);
       flL.frequency.setValueAtTime(1 / bar, ts); flL.frequency.exponentialRampToValueAtTime(PHI * PHI / beat, td); flL.frequency.setTargetAtTime(0, td + tail, tail); }   // phi: sweep speeds up to PHI^2 per beat
     if ((w = wt(S, 'sc'))) { var nb = Math.max(1, Math.round(SPB * w)); for (var b = 0; b < nb; b++) rollAt(td - (nb - b) * beat, beat, FIB[clamp(1 + b + SPB - nb, 1, FIB.length - 1)]); }   // last beats, accelerating 1/2 .. 1/8
-    if ((w = wt(S, 'ec'))) { var e0 = td - Math.min(T, bar); eSend.gain.setValueAtTime(eSend.gain.value, e0); eSend.gain.linearRampToValueAtTime(w, td - s8); eSend.gain.setTargetAtTime(0, td, s8);
-      eFb.gain.setValueAtTime(w * IPH, e0); eFb.gain.setTargetAtTime(0, td + tail, tail * IPH); }   // echo-out: only the outgoing feeds the tail
+    if ((w = wt(S, 'ec'))) { var e0 = td - Math.min(T, bar); eSend.gain.setValueAtTime(eSend.gain.value, e0); eSend.gain.linearRampToValueAtTime(w, td - d16); eSend.gain.linearRampToValueAtTime(0, td);   // closed exactly on the drop (linear over the last sixteenth): nothing of the incoming track enters
+      eFb.gain.setValueAtTime(fbTo(w * IPH), e0); eFb.gain.setTargetAtTime(0, td + tail, tail * IPH); }   // echo-out: only the outgoing feeds the tail
     if ((w = wt(S, 'wa')) && wConv.buffer) { wSend.gain.setValueAtTime(wSend.gain.value, ts); wSend.gain.linearRampToValueAtTime(w * IPH, td); wSend.gain.setTargetAtTime(0, td, tail * IPH); }
     if ((w = wt(S, 'nz'))) { var ns = c.createBufferSource(); ns.buffer = noiseBuf(); ns.loop = true; ns.connect(nzBP); ns.start(ts); ns.stop(td + tail);
       nzBP.frequency.setValueAtTime(FLO * Math.pow(PHI, PHI * PHI * PHI * PHI), ts); nzBP.frequency.exponentialRampToValueAtTime(FHI * IPH * IPH, td);   // phi: riser band PHI^PHI^4 x FLO -> PHI^-2 x FHI
