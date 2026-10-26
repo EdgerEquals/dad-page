@@ -88,6 +88,7 @@
       raf = requestAnimationFrame(tick); }
     function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
     draw(); go();
+    if (root.Arrivals) P.forEach(function (p) { Arrivals.land(p.el, 'pop', 1); });   // rule 14: each planet arrives (after its first draw, so it sweeps up to its own opacity), then a pop
     doc.addEventListener('visibilitychange', function () { tl = 0; if (!doc.hidden) { r = dial('intensity', DEF); go(); } });
     addEventListener('resize', function () { requestAnimationFrame(draw); });
     root.SolarModel = {

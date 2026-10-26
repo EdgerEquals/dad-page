@@ -182,6 +182,27 @@ summary{cursor:pointer;color:var(--muted)}
     <div class="steps"><button type="button" data-sstep="-1" aria-label="Solar system intensity down, one rung">dial back</button><button type="button" data-sstep="1" aria-label="Solar system intensity up, one rung">richer</button></div>
     <p class="note">Applies on this device the next time the home page loads (or comes back to the front).</p>
   </section>
+  <section class="tile" data-scene-dial="arrspeed" aria-labelledby="h-arrspeed"><!-- arrivals dial (rule 14, Danny 26 Oct) -->
+    <h2 id="h-arrspeed">8 &middot; Arrival speed</h2>
+    <p class="what">How long things take to arrive as the home page loads (the footer line is always the slowest).</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Arrivals quicker, one rung">quicker</button><button type="button" data-sstep="1" aria-label="Arrivals slower, one rung">slower</button></div>
+    <p class="note">Applies on this device the next time the home page loads.</p>
+  </section>
+  <section class="tile" data-scene-dial="arrstagger" aria-labelledby="h-arrstagger"><!-- arrivals dial (rule 14, Danny 26 Oct) -->
+    <h2 id="h-arrstagger">9 &middot; Arrival stagger</h2>
+    <p class="what">How far apart arrivals that land together are spaced.</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Arrivals spaced wider, one rung">wider</button><button type="button" data-sstep="1" aria-label="Arrivals spaced tighter, one rung">tighter</button></div>
+    <p class="note">Applies on this device the next time the home page loads.</p>
+  </section>
+  <section class="tile" data-scene-dial="arrstart" aria-labelledby="h-arrstart"><!-- arrivals dial (rule 14, Danny 26 Oct) -->
+    <h2 id="h-arrstart">10 &middot; Arrival start</h2>
+    <p class="what">How faint (and how slow) things start before they sweep up to full.</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Arrivals start brighter, one rung">brighter</button><button type="button" data-sstep="1" aria-label="Arrivals start fainter, one rung">fainter</button></div>
+    <p class="note">Applies on this device the next time the home page loads.</p>
+  </section>
 </main>
 <div class="foot">
   <button type="button" id="dsUndo">Undo last step</button>
@@ -190,6 +211,6 @@ summary{cursor:pointer;color:var(--muted)}
 </div>
 <script src="js/season-pumps.js?v=1" defer></script>
 <script src="js/dial-sandbox.js?v=1" defer></script>
-<script src="js/scene-dials.js?v=5" defer></script>
+<script src="js/scene-dials.js?v=6" defer></script>
 </body>
 </html>
