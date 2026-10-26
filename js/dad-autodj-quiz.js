@@ -110,7 +110,7 @@
     var vol = clamp(IPH * Math.pow(PHI, -sv / 4), 0.25, 0.8);   // phi: base level PHI^-1 (was a fixed 0.55)
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
     return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + sb / 2) * Math.pow(PHI, M.tempo), 62, 157),
-             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed, dims: dimsOf(dimX(null, p.z)) };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
+             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: p.mood === 'neutral' ? Object.keys(GEN) : GENRES[p.mood] || GENRES.neutral, mix: M.seed, dims: dimsOf(dimX(null, p.z)) };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
   }
 
   // ---------- music theory + genre table ----------
@@ -135,6 +135,20 @@
                    kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'oxoxoxoxoxoxoxox', rev: 0.25 },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', rev: 0.4 }
   };
+  // NEUTRAL USES EVERY STYLE (MIDI Bot scales + harmony plan P0, Danny 17:49 AWST 26 Oct): with the mood on neutral (its live value) the
+  // genre draw takes all nine genres, each weighted by how near its own home sits to the live dimensions, w = PHI^(-PHI^2 k / D) with
+  // D = PHI^(PHI^2 tension) (travel()'s form): k = |drive - its drum share| + |brightness - its mode's place on the line of fifths|.
+  // The draw is the golden sequence on the genre counter, so a reload lands on the same genre. Other moods keep their own list.
+  var FIFTHS = ['lydian', 'major', 'mixolydian', 'dorian', 'minor', 'phrygian', 'locrian'];   // cite: the diatonic modes from brightest to darkest along the line of fifths (en.wikipedia.org/wiki/Mode_(music))
+  function home(k) { var g = GEN[k], S16 = SPB * SPB, n = 0;                // a genre's own place: drum steps hit per bar, mode brightness
+    for (var i = 0; i < S16; i++) if (['kick', 'snare', 'hat', 'shaker', 'tom'].some(function (d) { return g[d] && g[d][i % g[d].length] !== '.'; })) n++;
+    return { drive: n / S16, brightness: 1 - FIFTHS.indexOf(g.scale) / (FIFTHS.length - 1) }; }
+  function pickG(c, n) {                                                  // the n-th genre of c.genres
+    var gs = c.genres; if (gs.length < 2 || !c.dims) return gs[((n % gs.length) + gs.length) % gs.length];
+    if (gs.length < Object.keys(GEN).length) return gs[((n % gs.length) + gs.length) % gs.length];   // a mood's own short list keeps its rotation
+    var d = c.dims, D = Math.pow(PHI, PHI * PHI * d.tension), w = gs.map(function (k) { var h = home(k); return Math.pow(PHI, -PHI * PHI * (Math.abs(d.drive - h.drive) + Math.abs(d.brightness - h.brightness)) / D); });
+    var x = frac((n + 1) * IPH) * w.reduce(function (a, b) { return a + b; }, 0); for (var i = 0; i < gs.length; i++) { x -= w[i]; if (x <= 0) return gs[i]; } return gs[gs.length - 1];
+  }
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function chordNotes(sc, root, deg, sev, cnt) { var n = [], c = cnt || (sev ? 4 : 3); for (var i = 0; i < c; i++) { var d = deg + i * 2; n.push(root + sc[d % 7] + 12 * Math.floor(d / 7)); } return n; }
@@ -443,7 +457,7 @@
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
   function startTrack(c, fade, sp, ox) {
     var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] ? ox.pre : null;   // the bridge already chose the next genre, seed and key
-    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : pickG(c, genreFlip++), t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
     var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
@@ -480,7 +494,7 @@
   }
   function preProg(genre, seed) { var r = rng(seed), g = GEN[genre]; r(); return g.progs[Math.floor(r() * g.progs.length)]; }   // makeTrack's own draw order
   function preNext(live, mix) {
-    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = gs[fl % gs.length], g = GEN[genre];
+    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = pickG(c, fl), g = GEN[genre];
     var seed = (Math.random() * SEEDS) | 0, root = live && live.sc ? travel(SCALES[g.scale], g.root, live, frac(seed * IPH)) : g.root;
     return { genre: genre, seed: seed, root: root, prog: preProg(genre, seed) };
   }
@@ -539,7 +553,7 @@
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
     var k = Math.floor(age / sp.len), gs = c.genres; genreFlip += k;
-    return { genre: gs[(genreFlip - 1) % gs.length], bpm: c.bpm, seed: (sp.seed + Math.imul(k, GA)) | 0, born: sp.born + k * sp.len * MS, len: c.trackLen };
+    return { genre: pickG(c, genreFlip - 1), bpm: c.bpm, seed: (sp.seed + Math.imul(k, GA)) | 0, born: sp.born + k * sp.len * MS, len: c.trackLen };
   }
   function start(sp) {
     if (!ensure()) { paint(compute()); return; }
@@ -655,11 +669,11 @@
   function sgn(v) { return (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00B1') + +Math.abs(v).toFixed(2); }
   function paint(c) {
     if (!read) return;
-    var shown = playing && cur ? cur : c, g = playing && cur && cur.genre ? cur.genre : c.genres.join(' / ');
+    var shown = playing && cur ? cur : c, g = playing && cur && cur.genre ? cur.genre : c.genres.length === Object.keys(GEN).length ? 'every style' : c.genres.join(' / ');
     read.textContent = mixName() + ' \u00B7 ' + g + ' \u00B7 ' + Math.round(shown.bpm) + ' BPM \u00B7 fade ' + shown.fade.toFixed(1) + ' s \u00B7 vol ' + Math.round(shown.vol * 100) + '%';
     var p = c.p, pendN = playing && cur && (Math.abs(cur.s - c.s) > Math.pow(PHI, -4) || cur.p.mood !== c.p.mood);
     readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) + ' \u00B7 ' + DIMS.map(function (d) { return d + ' ' + c.dims[d].toFixed(2); }).join(', ') +
-      (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
+      (pendN ? ' \u2192 next: ' + (c.genres.length === Object.keys(GEN).length ? 'every style' : c.genres.join('/')) + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
     var on = playing || !!pend || stalled, wait = !!pend || stalled;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
     var WHO = (document.documentElement.getAttribute('data-who')||'Dad');   // shown name: Ed on his dashboard (data-who, Danny 15:39 AWST 26 Oct), Dad on Bonnie's pages
