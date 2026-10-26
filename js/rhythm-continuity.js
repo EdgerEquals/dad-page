@@ -145,7 +145,8 @@
   // Triggers: the DJ context's statechange (interrupted / suspended / closed), the <audio> bridge's pause and play, the Media Session play
   // action, visibilitychange to visible, pageshow, focus, resume, and a PHI^4 s check. Each waits one tap-rung beat, then runs the ladder.
   // Ladder: tries at beat x PHI^0, PHI^1 .. PHI^5 (then repeating at PHI^5 beats); every try calls ctx.resume() AND bridge.play(), and
-  // the ladder only ends when ctx.state is 'running' AND the bridge element is really playing. Only while the DJ is on (his own pause
+  // the ladder ends once the sound is audible: ctx.state 'running' AND the bridge really playing, or the DJ's direct path carrying it
+  // (micswitch: a bridge paused by an app switch re-arms on his next real tap, never on a timer). Only while the DJ is on (his own pause
   // sets playing false, so it is never undone). As soon as the context runs, the sound comes back with a PHI^-1 s fade-in on the duck
   // stage and the rhythm is caught up to now (the DJ's wake: jump + tick). A closed context, or one still stuck after the whole ladder,
   // is rebuilt (fresh graph, same track position; dry path, the effects chain returns on reload). Refused (no gesture): one gentle
@@ -163,7 +164,9 @@
   function elOn() { return !AU.el || (!AU.el.paused && !AU.el.ended); }
   function note(m) { var line = [Date.now(), m]; AU.log.push(line); if (AU.log.length > LOGN) AU.log.splice(0, AU.log.length - LOGN);
     try { console.log('[dj-resume] ' + m); } catch (e) {} try { root.localStorage.setItem(LOGK, JSON.stringify(AU.log)); } catch (e) {} }
-  function done() { return AU.ctx && AU.ctx.state === 'running' && elOn(); }
+  function direct() { var B = root.DadAutoDJ && root.DadAutoDJ.bridge; return !!(B && B.direct); }   // the DJ's dry path straight to the speakers (it reconnects when the bridge pauses)
+  function done() { return AU.ctx && AU.ctx.state === 'running' && (elOn() || direct()); }   // audible: the bridge plays, or the context runs on the direct path (Danny 17:40: a paused bridge
+  // after an app switch kept the ladder pushing play() and the audio session every beat, forever, so the first mic press lost the session; the bridge re-arms on his next tap)
   function fadeIn() {
     var D = kit(), g = D && D._kit.duck, c = AU.ctx; if (!g || !c || (root.LogoRadio && root.LogoRadio.holding)) return;   // js/logo-radio.js holds it silent under the zoom
     var P = root.PageMusic, to = P && P.ducked ? IP : 1, t = c.currentTime;
@@ -175,7 +178,7 @@
     try { if (D._kit.stalled) D._kit.resumeTap(); else D._kit.wake(); } catch (e) {}
     try { var m = navigator.mediaSession; if (m) m.playbackState = 'playing'; } catch (e) {}
   }
-  function finish() { clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; if (AU.down) note('ok after try ' + AU.n + ': ' + st() + ', bridge playing'); AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
+  function finish() { clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; if (AU.down) note('ok after try ' + AU.n + ': ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused, direct path')); AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
   function drop() { clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
   function playEl() { if (!AU.el) return null; try { var q = AU.el.play(); if (q && q.catch) q.catch(function (er) { note('bridge play refused: ' + (er && er.name)); }); return q; } catch (e) { return null; } }
   function rebuild(why) {
@@ -190,7 +193,7 @@
     if (!AU.down) { AU.down = true; AU.sounded = false; AU.rung = 0; AU.n = 0; mute(); note('down (' + why + '): ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused')); }
     if (st() === 'closed') { rebuild('closed'); }
     var before = st(), n = ++AU.n;
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try { var as = navigator.audioSession; if (as && as.type !== 'playback') as.type = 'playback'; } catch (e) {}   // only when it changed: no session rewrite on every try
     if (AU.el && AU.el.paused && n > 2 && AU.el.srcObject) { try { var s = AU.el.srcObject; AU.el.srcObject = null; AU.el.srcObject = s; } catch (e) {} }   // a stale bridge: re-attach its stream
     var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (e) {}
     playEl();
@@ -211,8 +214,10 @@
   }
   function later(why) { if (AU.wait) return; AU.wait = setTimeout(function () { AU.wait = 0; attempt(why); }, TAP * MS); }   // one tap-rung beat first
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
-    hook(); if (!wanted() || !AU.ctx || (done() && !AU.down)) return;
-    var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift           // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
+    hook(); if (!wanted() || !AU.ctx) return;
+    var ok = done() && !AU.down; if (ok && elOn()) return;                        // all well: the tap is not a resume
+    var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift   // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
+    if (ok) { note('gesture ' + e.type + ': re-arm bridge'); try { kit()._kit.wake(); } catch (er) {} return; }   // sound is there on the direct path: the tap only re-arms the bridge, inside the gesture (no timer retries it)
     note('gesture ' + e.type + ': ' + st()); if (st() === 'closed') rebuild('gesture, closed');
     var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (er) {} playEl();
     var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck) rebuild('gesture, still stuck after the ladder'); }   // a plain resume first; rebuild only if that fails too
