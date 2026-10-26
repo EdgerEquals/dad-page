@@ -182,6 +182,7 @@ textarea:focus-visible{border-color:#0AF2FF;outline-color:#0AF2FF!important}
 /* keep the accent count low: the status beacon, terminal cursor and tty dots stay dim blue (status, not the light source);
    the faint code drift inside the panels is toned down to match the darker panel */
 .beacon.live,.q-head .beacon.live{--bc:#2A8FA3}.beacon.live i,.q-head .beacon.live i{box-shadow:none}   /* livepill (Danny 13:44 AWST 26 Oct): LIVE reads teal (Dad's teal-hi), CHECKING amber, DOWN red */
+.beacon.live .bs,.q-head .beacon.live .bs,html[data-theme="light"] .q-head .beacon.live .bs{color:var(--mx-r)}   /* livered (Danny 13:55 AWST 26 Oct): only the word LIVE goes CLI matrix red while live; CHECKING/DOWN unchanged */
 .ttybar i:nth-child(3){background:#2B6A92;box-shadow:none}
 .tin .blk{background:#85A6BB;box-shadow:none}
 #start.panel::before,#quiz.panel::before,#summary.panel::before{opacity:.4}
