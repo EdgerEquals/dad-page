@@ -83,7 +83,9 @@
     var S=0.382*(-Math.cos(2*Math.PI*h/24))+0.236*f('tide')+0.146*f('moon')+0.146*f('ratio-pump')+0.09*f('clock'),t=Date.now()/1000;
     var m=((Math.sin(2*Math.PI*t/122.9919)+Math.sin(2*Math.PI*t/76.0132+1))/2+1)/2,lg=P&&P.logo?P.logo('dad-mark'):null,Dm=lg&&lg.modes?lg.modes():0;
     return {m:m,D:clamp1(0.55+1.3*Dm,0,1),midi:23+clamp1(Math.round(3*S),-2,3),loud:0.40+0.60*day,day:day};}
-  function dadSting(up){if(!AC)return;try{var q=dadMap(),t=AC.currentTime+0.02,dur=up?0.618:1.854,hz=function(n){return 440*Math.pow(2,(n-69)/12);};
+  // atom sound tiers (Danny 16:13 / 16:15 AWST 26 Oct; Simmie cleared this file 16:35): the tapped mark picks the start-up tier (header tile = tiny, first-content card = light, else full); slow-down plays full from the zoom; old sting stays as the fallback until js/logo-sting.js has loaded
+  function stingTier(up){if(!up)return 'full';var h=document.querySelector('.q-head .dad-mark');h=h&&h.closest('button');return org&&org===h?'tiny':org&&org.classList&&org.classList.contains('fc-card')?'light':'full';}
+  function dadSting(up){if(!AC)return;if(window.LogoSting){try{LogoSting.play(AC,AC.destination,stingTier(up),up,dadMap());return;}catch(e){}}try{var q=dadMap(),t=AC.currentTime+0.02,dur=up?0.618:1.854,hz=function(n){return 440*Math.pow(2,(n-69)/12);};
     var lim=AC.createDynamicsCompressor();lim.threshold.value=-6;lim.ratio.value=20;lim.attack.value=0.003;lim.release.value=0.25;lim.connect(AC.destination);
     var M=AC.createGain();M.gain.value=0.11*q.loud*1.413;M.connect(lim);
     var hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=24;hp.connect(M);
@@ -142,3 +144,14 @@
   window.LogoZoom={open:function(n,o){open(byName(n),o);},close:close,isOpen:function(){return !!cur;}};
   window.DadMarkZoom={open:function(){open(byName('dad'));},close:close,isOpen:function(){return !!cur;}};
 })();
+// atom sound: js/atom-ref-data.js + js/logo-sting.js (about 6 KB gzipped) load as soon as this tier-3 file runs, and on the first press of
+// either mark if that comes first; until they land, the old sting plays. Nothing of this sits in T0/T1.
+(function(){var done=0;function load(){if(done)return;done=1;['js/atom-ref-data.js?v=1','js/logo-sting.js?v=1'].forEach(function(u){if(window.AtomRef&&/atom-ref/.test(u))return;var sc=document.createElement('script');sc.src=u;sc.async=false;document.head.appendChild(sc);});}
+  function go(e){var m=e.target&&e.target.closest&&e.target.closest('.q-head button,.fc-card,[data-zoom="dad"]');if(m)load();}
+  document.addEventListener('pointerdown',go,true);load();
+  // clean atom -> Ed's flavours, in the picture: saturation and glow ride --atom-r (phi rungs; 1 when no ramp has run)
+  (function(){var F=(1+Math.sqrt(5))/2,q=function(n){return +Math.pow(F,n).toFixed(4);},st=document.createElement('style');
+    st.textContent='.dmz-fig .dmz-art{filter:saturate(calc('+q(-1)+' + '+q(-2)+' * var(--atom-r,1))) brightness(calc('+(1-q(-4)).toFixed(4)+' + '+q(-4)+' * var(--atom-r,1))) drop-shadow(0 0 calc(var(--atom-r,1) * '+q(2)+'px) rgba(10,242,255,'+q(-2)+'))}';
+    document.head.appendChild(st);})();
+  // the zoom picture follows the sound's pure-to-flavoured ramp: --atom-r (0 = clean atom, 1 = fully modulated) on the zoom figure, per frame while the ramp runs
+  addEventListener('atomramp',function(e){var R=e.detail,fig=document.querySelector('.dmz-fig');if(!fig)return;(function f(){var r=R.r();fig.style.setProperty('--atom-r',r);if(performance.now()<R.t0+R.dur)requestAnimationFrame(f);})();});})();

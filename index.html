@@ -1073,7 +1073,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 (function(){var b=document.querySelector(".q-head .dad-zoom"),i=b&&b.querySelector(".dad-mark");if(!b||!i)return;var st=0,q=[];
 function js(u,cb){var s=document.createElement("script");s.src=u;s.async=false;s.onload=s.onerror=cb;document.head.appendChild(s);}
 function heavy(cb){if(cb)q.push(cb);if(window.LogoZoom){q.splice(0).forEach(function(f){f();});return;}if(st)return;st=1;
-  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=15",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
+  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=16",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
 function anim(){if(window.EqLOD)return;var h=i.getAttribute("data-head-src");if(h&&i.src.indexOf(h)<0){var im=new Image();im.onload=function(){i.src=h;};im.src=h;}}
 b.addEventListener("click",function(e){if(window.LogoZoom)return;e.preventDefault();e.stopPropagation();heavy(function(){LogoZoom.open("dad");});});
 if(window.LoadTiers){LoadTiers.add(3,function(){anim();heavy();LoadTiers.prefetch(i.getAttribute("data-zoom-src"),{id:"dad-mark"});if(i.getAttribute("data-zoom-stage"))LoadTiers.prefetch(i.getAttribute("data-zoom-stage"),{id:"dad-mark"});LoadTiers.script("js/eq-physics.js?v=3",3,{id:"dad-mark"});},"dad mark heavy",{id:"dad-mark",last:true});}
