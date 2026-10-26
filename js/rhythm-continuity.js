@@ -212,7 +212,7 @@
   function later(why) { if (AU.wait) return; AU.wait = setTimeout(function () { AU.wait = 0; attempt(why); }, TAP * MS); }   // one tap-rung beat first
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
     hook(); if (!wanted() || !AU.ctx || (done() && !AU.down)) return;
-    var now = Date.now(); if (now - AU.g < IP * MS) return; AU.g = now;           // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
+    var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift           // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
     note('gesture ' + e.type + ': ' + st()); if (st() === 'closed') rebuild('gesture, closed');
     var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (er) {} playEl();
     var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck) rebuild('gesture, still stuck after the ladder'); }   // a plain resume first; rebuild only if that fails too
@@ -221,7 +221,7 @@
     clearTimeout(AU.t); AU.t = 0; setTimeout(function () { attempt('gesture'); }, 0);
   }
   ['pointerdown', 'pointerup', 'touchend', 'keydown'].forEach(function (n) { doc.addEventListener(n, function (e) {   // iPhone unlock (S-0017): touch on lift, mouse on press, keys
-    if (e.type === 'pointerdown' && e.pointerType !== 'mouse') return; if (e.type === 'pointerup' && e.pointerType === 'mouse') return; gesture(e); }, true); });
+    if (e.type === 'pointerup' && e.pointerType === 'mouse') return; gesture(e); }, true); });   // touch pointerdown kept as a try too (df8d082 behaviour): a touch that scrolls #home-main ends in pointercancel/touchcancel, never a lift
   // the one gentle button: fixed just under the header (measured), palette colours, reader text size; the DJ's pulse rests while it shows
   function showBack() {
     if (AU.btn) return; var b = doc.createElement('button'); b.type = 'button'; b.className = 'sound-back'; b.textContent = 'tap to bring the sound back';
