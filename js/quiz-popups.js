@@ -22,7 +22,7 @@
   var T=[
     // '.qh-logo' (Rebella) pop-up removed (Danny t701u 25 Oct): the logo is now a button that opens the enlarged view (js/logo-zoom.js)
     ['#beacon','Rebella status',function(){var b=$('beacon');return kv([['state',beacon().toUpperCase()],['detail',(b&&b.title)||''],['response',latency()],['device',online()?'online':'offline']])+
-      '<p class="qp-note">The page checks Rebella on load and every 60 s.</p><button type="button" class="qp-btn" data-qp-act="recheck">&#x21bb; Check again</button>';}],
+      '<p class="qp-note">The page checks Rebella on load, then again on a drifting &phi;-rung timer (moon and day pumps), pauses while the tab is hidden, and checks again as soon as you come back.</p><button type="button" class="qp-btn" data-qp-act="recheck">&#x21bb; Check again</button>';}],
     ['#tstat','Terminal status',function(){var ts=window.TermStatus,ph=ts&&ts.phase?ts.phase():'',live=ts&&ts.live?ts.live():online();
       return '<div class="qp-term">'+(live?'status: <span class="r">live</span>':'status: <span class="m">away :(</span>')+'\nphase:  '+esc(ph||'n/a')+'\nrebella '+esc(beacon())+' &middot; '+esc(latency())+'\nlink    '+esc(online()?'ok':'off')+'\ndevice  '+(online()?'online':'offline')+'\ntime    '+esc(awst(null,true))+'</div>'+
         '<p class="qp-note">Live means the device is online and the Rebella check isn&rsquo;t down.</p>';}],

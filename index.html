@@ -487,7 +487,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/command-centre.css?v=7d03a9b6">
 <link rel="stylesheet" href="css/command-centre-quiz.css?v=31523da4">
 <link rel="stylesheet" href="css/dad-dj-quiz.css?v=ef59eefe">
-<link rel="stylesheet" href="css/quiz-dad-head.css?v=logodown1"><!-- Dad's palette (Danny 24 Oct 08:38 AWST: the questionnaire is from Dad, so it always uses his palette) -->
+<link rel="stylesheet" href="css/quiz-dad-head.css?v=livepill1"><!-- Dad's palette (Danny 24 Oct 08:38 AWST: the questionnaire is from Dad, so it always uses his palette) -->
 <link rel="stylesheet" href="css/quiz-qcard-compact.css?v=markbar"><!-- Questions for Bonnie row at half height (Danny 13:00 AWST 24 Oct, t623u) -->
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
@@ -801,22 +801,45 @@ body.paused .home-code::before{animation-play-state:paused}
     }).catch(function(){use(null);});}catch(e){use(null);}
   })();
 
-  // ---- REBELLA status beacon: reads the live Rebella home page (same origin), on load, every 60 s, and on tap ----
+  // ---- REBELLA status beacon (Danny 13:44 AWST 26 Oct: the top-right LIVE pill must truthfully show whether Rebella is live) ----
+  // LIVE (teal) only after a check that got Rebella's own page back (HTTP ok AND its <title> names Rebella, read from the first
+  // 2 KiB with a Range request); CHECKING (amber) while a check is out; DOWN (red) on HTTP error, wrong page, timeout or this
+  // device offline. Checks on load, then every PHI^k s with k = 6 nudged by the moon and day pumps (RatioPump feeds,
+  // k 5.4..6.6 = 13..24 s, drifting, never a fixed beat; Danny 13:47), paused while hidden, at once when the tab comes back,
+  // on tap, on bfcache restore and on online/offline. One request in flight at most. Title + aria carry the last-checked time; a tap also shows it in the pill for PHI^4 s.
+  // Preview: ?rebella=down forces DOWN, ?rebella=checking holds CHECKING.
   (function(){
-    var b=$('beacon'),st=b.querySelector('.bs'),force=(qs.get('rebella')||'').toLowerCase(),busy=false;
-    function stamp(){try{return new Date().toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',timeZone:'Australia/Perth'}).toUpperCase()+' AWST';}catch(e){return new Date().toLocaleTimeString();}}
-    function set(state,label,note){window.SIM_BEACON={state:state,label:label};b.className='beacon '+state;st.textContent=label;var t='Rebella '+label.toLowerCase()+(note?' ('+note+')':'');b.title=t;b.setAttribute('aria-label',t+'. Tap to check again.');}
-    function check(){
-      if(busy)return;busy=true;var t0=Date.now(),slow=setTimeout(function(){set('chk','CHECKING','slow, still waiting');},3000);
-      set('chk','CHECKING','checking now');
-      var done=function(ok,why){clearTimeout(slow);busy=false;var when='Checked '+stamp();if(window.MLOG_READY)MLOG.log('link: rebella '+(ok?'up '+(Date.now()-t0)+'ms':'down'+(why?' ('+why+')':'')));if(ok)set('live','LIVE',when);else set('down','DOWN',when+(why?', '+why:''));};
-      if(force==='down'){setTimeout(function(){done(false,'preview: forced down');},400);return;}
-      var ctl=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort();},8000);
-      try{fetch('https://edgerequals.github.io/rebella/',{cache:'no-store',signal:ctl?ctl.signal:undefined}).then(function(r){clearTimeout(to);done(r.ok,r.ok?'':'HTTP '+r.status);}).catch(function(){clearTimeout(to);done(false,'no response');});}
+    var b=$('beacon'),st=b.querySelector('.bs'),force=(qs.get('rebella')||'').toLowerCase(),busy=false,last=null,peekT=0;
+    var PHI=(1+Math.sqrt(5))/2,IP=1/PHI,MS=1e3,HEAD=2048-1,nextT=0;   // phi; unit: ms/s; unit: the first 2 KiB holds <title> (smallest fetch that proves it is Rebella; HEAD cannot)
+    function stamp(d){try{return d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',timeZone:'Australia/Perth'}).toUpperCase()+' AWST';}catch(e){return d.toLocaleTimeString();}}
+    function set(state,label,note){window.SIM_BEACON={state:state,label:label,checked:last?last.getTime():null};b.classList.remove('live','chk','down');b.classList.add(state);st.textContent=label;
+      var t='Rebella '+(state==='live'?'is live':state==='down'?'is down':'status: checking')+(note?' ('+note+')':'');b.title=t;b.setAttribute('aria-label',t+'. Tap to check again.');}
+    function check(peek){
+      if(busy)return;busy=true;var t0=Date.now();
+      set('chk','CHECKING','checking now'+(last?', last checked '+stamp(last):''));
+      var fin=false,done=function(ok,why){if(fin)return;fin=true;busy=false;last=new Date();var ms=Date.now()-t0,when='checked '+stamp(last)+(ok?', '+ms+' ms':'');
+        if(window.MLOG_READY)MLOG.log('link: rebella '+(ok?'up '+ms+'ms':'down'+(why?' ('+why+')':'')));
+        if(ok)set('live','LIVE',when);else set('down','DOWN',when+(why?', '+why:''));
+        plan();if(peek){clearTimeout(peekT);st.textContent=(ok?'LIVE':'DOWN')+' \u00B7 '+stamp(last).replace(' AWST','');peekT=setTimeout(function(){if(window.SIM_BEACON)st.textContent=window.SIM_BEACON.label;},Math.pow(PHI,4)*MS);}};
+      if(force==='checking')return;   // preview: hold CHECKING
+      if(force==='down'){setTimeout(function(){done(false,'preview: forced down');},Math.pow(IP,2)*MS);return;}
+      if(navigator.onLine===false){done(false,'this device is offline');return;}
+      var ctl=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort();done(false,'timed out');},Math.pow(PHI,4)*MS);   // phi: 6.9 s timeout
+      try{fetch('https://edgerequals.github.io/rebella/',{cache:'no-store',headers:{Range:'bytes=0-'+HEAD},signal:ctl?ctl.signal:undefined})
+        .then(function(r){if(!r.ok){clearTimeout(to);done(false,'HTTP '+r.status);return;}return r.text().then(function(t){clearTimeout(to);
+          if(/<title>[^<]*Rebella/i.test(t))done(true);else done(false,'not the Rebella page');});})
+        .catch(function(){clearTimeout(to);done(false,'no response');});}
       catch(e){clearTimeout(to);done(false,'no response');}
     }
-    b.addEventListener('click',check);
-    check();setInterval(function(){if(!document.hidden)check();},60000);
+    function gap(){var f={};try{f=window.RatioPump?RatioPump.feeds():{};}catch(e){}var m=f.moon!=null?f.moon:1/2,d=f.day!=null?f.day:1/2;   // unit: feeds are 0..1, mid = 1/2
+      return Math.pow(PHI,6+(m-1/2)*IP+(d-1/2)*IP)*MS;}   // phi: rung 6 (17.9 s) +- PHI^-1 rung from each pump
+    function plan(){clearTimeout(nextT);if(!document.hidden)nextT=setTimeout(function(){check();},gap());}
+    function stale(){return !last||Date.now()-last.getTime()>=gap();}
+    b.addEventListener('click',function(){check(true);});
+    addEventListener('online',function(){check();});addEventListener('offline',function(){check();});
+    addEventListener('pageshow',function(e){if(e.persisted)check();});
+    document.addEventListener('visibilitychange',function(){if(document.hidden)clearTimeout(nextT);else check();});
+    check();
   })();
 
   // ---- Footer status lights: real page state (STEP, DONE, SKY, LINK) + readout ----
@@ -1037,7 +1060,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
 <script>addEventListener("DOMContentLoaded",function(){ if(window.FootLine) FootLine.init(document.getElementById("footLine"), {tz:"Australia/Perth", rate:2, bounce:true}); });</script>
-<script src="js/quiz-popups.js?v=6" defer></script>
+<script src="js/quiz-popups.js?v=7" defer></script>
 <script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->
 <!-- Rebella header logo reduced state: faint slow glow only, tier 3 (Danny t744u 25 Oct) --><script>/* Dad's mark, light first (Danny 11:54 AWST 26 Oct): tier 0 = the static inline mark above (no JS, emerald bars at once).
    Its heavy parts load LAST: tier 3 (after tier 2 has drained, idle) swaps in the animated header mark and loads phi-pumps + js/dad-mark-zoom.js

@@ -181,7 +181,7 @@ textarea:focus-visible{border-color:#0AF2FF;outline-color:#0AF2FF!important}
 @media(prefers-reduced-motion:reduce){.big,#go.big,.btnrow .btn.send,.dad-dj .dj-play[aria-pressed="true"]{animation:none}}
 /* keep the accent count low: the status beacon, terminal cursor and tty dots stay dim blue (status, not the light source);
    the faint code drift inside the panels is toned down to match the darker panel */
-.beacon.live,.q-head .beacon.live{--bc:#2B6A92}.beacon.live i,.q-head .beacon.live i{box-shadow:none}
+.beacon.live,.q-head .beacon.live{--bc:#2A8FA3}.beacon.live i,.q-head .beacon.live i{box-shadow:none}   /* livepill (Danny 13:44 AWST 26 Oct): LIVE reads teal (Dad's teal-hi), CHECKING amber, DOWN red */
 .ttybar i:nth-child(3){background:#2B6A92;box-shadow:none}
 .tin .blk{background:#85A6BB;box-shadow:none}
 #start.panel::before,#quiz.panel::before,#summary.panel::before{opacity:.4}
