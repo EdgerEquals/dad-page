@@ -60,9 +60,34 @@
   // knobs: each group is its ladder; the checked chip is the live value + the hand nudge, the live value's chip carries a marker
   // (.is-live), and both move on their own as the sky, time and weather move (CSS glides the change). Tapping the live chip clears the nudge.
   var GROUPS = [['mood', 'Mood (Simmie\u2019s tag)'], ['urgency', 'Urgency'], ['sky', 'Sky'], ['time', 'Time']], chipEls = {};
+  // RANDOM + MOTION (Danny 15:14 AWST 26 Oct): a labelled section button (🎲 pumps = a new pump mix; hold = default), a tiny 🎲 on every
+  // knob (re-rolls only that knob: its rung and its coupling weights, gliding in), and a needle under each knob that rides its live,
+  // pump-moved position between the chips (CSS glides it), so the knobs are seen moving while the panel is open.
+  function rbtn(cls, label, title, on, hold) {
+    var b = document.createElement('button'), held = 0, long = false; b.type = 'button'; b.className = cls; b.title = title; b.setAttribute('aria-label', title);
+    b.innerHTML = '<span aria-hidden="true">&#127922;</span>' + (label ? ' ' + label : '');
+    b.addEventListener('pointerdown', function () { long = false; clearTimeout(held); if (hold) held = setTimeout(function () { long = true; hold(); }, IPH * 1e3); });   // phi: hold PHI^-1 s; unit: ms per s
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { b.addEventListener(n, function () { clearTimeout(held); }); });
+    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); if (long) { long = false; return; } on(); b.classList.remove('is-mixing'); void b.offsetWidth; b.classList.add('is-mixing'); });
+    return b;
+  }
+  function needle(fs) { var n = document.createElement('i'); n.className = 'dj-needle'; n.setAttribute('aria-hidden', 'true'); fs.appendChild(n); return n; }
+  function place(n, labs, x) {                                            // x = fractional rung: between chip centres, on the chip's row
+    if (!n || !labs.length) return; var i = clamp(Math.floor(x), 0, labs.length - 1), j = Math.min(i + 1, labs.length - 1), f = clamp(x - i, 0, 1), a = labs[i], b = labs[j];
+    if (b.offsetTop !== a.offsetTop) { b = a; f = 0; }
+    var cx = a.offsetLeft + a.offsetWidth / 2 + f * (b.offsetLeft + b.offsetWidth / 2 - a.offsetLeft - a.offsetWidth / 2);
+    n.style.transform = 'translate(' + cx.toFixed(1) + 'px,' + (a.offsetTop + a.offsetHeight).toFixed(1) + 'px)';
+  }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  var IPH = 1 / PHI, needles = {}, wob = {};
   function buildChips() {
+    var hd = document.createElement('div'); hd.className = 'dj-fx-hd';
+    var h = document.createElement('span'); h.textContent = 'pumps'; hd.appendChild(h);
+    hd.appendChild(rbtn('dj-fxr', 'pumps', 'Random pump mix (hold: default mix)', function () { K.nextMix(); }, function () { K.defMix(); }));
+    chips.appendChild(hd);
     GROUPS.forEach(function (gp) {
       var k = gp[0], fs = document.createElement('fieldset'), lg = document.createElement('legend'); fs.className = 'dj-grp'; lg.textContent = gp[1]; fs.appendChild(lg);
+      fs.appendChild(rbtn('dj-kr', '', 'Random ' + gp[1].split(' ')[0].toLowerCase(), function () { K.reroll(k); }));
       chipEls[k] = [];
       LADDER[k].forEach(function (v) {
         var l = document.createElement('label'), i = document.createElement('input'), s = document.createElement('span');
@@ -70,7 +95,7 @@
         i.addEventListener('change', function () { if (!i.checked) return; setTo(k, v); var c = compute(); K.idle(c); paint(c); save(); });
         l.appendChild(i); l.appendChild(s); fs.appendChild(l); chipEls[k].push([v, i, l]);
       });
-      chips.appendChild(fs);
+      needles[k] = needle(fs); chips.appendChild(fs);
     });
     syncChips();
   }
@@ -78,7 +103,17 @@
     GROUPS.forEach(function (gp) { var k = gp[0], e = eff(k), lv = liveOf(k); (chipEls[k] || []).forEach(function (x) {
       if (x[1].checked !== (x[0] === e)) x[1].checked = x[0] === e; x[2].classList.toggle('is-live', x[0] === lv);
       x[2].title = x[0] === lv ? 'live now' + (nudge[k] ? '' : ' (no nudge)') : ''; }); });
+    motion();
   }
+  function motion() {                                                     // needle = effective rung + the pump tree's sway (+ a little back from the effects)
+    var P = window.PhiPumps, fx = window.DadAutoDJ && DadAutoDJ.fx, back = fx && fx.back ? fx.back() : 0;
+    GROUPS.forEach(function (gp, gi) { var k = gp[0], L = LADDER[k], e = eff(k), i = L.indexOf(e); if (i < 0) return;
+      if (!wob[k] && P) wob[k] = P.node('djknob:' + k, SPB - 1, PHI * PHI, IPH, P.page, gi);   // phi: periods PHI^2.6..PHI^3.6 s, depth PHI^-1 (rule 9): visibly on the fly
+      var sw = 0; try { sw = wob[k] ? (wob[k].out() - 1) * PHI : 0; } catch (er) {}
+      place(needles[k], (chipEls[k] || []).map(function (x) { return x[2]; }), clamp(i + sw + back * IPH * IPH, 0, L.length - 1)); });
+  }
+  var SPB = 4;                                                            // unit: beats per bar (as the start engine)
+  setInterval(function () { if (chips && !document.hidden && chips.offsetParent) motion(); }, IPH * 1e3);   // phi: needles move every PHI^-1 s while visible; unit: ms per s
   function liveLine() {                                                   // the live sky the knobs sit on (js/rhythm-continuity.js sky clocks)
     var R = window.RhythmContinuity, P = window.PhiPumps; if (!R) return '';
     var z = R.sun(), pct = 100, deg = 360;                                // unit: percent; degrees per turn

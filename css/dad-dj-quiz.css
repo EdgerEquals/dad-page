@@ -46,3 +46,10 @@
 .dad-dj .dj-fxr.is-mixing{animation:djfxr .618s ease}
 @keyframes djfxr{0%{box-shadow:0 0 0 0 rgba(242,165,65,.7)}100%{box-shadow:0 0 0 8px rgba(242,165,65,0)}}
 @media (prefers-reduced-motion:reduce){.dad-dj .dj-fxr.is-mixing{animation:none}}
+/* per-knob random + live needles (Danny 15:14 AWST 26 Oct): a tiny die on every knob, a needle gliding under the chips to the live position */
+.dad-dj .dj-grp{position:relative;padding-bottom:5px}
+.dad-dj .dj-kr{order:-1;flex:none;display:inline-grid;place-items:center;width:24px;height:24px;margin-right:2px;padding:0;line-height:1;border-radius:50%;border:1px solid rgba(214,236,239,.35);background:transparent;color:#D6ECEF;font-size:.62rem;cursor:pointer;-webkit-touch-callout:none;user-select:none}
+.dad-dj .dj-kr:focus-visible{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-kr.is-mixing{animation:djfxr .618s ease}
+.dad-dj .dj-needle{position:absolute;left:-4px;top:0;width:10px;height:3px;border-radius:2px;background:#F2A541;box-shadow:0 0 6px rgba(242,165,65,.8);pointer-events:none;transition:transform .618s cubic-bezier(.38,0,.38,1)}
+@media (prefers-reduced-motion:reduce){.dad-dj .dj-needle{transition:none}.dad-dj .dj-kr.is-mixing{animation:none}}

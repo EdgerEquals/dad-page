@@ -67,6 +67,14 @@
     g.donor = d < drums.length ? drums[d] : null; g.shift = 2 * Math.floor(u() * SPB); g.route = Math.floor(u() * (2 + 1)); g.flip = u();   // unit: even steps; three routes
     return g;
   }
+  // PER-KNOB RE-ROLL (Danny 15:14 AWST 26 Oct): each pump knob owns a seed that re-rolls its column of coupling weights (how that pump
+  // feeds fade, tempo, volume, length) on top of the mix genome; saved with the DJ snapshot. KP maps a knob to its pump.
+  var KP = { time: 'tp', sky: 'wp', urgency: 'up', mood: 'mp' }, kseed = {};
+  function withKnobs(g) {
+    Object.keys(kseed).forEach(function (k) { var j = PK.indexOf(KP[k]), sd = kseed[k]; if (j < 0 || sd == null) return;
+      g.W = g.W.map(function (row, i) { var r = row.slice(); r[j] = Math.pow(PHI, 2 * frac((sd * PAR.length + i) * IPH) - 1); return r; }); });   // phi: weight PHI^-1..PHI^1
+    return g;
+  }
   M = genome(null);
   function sOf(p, i) { var w = M.W[i]; return w[0] * p.tp + w[1] * p.wp + w[2] * p.up + w[3] * p.mp; }
   function compute(p) {
@@ -136,7 +144,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=3';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=4';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -146,7 +154,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=2', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=3', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -296,7 +304,7 @@
     var horizon = ctx.currentTime + Math.pow(PHI, document.hidden ? 3 : -4);   // phi: look PHI^-4 s ahead, PHI^3 s while hidden (throttled timers)
     tracks.forEach(function (tr) {
       if (tr.next < ctx.currentTime - 0.5) tr.next = ctx.currentTime + 0.02;   // resumed after being hidden
-      while (tr.next < horizon && !tr.dead) { playStep(tr, tr.next); tr.next += stepLen(tr); tr.step++; }
+      while (tr.next < horizon && !tr.dead) { if (tr.step % 2 === 0) tr.ga = [tr.next, tr.step]; playStep(tr, tr.next); tr.next += stepLen(tr); tr.step++; }   // ga: audio-clock anchor on an even (unswung) step
     });
   }
   function curve(up) { var n = 64, a = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i / (n - 1); a[i] = Math.max(0.0001, up ? Math.sin(x * Math.PI / 2) : Math.cos(x * Math.PI / 2)); } return a; }
@@ -374,14 +382,22 @@
     var check = function () { if (playing && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
     if (p && p.then) p.then(check, check); else check();
   }
-  function remix(seed) {                                                  // a new mix glides in over a PHI^3 s crossfade (rule 6), never a cut
-    mixSeed = seed; M = genome(seed); if (seed != null) genreFlip += Math.floor(M.flip * SPB);
+  function glide() {                                                     // a change glides in over a PHI^3 s crossfade (rule 6), never a cut
     var c = compute();
     if (playing && ctx) { var tr = startTrack(c, Math.pow(PHI, 3)); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
     else cur = c;
     paint(c); save();
+  }
+  function remix(seed) {
+    if (seed == null) Object.keys(kseed).forEach(function (k) { delete kseed[k]; });   // the default mix also clears the knob seeds
+    mixSeed = seed; M = withKnobs(genome(seed)); if (seed != null) genreFlip += Math.floor(M.flip * SPB);
+    glide();
     if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing');
-      mixBtn.setAttribute('aria-label', 'New DJ mix (now ' + mixName() + '; hold for the default mix)'); }
+      mixBtn.setAttribute('aria-label', 'Random pump mix (now ' + mixName() + '; hold for the default mix)'); }
+  }
+  function reroll(k) {                                                    // one knob: a random rung (nudge) + a fresh seed for its coupling weights
+    var L = LADDER[k]; if (!L) return; var sd = Math.floor(Math.random() * SEEDS), li = L.indexOf(liveOf(k)); if (li < 0) li = L.indexOf('cloud');
+    nudge[k] = Math.floor(frac(sd * IPH) * L.length) - li; kseed[k] = sd; M = withKnobs(genome(mixSeed)); glide(); syncChips();
   }
   function mixName() { return mixSeed == null ? 'default mix' : 'mix ' + mixSeed.toString(36).toUpperCase(); }   // unit: base-36 short name
   function nextMix() { remix(mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1); }
@@ -406,12 +422,13 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef }; }
+  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; }
   function catchUp(e, s, mode) {
     if (mode === 'return') { wake(); return; }
     if (!s) return;
     if (s.k > 0 && isFinite(s.k)) kRef = s.k;                             // learned level per unit of nominal volume (a calibration, kept)
-    if (s.mix != null && isFinite(s.mix)) { mixSeed = s.mix; M = genome(mixSeed); }   // his mix choice carries through reloads and the daily restart
+    if (s.ks) Object.keys(KP).forEach(function (k) { if (isFinite(s.ks[k])) kseed[k] = s.ks[k]; });   // knob seeds are choices: they carry like the mix
+    if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
     if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = s.T0;
@@ -511,7 +528,8 @@
       b.title = 'Export last minute as MIDI';
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre); }).catch(function () {}); });
   }
-  window.DadAutoDJ = { _kit: { extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
+  window.DadAutoDJ = { _kit: { grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
