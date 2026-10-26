@@ -510,6 +510,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <noscript><link rel="stylesheet" href="css/quiz-popups.css?v=1"><link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"></noscript>
 </head>
 <body>
+<style>/* phi: left PHI^-4, size PHI rem, rise PHI^3 s, sqrt(5) builds PHI, 233 Fibonacci lean; unit: 1turn/8 nose up, 100%/50vh box, max z top layer */#rk1{display:none}@supports(width:calc(1px*sqrt(5))){#rk1{display:block;position:fixed;left:calc(100vw/var(--q));bottom:0;z-index:2147483647;font-size:calc(1rem*var(--p));line-height:1;pointer-events:none;--p:calc(1/2 + sqrt(5)/2);--q:calc(var(--p)*var(--p)*var(--p)*var(--p));animation:rk1 calc(1s*var(--p)*var(--p)*var(--p)) ease-in both}}@keyframes rk1{from{transform:translateY(100%) rotate(calc(1turn/233 - 1turn/8))}50%{transform:translate(calc(1vw*var(--p)),-50vh) rotate(calc(-1turn/8))}to{transform:translateY(calc(-100vh - 100%)) rotate(calc(-1turn/8 - 1turn/233))}}@media(prefers-reduced-motion:reduce){#rk1{display:none!important}}</style><i id="rk1" aria-hidden="true">&#x1F680;</i><!-- rocketfirst: the launcher paints with the page (inline keyframe, no JS); js/rocket-launch.js adopts it -->
 <video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture data-poster="media/space-loop-poster.webp?v=4" data-src-webm="media/space-loop.webm?v=4" data-src-mp4="media/space-loop.mp4?v=4" data-poster-land="media/space-loop-land-poster.webp?v=2" data-src-webm-land="media/space-loop-land.webm?v=2" data-src-mp4-land="media/space-loop-land.mp4?v=2"></video><div class="bgloop-still" aria-hidden="true"></div>
 <script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;/* landscape screens get the landscape render (Uranus and Saturn cross inside the frame; Danny 12:46), portrait the v3 loop */var lm=window.matchMedia&&matchMedia('(orientation: landscape)');function sfx(){return lm&&lm.matches?'-land':''}function pick(){v.poster=v.getAttribute('data-poster'+sfx());if(!v.getAttribute('data-on'))return;var t0=v.currentTime;while(v.firstChild)v.removeChild(v.firstChild);[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]+sfx());s.type=t[1];v.appendChild(s);});v.load();v.currentTime=t0;sync();}pick();if(lm&&lm.addEventListener)lm.addEventListener('change',pick);function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');v.preload='auto';pick();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:141.3});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -619,7 +620,7 @@ body.paused .home-code::before{animation-play-state:paused}
       for(i=0;i<4;i++)a.push({h:scrap(c[(i+2)%5]),m:'fall',s:40});
       a.push({h:'\uD83E\uDDF6',m:'float',s:44},{h:'\uD83E\uDDF6',m:'float',s:36},{h:'\u2702\uFE0F',m:'float',s:40},{h:'\uD83E\uDEA1',m:'float',s:32});return a;},
     cosmos:function(){var a=[];for(var i=0;i<9;i++)a.push({h:star(),m:"twinkle",s:16+(i%3)*8,o:.9});
-      a.push({h:'\u2728',m:'drift',s:24},{h:'\uD83E\uDE90',m:'drift',s:40,d:46},{h:'\uD83D\uDE80',m:'cross',s:40,d:15},{h:'\u2604\uFE0F',m:'cross',s:34,d:21,del:-9});return a;},
+      a.push({h:'\u2728',m:'drift',s:24},{h:'\uD83E\uDE90',m:'drift',s:40,d:46},{h:'\u2604\uFE0F',m:'cross',s:34,d:21,del:-9});return a;},
     history:function(){var a=[{map:1}];for(var i=0;i<6;i++)a.push({h:parch(),m:'drift',s:56,d:34});
       a.push({h:'\uD83E\uDDED',m:'spin',s:54,d:40},{h:'\uD83C\uDFDB\uFE0F',m:'float',s:34},{h:'\u23F3',m:'float',s:30});return a;},
     daily:function(){var a=[{h:clock(),m:'spin',s:70,d:60}];
@@ -640,7 +641,7 @@ body.paused .home-code::before{animation-play-state:paused}
     web:['\uD83D\uDCBB\uD83D\uDDB1\uFE0F\u2728','float'], music:['\uD83C\uDFB5\uD83C\uDFB6\uD83C\uDFB8','rise'], pop:['\uD83C\uDFA4\uD83D\uDCBF\u2728','bob'],
     classical:['\uD83C\uDFBB\uD83C\uDFBC\uD83C\uDFB9','rise'], ai:['\uD83E\uDD16\uD83D\uDCF1\uD83D\uDC9A','float'], teen:['\uD83C\uDF08\uD83D\uDCAD\uD83C\uDF1F','float'],
     ya:['\uD83D\uDCD6\u2728\uD83D\uDD8B\uFE0F','fall'], fire:['\uD83D\uDD25\u2728','rise'], ancient:['\uD83C\uDFFA\uD83E\uDDF6\uD83E\uDEA1','float'],
-    rights:['\u270A\uD83D\uDD4A\uFE0F\uD83D\uDC9C','rise'], australia:['\uD83E\uDD98\uD83C\uDF0F\uD83C\uDF05\uD83C\uDF3F','drift'], future:['\uD83D\uDE80\uD83D\uDD2E\uD83E\uDE90','cross']
+    rights:['\u270A\uD83D\uDD4A\uFE0F\uD83D\uDC9C','rise'], australia:['\uD83E\uDD98\uD83C\uDF0F\uD83C\uDF05\uD83C\uDF3F','drift'], future:['\uD83D\uDD2E\uD83E\uDE90','cross']
   };
   // Dark Dad tile surfaces: each option's pastel family maps to a dark Dad tone (sand text >= 9:1 on all)
   var DK={'#FCD5B5':'#3A2E22','#C6E9D2':'#123F47','#F8C8D5':'#2A363C','#B5E3E0':'#0F4A57','#FBE6A2':'#3B3320','#DCD0F2':'#1F3440'};
@@ -937,7 +938,7 @@ body.paused .home-code::before{animation-play-state:paused}
     if(reduce)return;
     var lanes={header:$('laneH'),footer:$('laneF')},row1=document.querySelector('.row1');
     var ANIMALS=[{e:'\uD83D\uDC0E',n:'horse',g:'trot'},{e:'\uD83D\uDC07',n:'rabbit',g:'hop'},{e:'\uD83D\uDC15',n:'dog',g:'collie'},{e:'\uD83D\uDC26',n:'bird',g:'fly'}];
-    var SPACE=['sat','rocket','comet','moon','cli'],CLI=['>_\u258D','$ ping rebella','[ OK ]','0101'];
+    var SPACE=['sat','comet','moon','cli'],CLI=['>_\u258D','$ ping rebella','[ OK ]','0101'];
     var aN=0,sN=0,satN=0,t0=Date.now(),lastA=-1,lastS=-1,dir=1;
     function W(l){return l.clientWidth||300;}
     function el(lane,h,cls){var d=document.createElement('span');d.className='it '+(cls||'');d.innerHTML=h;lane.appendChild(d);return d;}
@@ -1056,6 +1057,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
+<script>LoadTiers.script("js/rocket-launch.js?v=1",2,{id:"rocket"});</script><!-- rocketfirst: adopts the inline #rk1 launcher for later launches -->
 <script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=orbitvis1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=djpersist1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=sceneanchors1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=sceneanchors1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
