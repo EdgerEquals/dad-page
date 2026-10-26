@@ -15,7 +15,7 @@
   function C() { return ctx || (ctx = K.ctx); }
   // ---------- lead voices (unchanged from the single-file engine) ----------
   var MORE = {
-    stab:  function (tr, f, t, d, v) { voice(tr, K.wv ? K.wv(tr, tr.g.wave) : tr.g.wave, f, t, d, v * 0.07, { a: 0.004, hold: d * 0.5, rel: 0.06, cut: tr.g.cut, det: 7, rev: 0.25 }); },
+    stab:  function (tr, f, t, d, v) { voice(tr, K.wv ? K.wv(tr, tr.g.wave, t) : tr.g.wave, f, t, d, v * 0.07, { a: 0.004, hold: d * 0.5, rel: 0.06, cut: tr.g.cut, det: 7, rev: 0.25 }); },
     ep:    function (tr, f, t, d, v) {                                  // FM e-piano: ratio 2, index PHI^(2s-1) x f falling to PHI^-(4+(1-s)) x f (sophistication dial)
       var so = tr.s == null ? IPH : tr.s;
       voice(tr, 'sine', f, t, d, v * Math.pow(PHI, -SPB - IPH), { a: Math.pow(PHI, -Math.pow(PHI, 4) - SPB - IPH), hold: d * IPH, rel: IPH * IPH, cut: FHI * IPH * IPH, rev: IPH * IPH, fm: { r: 2, i0: Math.pow(PHI, 2 * so - 1), i1: Math.pow(PHI, -(SPB + 1 - so)), tau: Math.pow(PHI, -3) } }); },   // phi: index rungs; unit: 2:1 FM ratio (octave)
@@ -153,7 +153,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
       place(needles[k], (chipEls[k] || []).map(function (x) { return x[2]; }), clamp(i + sw + back * IPH * IPH, 0, L.length - 1)); });
   }
   var SPB = 4;                                                            // unit: beats per bar (as the start engine)
-  setInterval(function () { if (chips && !document.hidden && chips.offsetParent) motion(); }, IPH * 1e3);   // phi: needles move every PHI^-1 s while visible; unit: ms per s
+  (K.every || setInterval)(function () { if (chips && !document.hidden && chips.offsetParent) motion(); }, IPH * 1e3);   // phi: needles move every PHI^-1 s while visible; unit: ms per s
   function liveLine() {                                                   // the live sky the knobs sit on (js/rhythm-continuity.js sky clocks)
     var R = window.RhythmContinuity, P = window.PhiPumps; if (!R) return '';
     var z = R.sun(), pct = 100, deg = 360;                                // unit: percent; degrees per turn

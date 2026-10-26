@@ -196,13 +196,14 @@
     setTimeout(function () { go({ at: td, fade: fade, swap: true, style: S.n }); }, Math.max(0, (td - c.currentTime - Math.pow(PHI, -2)) * MS));   // phi: hand over PHI^-2 s before the drop
     setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
     // CC log for the export: brightness (LP up, HP down), flanger wet, wash, sampled on the sixteenth grid from now to the tail
-    var R = K.recCC, span = Math.log(FHI / FLO); clearInterval(txLog);
+    var R = K.recCC, span = Math.log(FHI / FLO); if (txLog && txLog.fn && K.never) K.never(txLog); else clearInterval(txLog);
     var q = '';
     function ccNow() { var x = (Math.log(lp.frequency.value / FLO) - Math.log(hp.frequency.value / FLO)) / span, v = [x, flW.gain.value * PHI, wSend.gain.value * PHI];   // unit: GM brightness, chorus/flanger depth, reverb send
       R(74, v[0]); R(93, v[1]); R(91, v[2]); var k = v.map(function (y) { return Math.round(clamp(y, 0, 1) * 127); }).join(), same = k === q; q = k; return same; }   // unit: 7-bit CC steps (settled = no step changed)
     // MIDI Bot review: the values before the sweep are logged at the call, and logging runs on past the hand-back (TXu) until the knobs
     // have settled again (a beat after apply() takes over), so the file ends at the resting brightness and sends, not mid-tail
-    if (R) { ccNow(); txLog = setInterval(function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) clearInterval(txLog); }, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
+    if (R) { ccNow(); var stopLog = function () { if (K.never) K.never(txLog); else clearInterval(txLog); }, logIt = function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) stopLog(); };
+      txLog = K.every ? K.every(logIt, d16 * MS) : setInterval(logIt, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
     } finally { wt = wt0; }
     sync(); return true;
   }
@@ -279,8 +280,9 @@
     reset: function () { FX.forEach(function (f) { nudge[f.k] = 0; }); apply(); } });   // daily restart: knobs back to live, the effects seed stays
   // ---------- in ----------
   apply(); K.fx({ inp: inp, out: out });                                  // the start engine crossfades dry -> this chain over PHI^2 s
-  setInterval(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
-  setInterval(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
+  var EV = K.every || setInterval;                                        // phases on the one clock (core), else timers
+  EV(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
+  EV(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
   build();
   D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },

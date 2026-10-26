@@ -144,7 +144,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=10';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=11';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -248,18 +248,19 @@
   // rarely, rarer still as sophistication s rises and energy u falls. Each note draws against it on the golden sequence (no rng use);
   // a note that misses takes the organic voice: filtered, detuned saw with a breath transient (js/dj-extras.js reed) or a plucked one.
   var chipP = null;
-  function chip(tr) {
+  function pumpAt(at) { var P = window.PhiPumps; return (P && P.now ? P.now() : ctx ? ctx.currentTime : 0) + (at != null && ctx ? at - ctx.currentTime : 0); }   // pump clock at audio time at (note time, not schedule time)
+  function chip(tr, at) {                                                 // at: the note's audio time, when given
     var P = window.PhiPumps; if (!chipP) chipP = P && P.node ? P.node('dj:chip', 2, PHI, IPH, P.page, 7) : { modes: function (t) { return Math.sin(2 * Math.PI * t / Math.pow(PHI, PHI)); } };   // phi: period PHI^PHI s
-    tr = tr && tr.tk || tr; var now = P && P.now ? P.now() : ctx ? ctx.currentTime : 0, x = (1 + clamp(chipP.modes(now), -1, 1)) / 2;
+    tr = tr && tr.tk || tr; var now = pumpAt(at), x = (1 + clamp(chipP.modes(now), -1, 1)) / 2;
     var s = tr && tr.s != null ? tr.s : IPH, u = tr && tr.u != null ? tr.u : IPH; return Math.pow(x, Math.pow(PHI, PHI + s + 1 - u));
   }
-  function chipNote(tr) { tr = tr && tr.tk || tr; return frac(((tr.step || 0) + 1) * IPH + (tr.seed | 0) * IPH * IPH) < chip(tr); }   // phi: golden-sequence draw
-  function wv(tr, w) { return w === 'square' && !chipNote(tr) ? 'sawtooth' : w; }   // square waves only while the chip share lets them through
+  function chipNote(tr, at) { tr = tr && tr.tk || tr; return frac(((tr.step || 0) + 1) * IPH + (tr.seed | 0) * IPH * IPH) < chip(tr, at); }   // phi: golden-sequence draw
+  function wv(tr, w, at) { return w === 'square' && !chipNote(tr, at) ? 'sawtooth' : w; }   // square waves only while the chip share lets them through
   var INST = {
-    pad:   function (tr, f, t, d, v) { var w0 = wv(tr, tr.g.wave || 'sine'); voice(tr, pwave(w0, tr.s) || w0, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
-    pluck: function (tr, f, t, d, v) { voice(tr, wv(tr, tr.g.wave || 'triangle'), f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
+    pad:   function (tr, f, t, d, v) { var w0 = wv(tr, tr.g.wave || 'sine', t); voice(tr, pwave(w0, tr.s) || w0, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
+    pluck: function (tr, f, t, d, v) { voice(tr, wv(tr, tr.g.wave || 'triangle', t), f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
     bass:  function (tr, f, t, d, v) { if (tr.g.bwave === 'piano') return (INST.piano || INST.pluck)(tr, f, t, d, v * 1.2);
-                                       var bw = wv(tr, tr.g.bwave); voice(tr, bw, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * (bw === 'square' ? IPH : 0.8), rel: 0.08, cut: tr.g.cut * IPH * (bw !== tr.g.bwave ? IPH : 1) }); }   // phi: the organic bass a rung darker
+                                       var bw = wv(tr, tr.g.bwave, t); voice(tr, bw, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * (bw === 'square' ? IPH : 0.8), rel: 0.08, cut: tr.g.cut * IPH * (bw !== tr.g.bwave ? IPH : 1) }); }   // phi: the organic bass a rung darker
   };
   // ---------- a track: one generated piece (genre + BPM + seed) ----------
   // KEY TRAVEL (MIDI Bot transitions design #2; Danny 16:30 AWST 26 Oct: 'a gradient really ... on a dial', 'top of the dial can jump
@@ -305,9 +306,9 @@
     if (a <= bd) return lo + (1 - lo) * (1 - s2((a - pk) / (bd - pk)));
     return lo + (IPH - lo) * s2((a - bd) / (1 - bd));
   }
-  function ageOf(tr) { return clamp((Date.now() - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }
+  function ageOf(tr, t) { var w = Date.now() + (t != null && ctx ? (t - ctx.currentTime) * MS : 0); return clamp((w - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }   // at the note's audio time t when given (so the arc does not depend on when the clock scheduled it)
   function shape(tr, t, barLen) {                                         // once a bar: glide the layers to the arc
-    var a = ageOf(tr), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
+    var a = ageOf(tr, t), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
     tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e), t, tau);
     tr.L.pad.out.gain.setTargetAtTime(clamp(IPH * IPH + (1 - e) * PHI, 0, 1), t, tau);
   }
@@ -337,13 +338,13 @@
   var AXIS = [3, -3, 6], K332 = [0, 6, 12];                               // cite: axis substitutes (minor third, tritone); 3+3+2 eighths in sixteenths
   function playStep(tr, t) {
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
-    var a0 = ageOf(tr), secB = a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
+    var a0 = ageOf(tr, t), secB = a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
     if (s16 === 0 && secB !== tr.secB) { tr.secB = secB; tr.secBar = bar; }
     var deg = pr[Math.floor(bar / g.bars) % pr.length], barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
     if (first) tr.ax = peak && !tr.bridge && !tr.leaving && bar % 2 && tr.r() < IPH ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
-    var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
+    var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
     var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
     if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
     var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
@@ -352,7 +353,7 @@
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
       ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn)); });   // phi: strum spread PHI^-4 of a sixteenth
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
+    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
     var bn = root0 - 12;
@@ -363,7 +364,7 @@
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.sc, ln = lsc.length;
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
@@ -385,6 +386,17 @@
 
   // ---------- scheduler (look-ahead) ----------
   var tracks = [], sched = 0;
+  // ONE CLOCK (MIDI Bot pump-mapping sweep #1): a single timer every PHI^-6 s (inside the PHI^-4 s look-ahead) runs the scheduler and,
+  // as phases on it, every periodic job of the DJ (panel paint, loudness ref, beat LED, js/dj-fx.js knobs, rolls and CC log, needles).
+  var JOBS = [], clk = 0;
+  function every(fn, ms) { var j = { fn: fn, ms: ms, due: Date.now() + ms }; JOBS.push(j); if (!clk) clk = setInterval(oneClock, Math.pow(PHI, -6) * MS); return j; }   // phi: the clock period
+  function never(j) { if (j) j.off = true; }
+  function oneClock() {
+    var now = Date.now(); if (sched) tick();
+    for (var i = 0; i < JOBS.length; i++) { var j = JOBS[i]; if (j.off) { JOBS.splice(i--, 1); continue; } if (now >= j.due) { j.due = Math.max(j.due + j.ms, now); try { j.fn(); } catch (e) {} } }
+    while (LED.length && LED[0][0] <= now) { var x = LED.shift(); if (led) { if (x[1] < 0) led.classList.remove('on', 'on2'); else led.classList.add(x[1] ? 'on2' : 'on'); } }
+  }
+  var LED = [];                                                           // beat-LED flashes on the clock: [wall ms, 1 downbeat / 0 beat / -1 off]
   function tick() {
     if (!ctx) return;
     var horizon = ctx.currentTime + Math.pow(PHI, document.hidden ? 3 : -4);   // phi: look PHI^-4 s ahead, PHI^3 s while hidden (throttled timers)
@@ -434,7 +446,9 @@
   function nearRoot(tr, p) { var r = tr.root + pc(p - tr.root); return r - tr.root > 6 ? r - 12 : r; }   // unit: nearest within a half octave
   function voicePcs(tr, pcs) {                                            // each pitch class at the octave nearest the last chord's centre
     var ref = tr.lastCh && tr.lastCh.length ? tr.lastCh.reduce(function (a, b) { return a + b; }, 0) / tr.lastCh.length : tr.root + 7;   // unit: a fifth above the root
-    return (tr.lastCh = pcs.map(function (p) { var n = ref + pc(p - ref); return n - ref > 6 ? n - 12 : n; }).sort(function (a, b) { return a - b; }));   // unit: half octave
+    var q = pcs.length ? pcs.slice() : [pc(tr.root)]; while (q.length < 3) q.push(q[q.length % (pcs.length || 1)]);   // unit: a triad's 3 voices (a 1-2 tone pedal doubles its tones, so the parts that index ch[2] never read undefined)
+    var out = []; q.forEach(function (p) { var n = ref + pc(p - ref); if (n - ref > 6) n -= 12; while (out.indexOf(n) >= 0) n += 12; out.push(n); });   // unit: half octave; doubled tones go an octave up
+    return (tr.lastCh = out.sort(function (a, b) { return a - b; }));
   }
   function preProg(genre, seed) { var r = rng(seed), g = GEN[genre]; r(); return g.progs[Math.floor(r() * g.progs.length)]; }   // makeTrack's own draw order
   function preNext(live, mix) {
@@ -508,7 +522,7 @@
     var tr = startTrack(c, PHI, sp); tr.trackLen = sp && sp.len > 0 ? sp.len : c.trackLen; cur = c; cur.genre = tr.genre;   // first tap: a quick PHI^1 s fade-in (crossfades use PHI^(3.5+s))
     elPlay(); session('playing'); save(); clearTimeout(idleT);
     setTimeout(function () { loadX(); loadFX(); }, Math.pow(PHI, 2) * MS);                              // phi: extras after the first sound has begun (PHI^2 s)
-    if (!sched) sched = setInterval(tick, 25); tick();
+    if (!sched) { sched = 1; every(function () {}, SPM * MS); } tick();   // the scheduler rides the one clock
     if (!document.documentElement.hasAttribute('data-bm')) { document.documentElement.setAttribute('data-bm', 'playing'); setBm = true; }  // the generated cue layer ducks to 30% under the music
     paint(c); schedule(c.fade);
   }
@@ -627,9 +641,8 @@
   var beatT = [];
   function beat(t, down) {
     if (RM.matches || !led || !ctx) return;
-    var ms = Math.max(0, (t - ctx.currentTime) * 1000);
-    beatT.push(setTimeout(function () { led.classList.add(down ? 'on2' : 'on'); setTimeout(function () { led.classList.remove('on', 'on2'); }, 90); }, ms));
-    if (beatT.length > 64) beatT.splice(0, 32);
+    var at = Date.now() + Math.max(0, (t - ctx.currentTime) * 1000);
+    LED.push([at, down ? 1 : 0], [at + 90, -1]); LED.sort(function (a, b) { return a[0] - b[0]; }); if (LED.length > 64) LED.splice(0, 32);
   }
   function soundSwitch() { return document.querySelector('#vol-sound .bs-toggle'); }
   function masterOn() { var b = window.BonnieSound; return !b || b.on; }
@@ -659,7 +672,7 @@
     cur = compute(); paint(cur); schedule(cur.fade);
     var dm = document.querySelector('.dad-dj .dj-demo'); if (dm) dm.addEventListener('toggle', function () { if (dm.open) loadX(); });
     if (window.LoadTiers) LoadTiers.add(3, loadX, 'dj extras', { id: 'dj' });
-    setInterval(function () { if (!document.hidden) paint(compute()); }, 1000);
+    every(function () { if (!document.hidden) paint(compute()); }, 1000);
   }
   // ---------- page-music level for the logos (Danny 14:23 + 14:26 AWST 26 Oct; js/logo-sound.js trimmer) ----------
   function rmsOf(m) { if (!m) return 0; var a = new Float32Array(m.fftSize); m.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); }
@@ -680,7 +693,7 @@
   }
   function duckTo(on) { ducked = !!on; if (duck) duck.gain.setTargetAtTime(on ? IPH : 1, ctx.currentTime, on ? IPH * IPH : IPH); }   // rule 6: down tau PHI^-2 s, up tau PHI^-1 s
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
-  setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
+  every(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
   var MIDIURL = 'js/dj-midi.js?v=midifix1', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
@@ -697,7 +710,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
