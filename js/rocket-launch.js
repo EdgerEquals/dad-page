@@ -10,9 +10,13 @@
      2. climb: constant thrust with mass loss (Tsiolkovsky rocket equation, v = ve ln(m0/m) - g t). Liftoff thrust/weight 1+PHI^-4 ~ 1.15
         (Saturn V 1.16) and a burn of 1-PHI^-3 ~ 76% of the mass (Saturn V S-IC ~73%), so the speed grows exponentially and the
         acceleration rises ~24x from the pad to the top: it creeps off the pad and exits ~5x faster than at mid-flight. Height follows
-        cubic-bezier(.396,0,.745,.102), a fit to that solution (max error 1.4e-4 of the climb); the sideways drift is height^2 (a gentle
-        gravity turn, fit .748,0,.842,0), so the path starts straight up and only bends near the top. One curve each, no keyframes in
-        between, so the speed can only rise.
+        cubic-bezier(.396,0,.745,.102), a fit to that solution (max error 1.4e-4 of the climb); one curve, so the speed can only rise.
+     3. the Sun's pull (rocketblast, Danny 19:51 AWST: "it needs to orbit very slightly around the sun just enough to pull it off its
+        straight vector"): the path bends toward the page Sun (js/phi-sun.js, top right) by PHI^-4 of the pad's horizontal distance to it,
+        growing with the climb as height^PHI, nose along the path. It is sampled from the climb curve itself (55 keys, Fibonacci), so x
+        always follows the height. History: 67ffa0c bent PHI^-4 of the width; a4d7940 cut it to PHI^-5 of axis A's half (inline 1.6vw)
+        and 208c6e4 moved it to the very top (height^2), which together read as a straight line.
+     4. liftoff blast: js/rocket-blast.js plays a drawn launch blast at the pad the moment the climb starts.
    Start column and drift come from the diagonal-axes frame (js/phi-axes.js); climb time, pad time and shake size are pumped.
    Skipped while hidden; nothing under reduced motion. */
 (function () {
@@ -22,7 +26,8 @@
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   var NOSE = -TAU / 8;                                                     // anchor: emoji artwork points up-right, an eighth turn
   var RISE = Math.pow(PHI, 3), PAD = Math.pow(IP, 2), GAP = Math.pow(PHI, 6);   // phi: climb PHI^3 s, pad PHI^-2 of it (rockshake: sits and shakes a while), a launch every PHI^6 s
-  var CLIMB = 'cubic-bezier(0.396,0,0.745,0.102)', DRIFT = 'cubic-bezier(0.748,0,0.842,0)';   // cite: Tsiolkovsky fit (thrust/weight 1+PHI^-4, burn 1-PHI^-3), drift = height^2
+  var CLIMB = 'cubic-bezier(0.396,0,0.745,0.102)', CB = [0.396, 0, 0.745, 0.102];   // cite: Tsiolkovsky fit (thrust/weight 1+PHI^-4, burn 1-PHI^-3)
+  var PULL = Math.pow(IP, 4), PK = 55;                                     // phi: bend PHI^-4 of the pad-to-Sun distance, grows as height^PHI; 55 keys (Fibonacci)
   var KEYS = 89, JX = Math.pow(IP, 4), WOB = TAU / 144, WP = Math.pow(IP, 2);   // phi: 89 keys (Fibonacci) over pad + PHI^-1 of the climb, PHI^-4 em sideways; wobble a 144th of a turn (Fibonacci), period PHI^-2 s
   var count = 1, pump = null;
   function k() { var P = root.PhiPumps; if (P && !pump) pump = P.node('rocket', 3, 6, Math.pow(IP, 4), P.page, 21); try { return pump ? pump.out() : 1; } catch (e) { return 1; } }   // phi: 3 pumps, rungs 6.., depth PHI^-4
@@ -38,20 +43,31 @@
     }
     return f;
   }
+  function climbY(p) {                                                     // height fraction of the climb curve at time fraction p (cubic-bezier solve)
+    var x1 = CB[0], y1 = CB[1], x2 = CB[2], y2 = CB[3], lo = 0, hi = 1, s = p, i;
+    function bx(t) { return 3 * x1 * t * (1 - t) * (1 - t) + 3 * x2 * t * t * (1 - t) + t * t * t; }
+    for (i = 0; i < 34; i++) { s = (lo + hi) / 2; if (bx(s) < p) lo = s; else hi = s; }   // unit: bisection, 34 halvings
+    return 3 * y1 * s * (1 - s) * (1 - s) + 3 * y2 * s * s * (1 - s) + s * s * s;
+  }
+  function path(bend, span) {                                               // x = bend * Y^PHI, nose along the tangent
+    var f = [];
+    for (var i = 0; i <= PK; i++) { var p = i / PK, Y = climbY(p), x = bend * Math.pow(Y, PHI), sl = bend * PHI * Math.pow(Y, PHI - 1) / span;   // unit: dx/dy of the path
+      f.push({ offset: p, transform: 'translateX(' + x + 'px) rotate(' + (NOSE + Math.atan(sl)) + 'rad)' }); }
+    return f;
+  }
   function launch() {
     if (doc.hidden) return later();
     count++;
     var A = root.PhiAxes, H = innerHeight, h = el.getBoundingClientRect().height || 1, kk = k();   // unit: measured box
-    var side = Math.sin(count * TAU * IP);                                // phi: golden-angle drift, the bend's side and size vary slowly
     var L0 = A ? A.frame.x0 : 0, x0 = L0 + ((A ? A.at(0, 1 - 2 * Math.pow(IP, 4)).x : innerWidth * Math.pow(IP, 4)) - L0) / 2;   // unit: half of the axis-B column's distance from the safe left edge (Danny 17:12; = the inline left)
-    var bend = (A ? A.dir(Math.pow(IP, 5), 0).x : innerWidth * Math.pow(IP, 5)) * side * kk;   // phi: drift along axis A, PHI^-5 of its half, pumped depth
-    var lean = Math.atan2(2 * bend, H + h);                               // unit: drift = height^2, so its end slope is 2 x bend / climb
+    var sun = root.PhiSun ? PhiSun.x * innerWidth : innerWidth * (1 - Math.pow(IP, 5)), bend = (sun - x0) * PULL * kk;   // phi: pulled toward the Sun, PHI^-4 of the way across, pumped depth
     [el, gl].forEach(function (n) { n.getAnimations().forEach(function (a) { a.cancel(); }); n.style.animation = 'none'; });
     el.style.left = x0 + 'px';
-    var D = RISE * MS * kk, S = D * PAD;                                  // pumped climb, pad PHI^-3 of it
+    var D = RISE * MS * kk, S = D * PAD;                                  // pumped climb, pad PHI^-2 of it
     el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: S * IP * IP, easing: 'ease-out' });   // phi: rolls out onto the pad over PHI^-2 of the shake
-    el.animate([{ transform: 'none' }, { transform: 'translateY(' + (-H - h) + 'px)' }], { duration: D, delay: S, easing: CLIMB, fill: 'both' }).onfinish = later;
-    gl.animate([{ transform: 'rotate(' + NOSE + 'rad)' }, { transform: 'translateX(' + bend + 'px) rotate(' + (NOSE + lean) + 'rad)' }], { duration: D, delay: S, easing: DRIFT, fill: 'both' });
+    var up = el.animate([{ transform: 'none' }, { transform: 'translateY(' + (-H - h) + 'px)' }], { duration: D, delay: S, easing: CLIMB, fill: 'both' }); up.onfinish = later;
+    gl.animate(path(bend, H + h), { duration: D, delay: S, easing: 'linear', fill: 'both' });   // the Sun's pull, sampled from the climb
+    if (root.RocketBlast) RocketBlast.sync(up, el, kk);                    // liftoff blast at the pad
     gl.animate(shake(kk, S + D * IP), { duration: S + D * IP, easing: 'linear' });   // phi: shake spans the pad + PHI^-1 of the climb (= D), liftoff at S
   }
   var t = 0; function later() { clearTimeout(t); t = setTimeout(launch, GAP * MS * k()); }
