@@ -91,7 +91,7 @@
     return { v: j ? clamp(f.L[j] * (f.L[li] ? v / f.L[li] : 1), 0, 1) : 0, i: j, li: li };
   }
   // ---------- apply (every PHI^-1 s, everything glides) ----------
-  var E = {}, bits = 0;
+  var E = {}, bits = 0, PAD = null, padFl = false;                       // PAD: the logo Kaoss pad's offsets (js/logo-pad.js), null at rest
   function crushCurve(b) {
     var n = Math.pow(2, Math.round(Math.pow(PHI, 5))), a = new Float32Array(n), q = Math.pow(2, b - 1);   // phi: 2^11 curve points
     for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; a[i] = Math.round(x * q) / q; } return a;
@@ -99,7 +99,10 @@
   function apply(tau) {
     irReady(); FX.forEach(function (f) { uOf(f.k); }); var u = energy(), bpm = (D.track && D.track.bpm) || D.compute().bpm, beat = SPM / bpm;
     FX.forEach(function (f) { E[f.k] = effOf(f, u); });
-    if (c.currentTime < TXu) { sync(); return; }                         // a transition owns the sweeps until its tail is done
+    if (c.currentTime < TXu) { sync(); return; }                         // (the logo pad waits too)
+    if (PAD) { E.filter.v = clamp(E.filter.v + PAD.filter, -1, 1); ['echo', 'wash', 'crush'].forEach(function (k) { E[k].v = clamp(E[k].v + PAD[k], 0, 1); }); }   // logo pad: on top of the pumped values
+    if (PAD || padFl) { var fb = bpm / SPM; padFl = !!PAD;                 // logo pad flanger: sweep at the beat rate x PHI^-3 .. x PHI^-2 with distance; silent at rest
+      to(flW.gain, PAD ? PAD.flw * IPH * IPH : 0, tau); to(flFb.gain, PAD ? PAD.flw * IPH : 0, tau); to(flL.frequency, PAD ? fb * Math.pow(PHI, PAD.r - 3) : 0, tau); }                         // a transition owns the sweeps until its tail is done
     var fv = E.filter.v, span = Math.log(FHI / FLO);
     to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); to(hp.frequency, FLO * Math.exp(span * IPH * Math.max(0, fv)), tau);
     var e = E.echo.v, dT = beat / 2, now = c.currentTime, q = Math.pow(PHI, -6);
@@ -281,5 +284,7 @@
   build();
   D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
-    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition, get lastTransition() { return lastTx; } };
+    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
+    pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s
+    get padding() { return PAD ? JSON.parse(JSON.stringify(PAD)) : null; }, get lastTransition() { return lastTx; } };
 })();

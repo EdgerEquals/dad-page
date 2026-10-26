@@ -31,6 +31,7 @@
     var h = doc.querySelector('.dad-zoom[data-zoom="dad"]'); if (!h || !root.MutationObserver) return;
     var was = h.getAttribute('aria-expanded') === 'true';                         // the zoom sets 'false' when it first loads: only a real open -> close counts
     new MutationObserver(function () { var open = h.getAttribute('aria-expanded') === 'true'; if (open === was) return; was = open; note('zoom ' + (open ? 'open' : 'closed'));
+      if (open && !R.pad) { R.pad = 1; var sc = doc.createElement('script'); sc.src = 'js/logo-pad.js?v=1'; sc.async = true; doc.head.appendChild(sc); }   // the logo Kaoss pad loads on the first open only
       if (!open) R.started = false; })
       .observe(h, { attributes: true, attributeFilter: ['aria-expanded'] });
   }
