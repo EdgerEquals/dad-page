@@ -449,6 +449,15 @@ textarea:focus-visible{border-color:var(--dad-amber);outline:3px solid var(--dad
 @keyframes codeup{from{transform:translateY(0)}to{transform:translateY(-240px)}}
 body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #summary.panel::before,body.paused .big::before,body.paused .btnrow .btn::before,body.paused .yn .tile::before{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#start.panel::before,#quiz.panel::before,#summary.panel::before,.big::before,.btnrow .btn::before,.yn .tile::before{animation:none}}
+/* home screen code drift (Danny pt24u 11:40 AWST 26 Oct, "we lost the matrix code"): the questionnaire panel that carried this drifting
+   code log moved to its own page, so the blank home area keeps the same layer on its own: same texture, colour, opacity, codeup timing
+   (PHI ladder), column where the panel sat; no box, no content. Transparent, so the matrix rain and the space loop still show through. */
+.home-code{position:fixed;top:0;bottom:0;left:0;right:0;margin:0 auto;max-width:824px;z-index:-1;pointer-events:none;overflow:hidden;contain:strict}
+.home-code::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(100% + 240px);background:var(--code-light) 0 0/320px 240px repeat;opacity:.4;
+  animation:codeup var(--phi-code-panel) linear var(--phi-code-panel-d) infinite;will-change:transform}
+html[data-theme="light"] .home-code::before{background-image:var(--code-dark);opacity:.045}
+body.paused .home-code::before{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.home-code::before{animation:none}}
 
 .agenote{background:#1E3A3A;color:var(--dad-sand);border-left:8px solid var(--dad-amber);border-radius:12px;padding:1rem 1.2rem;margin:0 auto 1.2rem;max-width:640px;font-size:1.15rem;line-height:1.55}
 .yn .reroll{display:none!important}
@@ -532,7 +541,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
   </div></div>
   <!-- "Questions for Bonnie" row removed from the home screen (Danny 11:25 AWST 26 Oct): it lives only on the questionnaire page -->
 </div>
-<main class="wrap" id="home-main"></main><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
+<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
   <div class="strip" aria-label="Page status">
