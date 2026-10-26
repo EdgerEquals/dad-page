@@ -203,6 +203,13 @@ summary{cursor:pointer;color:var(--muted)}
     <div class="steps"><button type="button" data-sstep="-1" aria-label="Arrivals start brighter, one rung">brighter</button><button type="button" data-sstep="1" aria-label="Arrivals start fainter, one rung">fainter</button></div>
     <p class="note">Applies on this device the next time the home page loads.</p>
   </section>
+  <section class="tile" data-scene-dial="scenery" aria-labelledby="h-scenery"><!-- dishscope come-and-go dial (Danny 19:02 AWST 26 Oct) -->
+    <h2 id="h-scenery">11 &middot; Telescope + dish</h2>
+    <p class="what">How much of the time the telescope and the satellite dish are on the home page. Each comes and goes on its own slow rhythm; after a hit it stays away a while longer.</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Telescope and dish there less, one rung">less</button><button type="button" data-sstep="1" aria-label="Telescope and dish there more, one rung">more</button></div>
+    <p class="note">Applies on this device the next time the home page loads.</p>
+  </section>
 </main>
 <div class="foot">
   <button type="button" id="dsUndo">Undo last step</button>
@@ -211,6 +218,6 @@ summary{cursor:pointer;color:var(--muted)}
 </div>
 <script src="js/season-pumps.js?v=1" defer></script>
 <script src="js/dial-sandbox.js?v=1" defer></script>
-<script src="js/scene-dials.js?v=6" defer></script>
+<script src="js/scene-dials.js?v=7" defer></script>
 </body>
 </html>

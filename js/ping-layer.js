@@ -19,6 +19,13 @@
                 rides an 'earth' anchor that moves along an ellipse round the Sun: near point lower, largest and in front; far point
                 smallest and behind the Sun. Scale is a transform (one per frame), so dependents (the telescope aim) follow live.
                 The dish aims at the Moon anchor; telescope and dish render at full opacity (full-colour emoji, no pump dimming).
+     COME + GO  (dishscope, Danny 19:02 AWST 26 Oct) the telescope and the dish each come and go on their own 3-pump node (rungs
+                7.., 29 / 37 / 47 s modes, Fibonacci seeds 3 / 5 so they are never in step; no fixed period): present while the node's
+                modes sit above a threshold (sandbox dial 'scenery', PHI^-3 a rung, default half the time, PHI^-5 hysteresis). They
+                arrive and leave the rule-14 way (js/arrivals.js): opacity sweeps the phi rungs geometrically, PHI^(-n0 (1-u)), over
+                PHI^(1+speed) s (scenery importance 2, the arrivals dials), then a PHI^-5 'pop'. js/emoji-collide.js counts them while
+                present; a hit calls PingLayer.away(name, s) and they stay away that long (PHI^5..PHI^6 s, pumped) before coming back
+                in, the next time their own node says present. Reduced motion: a plain CSS fade.
    Transforms + opacity only, one capped rAF loop (orbiters + Earth orbit), paused while hidden. Reduced motion: still, no pulses. */
 (function () {
   'use strict';
@@ -75,6 +82,7 @@
   var moon = node(PH[0], 'pl-moon'), sat = node('\uD83D\uDEF0\uFE0F', 'pl-sat'), ast = node('\uD83E\uDDD1\u200D\uD83D\uDE80', 'pl-ast');
   sat.p.dataset.ec = ast.p.dataset.ec = 'moongroup';                        // emoji-collide: the Moon group is a designed pair (never a crash between its orbiters)
   var scope = node('\uD83D\uDD2D', 'pl-scope'), dish = node('\uD83D\uDCE1', 'pl-dish');
+  scope.p.dataset.scen = 'scope'; dish.p.dataset.scen = 'dish';               // emoji-collide: scenery that joins the collisions while present
 
   var OP = Math.pow(IP, 2), OPB = Math.pow(IP, 4), PEAK = 1 - Math.pow(IP, 3);   // phi: node 0.382, big Earth 0.146, pulse peak 0.764
   var OPE = 1 - Math.pow(IP, 4);                                            // phi: big Earth one rung above the rest, 0.854 (pumped)
@@ -105,8 +113,8 @@
     { n: big, a: 'earth', rot: -OBL, base: function () { return OPE; } },
     { n: moon, a: 'moon', flip: SOUTH },
     { n: small, a: 'small' },
-    { n: scope, a: 'scope', aim: 'earth', native: -TAU * 3 / 8, full: true },   // anchor: Apple + Google artwork, telescope tube up-left; follows the orbiting Earth
-    { n: dish, a: 'dish', aim: 'moon', native: -TAU / 8, full: true }];          // anchor: Apple + Google artwork, dish feed up-right; aims at the Moon (Danny 15:19)
+    { n: scope, a: 'scope', aim: 'earth', native: -TAU * 3 / 8, full: true, sc: 'scope' },   // anchor: Apple + Google artwork, telescope tube up-left; follows the orbiting Earth
+    { n: dish, a: 'dish', aim: 'moon', native: -TAU / 8, full: true, sc: 'dish' }];          // anchor: Apple + Google artwork, dish feed up-right; aims at the Moon (Danny 15:19)
   var ORB = [                                                                // orbiters bind to the Moon anchor: radius and size in its size
     { n: sat, a: 'moon', T: rung(ISS, 3), ph: fr(IP), s: IP },              // phi: satellite on rung 3 (4.2..6.9 s)
     { n: ast, a: 'moon', T: rung(HIMA, 4), ph: fr(2 * IP), s: Math.pow(IP, 1 / 2) }];   // phi: astronaut on rung 4 (6.9..11.1 s)
@@ -135,7 +143,7 @@
     var z = sp.orb ? (fr0 ? ZS + ZS * 2 / 3 : ZS - ZS * 2 / 3) : sp.orbS ? (A[sp.of].z != null ? A[sp.of].z : ZS) + (fr0 ? ZS / 3 : -ZS / 3) : null;
     A[k] = { x: x, y: y, s: sz * sc, s0: sz, sc: sc, front: fr0, z: z };
   }
-  function opOf(m) { return m.full ? 1 : opAim(m.base ? m.base() : 0); }    // unit: full = opacity 1
+  function opOf(m) { var o = m.full ? 1 : opAim(m.base ? m.base() : 0); return m.sc && SCN[m.sc] ? o * SCN[m.sc].v : o; }    // unit: full = opacity 1, times its come-and-go presence
   function putMem(m, opNow) {
     var a = A[m.a], rot = m.rot || 0, flip = !!m.flip;
     if (m.aim) {                                                             // aim derived from the two anchors, mirrored when that keeps the turn smaller
@@ -200,8 +208,33 @@
     MOVING.forEach(place);
     MEM.forEach(function (m) { if (MOVING.indexOf(m.a) >= 0 || MOVING.indexOf(m.aim) >= 0) putMem(m, m.n.op); });
   }
+  // ---------- come and go (dishscope, Danny 19:02 AWST 26 Oct) ----------
+  var SCN = { scope: { k: 'scope', n: scope, seed: 3 }, dish: { k: 'dish', n: dish, seed: 5 } };   // phi: Fibonacci seeds 3 / 5, so their phases are a golden step apart (measured: both out together 26% of the time, as if independent)
+  var THR = -dial('scenery', 0) * Math.pow(IP, 3), HYS = Math.pow(IP, 5);   // phi: threshold PHI^-3 a dial rung (0 = present half the time), PHI^-5 hysteresis
+  var N0 = dial('arrstart', 5), DUR = Math.pow(PHI, 1 + dial('arrspeed', 0)) * MS;   // phi: rule 14 sweep from PHI^-n0 over PHI^(i-1+speed) s, scenery i = 2
+  var POP = [{ transform: 'scale(1)' }, { transform: 'scale(' + (1 + Math.pow(IP, 5)) + ')' }, { transform: 'scale(1)' }];   // phi: arrivals' PHI^-5 pop
+  function pnode(q) { var P = root.PhiPumps; if (P && !q.pn) q.pn = P.node('come:' + q.k, 3, 7, 1, null, q.seed); return q.pn; }   // phi: 3 pumps, rungs 7.. (29, 37, 47 s)
+  function want(q, now) { if (now < q.block) return false; var p = pnode(q); if (!p) return true; var m = 0; try { m = p.modes(); } catch (e) { return true; }
+    return m > THR + (q.on ? -HYS : HYS); }
+  function presence(now) {
+    for (var k in SCN) { var q = SCN[k], w = want(q, now), v, u;
+      if (q.on == null) { q.on = w; q.v = w ? 1 : 0; q.at = now - DUR; q.landed = true; }   // unit: at load the layer's own arrival brings it in
+      if (w !== q.on) { q.on = w; q.v0 = q.v; q.at = now; q.landed = !w; if (w) q.arr++; }
+      u = Math.min(1, (now - q.at) / DUR);
+      if (RM) v = q.on ? 1 : 0;                                            // unit: reduced motion, the CSS transition is the plain fade
+      else if (q.on) { var u0 = q.v0 > 0 ? Math.max(0, 1 + Math.log(q.v0) / Math.log(PHI) / N0) : 0, uu = u0 + (1 - u0) * u; v = Math.pow(PHI, -N0 * (1 - uu)); }   // phi: geometric climb, from wherever it was
+      else v = u >= 1 ? 0 : q.v0 * Math.pow(PHI, -N0 * u);                   // phi: geometric fade down the same rungs
+      if (q.on && u >= 1 && !q.landed) { q.landed = true; if (!RM && q.n.p.animate) try { q.n.p.animate(POP, { duration: MS * PHI, easing: 'ease-out', composite: 'add' }); } catch (e) {} }   // phi: PHI s landing gesture
+      q.v = v; var op = Math.round(v * MS) / MS;                              // unit: thousandths
+      if (q.n.op !== op) { q.n.op = op; q.n.o.style.opacity = op; q.n.o.style.visibility = op ? '' : 'hidden'; }
+      if (q.on && !q.was) q.since = now; if (!q.on && q.was) q.shown += now - q.since; q.was = q.on;
+    }
+  }
+  function away(k, s) { var q = SCN[k]; if (!q) return false; var now = performance.now(); q.block = now + s * MS; q.hits++; q.on = false; q.v = q.v0 = 0; q.at = now - DUR; q.landed = true;
+    q.n.op = 0; q.n.o.style.opacity = 0; q.n.o.style.visibility = 'hidden'; return true; }   // unit: gone at once (the collision effect plays in its place)
+  for (var sk in SCN) { SCN[sk].block = 0; SCN[sk].arr = 0; SCN[sk].hits = 0; SCN[sk].shown = 0; SCN[sk].v = 1; if (!RM) SCN[sk].n.o.style.transition = 'none'; }   // unit: per-frame sweep replaces the CSS fade
   var raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);                      // phi: frame cap PHI^-7 s
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbitEarth(now); orbit(now); spinBig(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
+  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbitEarth(now); orbit(now); spinBig(now); presence(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
   function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
 
   // ---------- ping chain ----------
@@ -273,7 +306,7 @@
     return { ping: ping, frame: frame, mix: function () { return m; }, glyph: function () { return 1 - m * (1 - Math.pow(IP, 2)); }, fit: function () {} };   // phi: glyph glides down to PHI^-2
   })();
   doc.body.appendChild(Lr); resolve(); sky(); spinBig(performance.now());
-  if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); orbit(t0); }      // unit: still, both in front (quarter turn)
+  if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); orbit(t0); presence(performance.now()); setInterval(function () { if (!doc.hidden) presence(performance.now()); }, MS); }      // unit: still, both in front (quarter turn); come and go checked once a second
   else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); MEM.forEach(function (m) { var v = opOf(m); if (m.n.op !== v) { m.n.op = v; m.n.o.style.opacity = v; } }); ORB.forEach(function (q) { q.op = opAim(); }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
   var rq = 0; function soon() { if (!rq) rq = requestAnimationFrame(function () { rq = 0; resolve(); }); }
   addEventListener('resize', soon); addEventListener('orientationchange', soon);
@@ -282,5 +315,6 @@
   if (root.ResizeObserver) { var ro = new ResizeObserver(soon), hh = doc.getElementById('q-head'), ff = doc.querySelector('.foot'); if (hh) ro.observe(hh); if (ff) ro.observe(ff); }                  // emoji font box settles after load
   doc.addEventListener('visibilitychange', function () { Lr.classList.toggle('pl-hid', doc.hidden); oLast = 0; if (!doc.hidden) go(); });
   root.PingLayer = { info: function () { return { subLunarLon: G.lon, moonAgeDays: G.age, phase: moon.p.textContent, bigEarthPeriod: TB, satT: ORB[0].T, astT: ORB[1].T,
-    lightTime: LIGHT, pings: count, chainEvery: Math.pow(PHI, RUNG), front: ORB.map(function (q) { return !!q.front; }), nodeMap: NM ? NM.mix() : null, orbit: { th: ORT.th, period: TO, front: A.earth ? A.earth.front : null } }; }, ping: chain, anchors: A, spec: SPEC, move: move, resolve: resolve };
+    lightTime: LIGHT, pings: count, chainEvery: Math.pow(PHI, RUNG), front: ORB.map(function (q) { return !!q.front; }), nodeMap: NM ? NM.mix() : null, orbit: { th: ORT.th, period: TO, front: A.earth ? A.earth.front : null },
+    scenery: Object.keys(SCN).map(function (k) { var q = SCN[k], now = performance.now(); return { k: k, on: q.on, v: q.v, arrivals: q.arr, hits: q.hits, awayLeft: Math.max(0, (q.block - now) / MS), shownS: (q.shown + (q.on ? now - q.since : 0)) / MS, modes: q.pn ? q.pn.modes() : null, thr: THR }; }) }; }, ping: chain, away: away, anchors: A, spec: SPEC, move: move, resolve: resolve };
 })();

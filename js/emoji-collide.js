@@ -11,7 +11,11 @@
    burst), a glancing angle (relative velocity mostly across the line between them) spins them out, and the debris flies along
    each body's own velocity reflected off the contact line. A pump node ('collide') nudges the violence. After a pumped PHI^3 s
    the emoji comes back on its own path (it kept moving while hidden), with PHI s of grace so it cannot hit the same thing at once.
-   Scenery that is meant to overlap (the Sun, the big Earth, the Moon group, telescope, dish, front/behind orbit pairs) is skipped.
+   Scenery that is meant to overlap (the Sun, the big Earth, the Moon group, front/behind orbit pairs) is skipped.
+   The telescope and the dish (dishscope, Danny 19:02 AWST 26 Oct) come and go (js/ping-layer.js) and count while present, at their
+   drawn size, same effect choice. A hit sends them away for a pumped PHI^5..PHI^6 s (PingLayer.away), then they arrive again the
+   rule-14 way. The rocket's own pad and liftoff (until it has climbed PHI^-1 of the view from where it appeared) never count
+   against them, so a launch beside the telescope cannot blow it up; a rocket higher in flight, or anything else crossing them, can.
    Cost: one rAF loop capped at PHI^-6 s, rects of ~20-40 elements, a spatial grid, a swept test (no tunnelling between ticks);
    effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades. */
 (function () {
@@ -20,7 +24,7 @@
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   if (!doc.body || !Element.prototype.animate) return;
   var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.rain i', '.es-comet'];
+  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p'];
   var HEAD = { 'rain': 'left:50%;bottom:0', 'es-comet': 'right:0;top:0;width:1em;height:1em' };   // unit: where a streak's glowing head is drawn
   var TICK = MS * Math.pow(IP, 6), FIND = MS * PHI * PHI, BACK = Math.pow(PHI, 3), GRACE = PHI;   // phi: tick PHI^-6 s, rescan PHI^2 s, back after PHI^3 s, PHI s grace
   var RAD = Math.pow(IP, 1 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-0.5 of the half-box (glyph ink, not padding), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
@@ -43,7 +47,8 @@
     SEL.forEach(function (s) { Array.prototype.forEach.call(doc.querySelectorAll(s), function (el) { if (list.indexOf(el) < 0) list.push(el); }); });
     B = list.map(function (el) {
       var b = seen && seen.get(el); if (b) return b;
-      var kd = kind(el); b = { el: el, hide: hideOf(el), kd: kd, x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: 0, gone: false };
+      var kd = kind(el); b = { el: el, hide: hideOf(el), kd: kd, x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: 0, gone: false,
+        scen: (el.dataset && el.dataset.scen) || '', rk: !!(el.parentElement && el.parentElement.id === 'rk1') };   // scenery (telescope / dish), the rocket
       if (HEAD[kd]) { var h = doc.createElement('b'); h.className = 'ec-h'; h.style.cssText = HEAD[kd]; el.appendChild(h); b.head = h; }   // a zero-size marker at the drawn head
       if (seen) seen.set(el, b); return b;
     });
@@ -56,12 +61,13 @@
     else { x = r.left + r.width / 2; y = r.top + r.height / 2; rad = Math.min(r.width, r.height) / 2 * RAD; }
     if (!r.width || !r.height || x < 0 || y < 0 || x > innerWidth || y > innerHeight) { b.t = 0; return false; }
     var cs = getComputedStyle(b.hide); if (cs.visibility === 'hidden' || +cs.opacity < Math.pow(IP, 3)) { b.t = 0; return false; }   // phi: too faint to count
+    if (!b.t) { b.ox = x; b.oy = y; }                                      // unit: where it appeared this pass (the rocket: its pad)
     if (b.t) { var dt = (now - b.t) / MS; if (dt > 0) { b.vx = (x - b.x) / dt; b.vy = (y - b.y) / dt; } b.px = b.x; b.py = b.y; } else { b.px = x; b.py = y; b.vx = b.vy = 0; }
     (b.hist = b.hist || []).push([now, x, y]); while (b.hist.length > 34) b.hist.shift();   // phi: 34 samples (~PHI^2 s) of where it was
     b.x = x; b.y = y; b.r = rad; b.t = now; b.fs = b.head ? rad * 2 : Math.min(r.width, r.height); b.z = zOf(b);
     return true;
   }
-  function zOf(b) { var n = b.hide; return n.classList.contains('pl-n') ? (+n.style.zIndex || 0) : null; }   // orbiters round the Moon: front (2) vs behind (0)
+  function zOf(b) { var n = b.hide; return n.classList.contains('pl-n') && !b.scen ? (+n.style.zIndex || 0) : null; }   // orbiters round the Moon: front (2) vs behind (0)
   function moving(a, c) { return a.px !== a.x || c.px !== c.x ? Math.hypot(a.vx - c.vx, a.vy - c.vy) > (a.r + c.r) * Math.pow(IP, 4) : false; }   // phi: they must be closing, at least PHI^-4 sizes a second (parked pairs never count)
   function companions(a, c, now) {
     if (a.el.dataset && a.el.dataset.ec && a.el.dataset.ec === c.el.dataset.ec) return true;   // marked pair (the lane rings: a moon round its Earth, a satellite round its planet)                                         // a designed pair (a moon round its planet, two orbit-mates) was already close PHI s ago
@@ -69,7 +75,8 @@
     return pa && pc && Math.hypot(pa[1] - pc[1], pa[2] - pc[2]) < R;
   }
   function past(b, now) { var h = b.hist, i; if (!h || !h.length || now - h[0][0] < PHI * MS) return null; for (i = h.length - 1; i >= 0; i--) if (now - h[i][0] >= PHI * MS) return h[i]; return null; }   // phi: the sample PHI s back
-  function sameScene(a, c) { return a.z == null || c.z == null || a.z === c.z; }
+  function sameScene(a, c) { return a.z == null || c.z == null || a.z === c.z || !!(a.scen || c.scen); }   // the telescope / dish sit in no orbit scene
+  function liftoff(a, c) { var r = a.rk ? a : c.rk ? c : null; return !!(r && (a.scen || c.scen) && r.oy - r.y < innerHeight * IP); }   // phi: the rocket's pad + first PHI^-1 of the view never hits scenery
   // swept test: closest approach of the two centres over the last tick (both moving in straight lines between samples)
   function hit(a, c) {
     var R = a.r + c.r, dx0 = c.px - a.px, dy0 = c.py - a.py, dx1 = c.x - a.x, dy1 = c.y - a.y, ex = dx1 - dx0, ey = dy1 - dy0;
@@ -91,7 +98,7 @@
           var a = on[n];
           for (var di = -1; di <= 1 && !done; di++) for (var dj = -1; dj <= 1 && !done; dj++) {
             var g = G[key(a.ci + di, a.cj + dj)]; if (!g) continue;
-            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
+            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || liftoff(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
           }
         }
       }
@@ -111,7 +118,7 @@
     var size = a.r + c.r, w = 1 - Math.exp(-rv / (size * Math.pow(PHI, 3)) * k());   // phi: violence 0..1 from the closing speed in sizes per PHI^3 s (drift = smoke, the rocket = burst), pumped
     var glance = rv ? Math.abs(rvx * ny - rvy * nx) / rv : 0;            // unit: sine of the angle between the relative velocity and the normal
     var kindFx = glance > 1 - Math.pow(IP, 3) ? 'spin' : FX[Math.min(FX.length - 1, Math.floor(w * FX.length))];   // phi: glancing past 0.764 spins out
-    lastInfo = { who: [label(a), label(c)], fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y] };
+    lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y] };
     [a, c].forEach(function (b, i) {
       var sx = i ? 1 : -1, vn = b.vx * nx + b.vy * ny;                     // reflect the body's own velocity off the contact line
       var dx = b.vx - 2 * vn * nx, dy = b.vy - 2 * vn * ny, dl = Math.hypot(dx, dy);
@@ -121,9 +128,13 @@
     });
   }
   function label(b) { return (b.el.className || b.el.tagName) + ' ' + (b.head ? '' : (b.el.textContent || '').trim().slice(0, 4)); }   // unit: a few UTF-16 units of the glyph, for info() only
+  var spump = null;
+  function away() { var P = root.PhiPumps; if (P && !spump) spump = P.node('collide:scenery', 3, 5, 1, null, 144); var m = 0; try { m = spump ? spump.modes() : 0; } catch (e) {}   // phi: 3 pumps, rungs 5.., Fibonacci seed
+    return Math.pow(PHI, 5 + (1 + m) / 2); }                              // phi: PHI^5 .. PHI^6 s (11.1 .. 17.9 s), pumped
   function vanish(b, now) {
     b.gone = true; b.hide.classList.add('ec-gone');
-    setTimeout(function () { b.hide.classList.remove('ec-gone'); b.gone = false; b.t = 0; b.hist = []; b.until = performance.now() + GRACE * MS; }, BACK * k() * MS);   // phi: back on its path after PHI^3 s (pumped), then PHI s grace
+    var s = BACK * k(); if (b.scen) { s = away(); if (root.PingLayer && PingLayer.away) PingLayer.away(b.scen, s); b.away = s; }   // scenery stays away longer, then arrives again
+    setTimeout(function () { b.hide.classList.remove('ec-gone'); b.gone = false; b.t = 0; b.hist = []; b.until = performance.now() + GRACE * MS; }, s * MS);   // phi: back on its path after PHI^3 s (pumped), then PHI s grace
   }
 
   // ---------- effects (drawn, at the body's rendered size) ----------
