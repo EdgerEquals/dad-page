@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script>try{if(localStorage.getItem("dadQuizTheme")==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}</script><!-- light theme before first paint (Danny t0u 25 Oct; switch = footer tty satellite, js/quiz-theme.js) -->
+<script src="js/phi-sun.js?v=1" defer></script><!-- rule 13 shared Sun anchor + sky constants (Danny 12:34 AWST 26 Oct) -->
 <script id="phi-timing">
 /* PHI TIMING (shared module; same file on every Bonnie site/preview).
    Standing rules: /home/box/.config/phi-timing-rules.md (set by Danny, 2026-10-23). Summary, follow it in future builds:
@@ -476,8 +477,8 @@ body.paused .home-code::before{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.rain{display:none}.tile .sp{display:none!important}.tile.swap{animation:none}.btn,.tile{transition:none}}
 /* ---- Space loop background (trial, preview only): fixed full-page video at 30% behind all content; poster only for reduced motion ---- */
 .bgloop,.bgloop-still{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:.3}
-.bgloop{object-fit:cover}
-.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=2") center/cover no-repeat}
+.bgloop{object-fit:cover;object-position:calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)}   /* rule 13: video Sun on the shared anchor at any aspect */
+.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=3") calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)/cover no-repeat}
 @media(prefers-reduced-motion:reduce){.bgloop{display:none}.bgloop-still{display:block}}
 </style>
 <link rel="stylesheet" href="css/command-centre.css?v=7d03a9b6">
@@ -505,8 +506,8 @@ body.paused .home-code::before{animation-play-state:paused}
 <noscript><link rel="stylesheet" href="css/quiz-popups.css?v=1"><link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"></noscript>
 </head>
 <body>
-<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp?v=2" data-src-webm="media/space-loop.webm?v=2" data-src-mp4="media/space-loop.mp4?v=2"></video><div class="bgloop-still" aria-hidden="true"></div>
-<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:137.4});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
+<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp?v=3" data-src-webm="media/space-loop.webm?v=3" data-src-mp4="media/space-loop.mp4?v=3"></video><div class="bgloop-still" aria-hidden="true"></div>
+<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:141.3});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="fx" id="fxA" aria-hidden="true"></div><div class="fx" id="fxB" aria-hidden="true"></div>
 <!-- Questionnaire header (Danny 24 Oct 2026 02:50 AWST): the live Bonnie's Dashboard header STRUCTURE (rebella 517e809 moderation/:
@@ -1028,7 +1029,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a805",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=1",2,{id:"scene",w:6.5})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a806",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=2",2,{id:"scene",w:6.5})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>

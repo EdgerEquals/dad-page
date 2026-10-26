@@ -69,9 +69,11 @@
     var h = document.getElementById('q-head'), ft = document.querySelector('.foot');
     var top = h ? Math.max(0, h.getBoundingClientRect().bottom) : 0, bot = ft ? ft.getBoundingClientRect().top : innerHeight;
     var H = Math.max(40, Math.round(bot - top - 16)), W = L.clientWidth || innerWidth;
-    L.style.setProperty('--qs-top', Math.round(top + 8) + 'px'); L.style.setProperty('--qs-h', H + 'px');
+    var GAP = 8;   // unit: px gap the layer sits below the header (pre-existing offset, shared by --qs-top and the Sun anchor)
+    L.style.setProperty('--qs-top', Math.round(top + GAP) + 'px'); L.style.setProperty('--qs-h', H + 'px');
     items.forEach(function (it) {
-      it.o.style.setProperty('--cx', Math.round(it.d[6] * W) + 'px'); it.o.style.setProperty('--cy', Math.round(it.d[7] * H) + 'px');
+      var sun = window.PhiSun && document.documentElement.hasAttribute('data-scene-comet') ? window.PhiSun : null;   // home: rule 13, centred on the shared Sun
+      it.o.style.setProperty('--cx', Math.round(sun ? sun.x * W : it.d[6] * W) + 'px'); it.o.style.setProperty('--cy', Math.round(sun ? sun.y * innerHeight - top - GAP : it.d[7] * H) + 'px');
       it.e.style.setProperty('--rx', Math.round(GROW * 0.5 * W) + 'px'); it.y.style.setProperty('--ry', Math.round(GROW * Math.abs(it.d[2]) * H) + 'px');
     });
   }
@@ -81,5 +83,5 @@
   document.addEventListener('visibilitychange', function () { L.classList.toggle('qs-paused', document.hidden); });
   band();
   window.QuizSpaceOrbit = { info: function () { var f = feeds(); return { moon: f.moon, day: f.day, items: items.map(function (it) {
-    return { e: it.d[0], ring: RINGS[it.d[1]], cx: it.o.style.getPropertyValue('--cx'), cy: it.o.style.getPropertyValue('--cy'), rx: it.e.style.getPropertyValue('--rx'), ry: it.y.style.getPropertyValue('--ry'), orbitExp: +orbitExp(it.d[1], f.moon).toFixed(4), rotExp: it.d[5], rot: it.d[3], pulseExp: +pulseExp(it.j, f.day).toFixed(4) }; }) }; } };
+    return { e: it.d[0], ring: RINGS[it.d[1]], cx: it.o.style.getPropertyValue('--cx'), cy: it.o.style.getPropertyValue('--cy'), rx: it.e.style.getPropertyValue('--rx'), ry: it.y.style.getPropertyValue('--ry'), orbitExp: orbitExp(it.d[1], f.moon), rotExp: it.d[5], rot: it.d[3], pulseExp: pulseExp(it.j, f.day) }; }) }; } };
 })();

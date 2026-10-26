@@ -68,7 +68,8 @@
     var h = doc.getElementById('q-head'), ft = doc.querySelector('.foot');
     var top = h ? Math.max(0, h.getBoundingClientRect().bottom) : 0, bot = ft ? ft.getBoundingClientRect().top : innerHeight;
     var H = Math.max(0, bot - top), W = innerWidth;
-    band.cx = W * IP; band.cy = top + H * IP * IP; band.rx = W * IP; band.ry = H * Math.pow(IP, 2);
+    var sun = root.PhiSun || { x: 1 - Math.pow(IP, 4), y: Math.pow(IP, 4) };   // rule 13: orbit centred on the shared Sun anchor
+    band.cx = W * sun.x; band.cy = innerHeight * sun.y; band.rx = W * PHI; band.ry = (bot - band.cy) * IP;
   }
   function crossing() { var f = feeds(), m = f.moon != null ? f.moon : IP; return Math.pow(PHI, 6 - m * IP); }   // phi: rung 6, moon nudges faster
   var Tc = crossing(), t0 = performance.now(), last = 0, raf = 0, FRAME = MS * Math.pow(IP, 7);   // phi: frame cap PHI^-7 s
