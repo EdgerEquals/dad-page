@@ -20,11 +20,15 @@
   function g(v) { var n = c.createGain(); n.gain.value = v; return n; }
   function to(prm, v, tau) { prm.setTargetAtTime(v, c.currentTime, tau || IPH); }   // rule 6: free-wheel glide
   // ---------- the chain (built once) ----------
-  var inp = g(1), rDry = g(1), rIn = g(0), rDel = c.createDelay(PHI), rFb = g(0), rOut = g(0), mixA = g(1);
+  var inp = g(1), rDry = g(1), rIn = g(0), rDel = c.createDelay(PHI), rFb = g(0), rOut = g(0), rAmp = g(1), mixA = g(1);
   var lp = c.createBiquadFilter(), hp = c.createBiquadFilter(), post = g(1), post2 = g(1);
   var eSend = g(0), eDel = c.createDelay(PHI), eFb = g(0), wSend = g(0), wConv = c.createConvolver(), cDry = g(1), shp = c.createWaveShaper(), cWet = g(0), out = g(0);
   lp.type = 'lowpass'; lp.frequency.value = FHI; hp.type = 'highpass'; hp.frequency.value = FLO;
-  inp.connect(rDry); rDry.connect(mixA); inp.connect(rIn); rIn.connect(rDel); rDel.connect(rFb); rFb.connect(rDel); rDel.connect(rOut); rOut.connect(mixA);
+  inp.connect(rDry); rDry.connect(mixA); inp.connect(rIn); rIn.connect(rDel); rDel.connect(rFb); rFb.connect(rDel); rDel.connect(rOut); rOut.connect(rAmp); rAmp.connect(mixA);
+  // SCATTER (Danny 15:07 AWST 26 Oct: 'a little bit too much of the scatter ... modulate the amplitude faster than how often it's playing'):
+  // the roll's base level sits a rung down (PHI^-1), each roll swells in and fades out inside its beat, and a slow sine moves the roll level
+  // at PHI^2 x the rate rolls are triggered (so no two rolls land at the same level). The dry beat dips only to PHI^-1 under a roll.
+  var RB = IPH, lfo = c.createOscillator(), lfoD = g(RB * IPH); rAmp.gain.value = RB; lfo.type = 'sine'; lfo.frequency.value = 0; lfo.connect(lfoD); lfoD.connect(rAmp.gain); lfo.start();
   mixA.connect(lp); lp.connect(hp); hp.connect(post); post.connect(post2);
   post.connect(eSend); eSend.connect(eDel); eDel.connect(eFb); eFb.connect(eDel); eDel.connect(post2);
   post.connect(wSend); wSend.connect(wConv); wConv.connect(post2);
@@ -79,21 +83,29 @@
     var cr = E.crush.v, b = cr ? Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
     if (b && b !== bits) { bits = b; shp.curve = crushCurve(b); }
     to(cWet.gain, cr * IPH * IPH, tau); to(cDry.gain, 1 - cr * Math.pow(PHI, -3), tau);   // phi: gentle, at most PHI^-2 wet
+    var trg = TRG = energy() * IPH / (beat * SPB);                              // rolls per second: share of bars x bars per second
+    lfo.frequency.setTargetAtTime(trg * PHI * PHI, c.currentTime, tau || IPH);   // phi: scatter amplitude moves PHI^2 faster than its trigger rate (rule 6 glide)
     sync();
   }
   // ---------- roll scheduler: on the last beat of a bar, loop a beat / F slice for the rest of that beat ----------
-  var rolled = -1, rolls = 0;
+  var rolled = -1, rolls = 0, TRG = 0, lastF = 0;
   function rollTick() {
     var F = E.roll ? E.roll.v : 0, tr = D.track; if (!F || !tr || !D.playing || !(tr.bpm > 0)) return;
     var beat = SPM / tr.bpm, bar = beat * SPB, el = (Date.now() - tr.born) / MS, n = Math.floor(el / bar), at = (n + 1) * bar - beat;   // last beat of this bar
     if (n === rolled || at - el > Math.pow(PHI, -2) || at < el) return;                     // phi: schedule PHI^-2 s ahead
     rolled = n; if (frac((n + (seed || 0)) * IPH) > energy() * IPH) return;                 // how often: pump energy x PHI^-1 of the bars
-    rolls++; var t = c.currentTime + (at - el), L = beat / F, s = Math.pow(PHI, -8), end = t + beat;   // phi: click-free edges PHI^-8 s
+    rolls++; var t = c.currentTime + (at - el);
+    // WIDTH (Danny 15:08): the slice length moves too, on the same ladder of musical divisions. One base rate r = the trigger rate:
+    // rolls come at r, the width sways at r x PHI, the amplitude at r x PHI^2. Sway depth = pump energy x PHI rungs (rounded, so snapped).
+    var ix = FIB.indexOf(F), dep = energy() * PHI * wob('roll'), sway = Math.round(dep * Math.sin(2 * Math.PI * TRG * PHI * t));
+    F = FIB[clamp(ix + sway, 1, FIB.length - 1)]; lastF = F;
+    var L = beat / F, s = Math.pow(PHI, -8), end = t + beat;   // phi: click-free edges PHI^-8 s
     rDel.delayTime.setValueAtTime(L, t);
     rIn.gain.setTargetAtTime(1, t, s); rIn.gain.setTargetAtTime(0, t + L, s);
     rFb.gain.setTargetAtTime(1, t + L, s); rFb.gain.setTargetAtTime(0, end, s);
-    rOut.gain.setTargetAtTime(1, t + L, s); rOut.gain.setTargetAtTime(0, end, s);
-    rDry.gain.setTargetAtTime(0, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
+    var w = beat - L;                                                     // the looping part of the beat: swell in (tau w PHI^-2), fade out from PHI^-1 of it (tau w PHI^-3)
+    rOut.gain.setTargetAtTime(1, t + L, w * IPH * IPH); rOut.gain.setTargetAtTime(0, t + L + w * IPH, w * Math.pow(PHI, -3)); rOut.gain.setTargetAtTime(0, end, s);
+    rDry.gain.setTargetAtTime(IPH, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
   }
   // ---------- knob chips (same style as the pump knobs) ----------
   var els = {}, box = null, btn = null;
@@ -150,7 +162,7 @@
   setInterval(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
   setInterval(rollTick, Math.pow(PHI, -4) * MS);                          // phi: roll look-ahead every PHI^-4 s
   build();
-  D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; },
+  D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
     set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy };
 })();
