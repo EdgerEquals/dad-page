@@ -17,7 +17,9 @@
    ADAPTIVE (Danny t744u 25 Oct, adaptive golden-ratio principle): jobs may carry a shared component id ({id:'dj'}); js/phi-adapt.js runs as
    the FIRST tier-2 job ({first:true}) and calls LoadTiers.adapt({rank,gap}): from then on the waiting tier-2/3 jobs are gently re-ranked by
    this visitor's on-device usage and each job's following gap becomes a golden step (0.236 / 0.382 / 0.618 s). first/last jobs never move.
-   Without phi-adapt (or with too little data) the order and the 0.382 s gap are exactly as before. See docs/phi-adapt.md. */
+   Without phi-adapt (or with too little data) the order and the 0.382 s gap are exactly as before. See docs/phi-adapt.md.
+   WEIGHT ORDER (Danny 11:55 AWST 26 Oct): a job may carry {w: transfer KB}; the middle of the queue is kept in ascending weight, lightest first
+   (jobs without w keep their place; first/last pins never move; phi-adapt may still re-rank by usage on top). */
 (function(){
   'use strict';
   var T={1:[],2:[],3:[]},done={1:0,2:0,3:0},log=[],last=0,t0=Date.now(),GAP=382,de=document.documentElement;
@@ -43,8 +45,8 @@
     var used={},out=[];r.forEach(function(id){for(var i=0;i<mid.length;i++){if(!used[i]&&(mid[i].id||'')===id){used[i]=1;out.push(mid[i]);break;}}});
     for(var i=0;i<mid.length;i++)if(!used[i])out.push(mid[i]);if(out.length!==mid.length)return;Array.prototype.splice.apply(q,[a,mid.length].concat(out));}
   function adapt(h){if(!h||typeof h.rank!=='function')return;H=h;reorder(2);reorder(3);log.push([2,'adapt on',now()]);}
-  function enqueue(n,j){var q=Q[n];if(j.first){var f=0;while(f<q.length&&q[f].first)f++;q.splice(f,0,j);}else if(j.last)q.push(j);else{var i=q.length;while(i>0&&q[i-1].last)i--;q.splice(i,0,j);reorder(n);}if(done[n])drain(n);}
-  function add(n,fn,name,o){var j={fn:fn,name:name||fn.name||'fn',last:!!(o&&o.last),first:!!(o&&o.first),id:(o&&o.id)||''};
+  function enqueue(n,j){var q=Q[n];if(j.first){var f=0;while(f<q.length&&q[f].first)f++;q.splice(f,0,j);}else if(j.last)q.push(j);else{var i=q.length;while(i>0&&q[i-1].last)i--;if(j.w!=null){while(i>0&&!q[i-1].first&&q[i-1].w!=null&&q[i-1].w>j.w)i--;}q.splice(i,0,j);reorder(n);}if(done[n])drain(n);}
+  function add(n,fn,name,o){var j={fn:fn,name:name||fn.name||'fn',last:!!(o&&o.last),first:!!(o&&o.first),id:(o&&o.id)||'',w:(o&&o.w!=null)?+o.w:null};
     if(n===1){if(done[1])fn();else T[1].push(j);return;}enqueue(n,j);}
   function slow(){var c=navigator.connection||{};return !!(c.saveData||/(^|-)2g$/.test(c.effectiveType||''));}
   function script(url,n,o){add(n||2,function(done){var s=document.createElement('script');s.src=url;s.async=true;s.onload=s.onerror=done;document.head.appendChild(s);},url.split('/').pop().split('?')[0],o);}

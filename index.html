@@ -57,7 +57,7 @@
   });
   var SWEEP = {hot:-1, sun:-0.5, storm:0, cloud:0, rain:0.5, fog:1, night:1.5, deep:2};
   var MSG = {idle:5, "new":3, dad:2, urgent:1};
-  var sw = 0, msgState = null, msgForced = null, wxForced = null;
+  var sw = 0, msgState = null, msgForced = null, wxForced = null, retimeN = 0;   // retimeN: animations waiting for a period change at their next loop
   var RM = (typeof window !== "undefined" && window.matchMedia) ? window.matchMedia("(prefers-reduced-motion: reduce)") : {matches:false};
   try{ var q = new URLSearchParams(location.search); wxForced = q.get("weather"); if(!(wxForced in SWEEP)) wxForced = null;
     msgForced = q.get("msg"); if(!(msgForced in MSG)) msgForced = null; }catch(e){}
@@ -105,18 +105,19 @@
     if(next === sw) return; var f = Math.pow(PHI, next - sw);
     if(doc && doc.getAnimations){ doc.getAnimations().forEach(function(a){ if(!sweepable(a)) return;
       var t = a.effect.getTiming(); if(a._phiD == null){ a.effect.updateTiming({duration:t.duration, delay:t.delay}); a._phiD = t.duration; }   // pin to its current period
-      a._phiNext = (a._phiNext || a._phiD) * f; }); }
+      if(a._phiNext == null) retimeN++; a._phiNext = (a._phiNext || a._phiD) * f; }); }
     sw = next; if(rootStyle) writeVars();   // new elements start on the new periods
     if(doc) doc.documentElement.setAttribute("data-phi-sweep", String(sw));
   }
   if(doc){
     writeVars();
     doc.addEventListener("animationiteration", function(ev){
+      if(!retimeN) return;   // load-order fix (26 Oct): nothing queued = no getAnimations() (it forced a style pass on every loop of every animation)
       var el = ev.target; if(!el.getAnimations) return;
       el.getAnimations().forEach(function(a){
         if(a.animationName !== ev.animationName) return;
-        if(a._phiNext != null){ retime(a, a._phiNext); a._phiD = a._phiNext; a._phiNext = null; }
-        if(a.animationName === "msg-pulse" && a._msgNext != null){ retime(a, a._msgNext); a._msgNext = null; }
+        if(a._phiNext != null){ retime(a, a._phiNext); a._phiD = a._phiNext; a._phiNext = null; retimeN = Math.max(0, retimeN - 1); }
+        if(a.animationName === "msg-pulse" && a._msgNext != null){ retime(a, a._msgNext); a._msgNext = null; retimeN = Math.max(0, retimeN - 1); }
       });
     }, true);
     // deep night starts/ends on the Perth clock (functional check once a minute, not an animation)
@@ -132,12 +133,12 @@
     rootStyle.setProperty("--phi-msg", (D/1000).toFixed(3) + "s");
     doc.documentElement.setAttribute("data-msg", state);
     if(doc.getAnimations) doc.getAnimations().forEach(function(a){ if(a.animationName === "msg-pulse"){
-      var t = a.effect.getTiming(); if(!a._msgPinned){ a.effect.updateTiming({duration:t.duration, delay:t.delay}); a._msgPinned = true; } a._msgNext = D; } });
+      var t = a.effect.getTiming(); if(!a._msgPinned){ a.effect.updateTiming({duration:t.duration, delay:t.delay}); a._msgPinned = true; } if(a._msgNext == null) retimeN++; a._msgNext = D; } });
   }
   if(typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : this);
 </script>
-<script src="js/load-tiers.js?v=3"></script><script>LoadTiers.script("js/phi-adapt.js?v=1",2,{first:true,id:"phi-adapt"})</script><!-- page pump root + entity registry (tiny, idle; only the Rebella zoom sound reads it for now) --><style>.lt-wait *,.lt-wait *::before,.lt-wait *::after{animation-play-state:paused!important}</style><!-- load tiers 0-3 (Danny t715u 25 Oct): see the comment at the top of js/load-tiers.js -->
+<script src="js/load-tiers.js?v=4"></script><script>LoadTiers.script("js/phi-adapt.js?v=1",2,{first:true,id:"phi-adapt"})</script><!-- page pump root + entity registry (tiny, idle; only the Rebella zoom sound reads it for now) --><style>.lt-wait *,.lt-wait *::before,.lt-wait *::after{animation-play-state:paused!important}</style><!-- load tiers 0-3 (Danny t715u 25 Oct): see the comment at the top of js/load-tiers.js -->
 <script src="js/ratio-pump.js?v=2" data-site="dad" data-freq="0.75" data-lite="1"></script><!-- ratio pump + Dad's palette frequency dial 0.75 (all motion 25% slower; Danny 12:15 AWST 24 Oct) -->
 <script>
 /* ALL wording for this page lives here. Curated for a reader aged 13 (age dial ~/.config/rebella-age-dial.json, field "age").
@@ -190,7 +191,7 @@ window.QUIZ_COPY = {
 <meta name="referrer" content="no-referrer">
 <title>Questionnaire preview for Bonnie</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap"></noscript><!-- web fonts no longer block first paint (Danny t713u: lighter load) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;700&family=Gochi+Hand&family=Kaushan+Script&family=Lora:wght@500&display=swap" media="print" onload="this.media='all'"></noscript><!-- web fonts no longer block first paint (Danny t713u: lighter load) -->
 <link rel="stylesheet" href="css/dad-palette.css?v=2">
 <style>
 /* PREVIEW ONLY. Nothing Bonnie types is sent anywhere: no forms, no POSTs. Answers live in page memory and vanish on reload.
@@ -485,24 +486,27 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-dad-head.css?v=logodown1"><!-- Dad's palette (Danny 24 Oct 08:38 AWST: the questionnaire is from Dad, so it always uses his palette) -->
 <link rel="stylesheet" href="css/quiz-qcard-compact.css?v=markbar"><!-- Questions for Bonnie row at half height (Danny 13:00 AWST 24 Oct, t623u) -->
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
-<link rel="stylesheet" href="dash/css/tide-swell.css?v=1"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
-<script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide"})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=e892ad8e",2,{id:"dj"})</script>
-<link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
+<link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
+<script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=e892ad8e",2,{id:"dj",w:26.2})</script>
+<link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=c0c7afb8"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
-<link rel="stylesheet" href="css/quiz-space-sweep.css?v=fceab935"><!-- slow space orbit layer, middle band (Danny 13:01-13:03 AWST 24 Oct, t626u/t628u/t629u) -->
-<link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit3"><!-- terminal status pill + matrix terminal colours + footer simmie$ light (Danny 13:18 AWST 24 Oct, t637u-t639u) -->
+<link rel="stylesheet" href="css/quiz-space-sweep.css?v=fceab935" media="print" onload="this.media='all'"><!-- slow space orbit layer, middle band (Danny 13:01-13:03 AWST 24 Oct, t626u/t628u/t629u) -->
+<link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit4"><!-- terminal status pill + matrix terminal colours + footer simmie$ light (Danny 13:18 AWST 24 Oct, t637u-t639u) -->
 <link rel="stylesheet" href="css/quiz-head-row.css?v=1"><!-- header row: weather right in portrait, ticker in the middle in landscape (Danny 13:26 AWST 24 Oct, t646u) -->
-<script>LoadTiers.script("js/quiz-term-status.js?v=pillpulse7",2,{id:"tty"})</script>
-<link rel="stylesheet" href="css/quiz-front-orbit.css?v=c55ddc97"><!-- front orbit emojis over the greeting + scroll fade of both orbit layers (Danny 13:22-13:24 AWST 24 Oct, t641u-t644u) -->
-<link rel="stylesheet" href="css/quiz-popups.css?v=1"><!-- pop-up panels for every tappable item in the page chrome (Danny t660u 13:43 AWST 24 Oct) -->
+<script>LoadTiers.script("js/quiz-term-status.js?v=pillpulse7",2,{id:"tty",w:6.4})</script>
+<link rel="stylesheet" href="css/quiz-front-orbit.css?v=c55ddc97" media="print" onload="this.media='all'"><!-- front orbit emojis over the greeting + scroll fade of both orbit layers (Danny 13:22-13:24 AWST 24 Oct, t641u-t644u) -->
+<link rel="stylesheet" href="css/quiz-popups.css?v=1" media="print" onload="this.media='all'"><!-- pop-up panels for every tappable item in the page chrome (Danny t660u 13:43 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-tty-detail.css?v=1"><!-- Simmie tty detail back: bright dots, amber timestamps, dashed teal top rule, amber AWST · AGE (Danny 25 Oct 12:26 AWST) -->
 <link rel="stylesheet" href="css/dad-mark-zoom.css?v=4"><link rel="stylesheet" href="css/dad-mark-waves.css?v=1"><!-- radiating, reflecting waves around Dad's mark (Danny t719u) --><!-- tap-to-enlarge for Dad's mark (Danny t699u) and the Rebella logo (t701u), 25 Oct -->
 <link rel="stylesheet" href="css/quiz-light.css?v=2"><!-- light theme + footer theme switch (Danny t0u 25 Oct); every light rule is scoped to html[data-theme="light"] -->
+<!-- load order (Danny 11:55 AWST 26 Oct): web-font CSS and the decoration-only sheets (footer-light glow, space/front orbit layers, pop-ups, tide strip)
+     no longer block the first paint; they apply a moment later (media swap). Header + footer layout CSS stays blocking. -->
+<noscript><link rel="stylesheet" href="css/quiz-popups.css?v=1"><link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"></noscript>
 </head>
 <body>
 <video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp" data-src-webm="media/space-loop.webm" data-src-mp4="media/space-loop.mp4"></video><div class="bgloop-still" aria-hidden="true"></div>
-<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space'});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
+<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:135.6});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="fx" id="fxA" aria-hidden="true"></div><div class="fx" id="fxB" aria-hidden="true"></div>
 <!-- Questionnaire header (Danny 24 Oct 2026 02:50 AWST): the live Bonnie's Dashboard header STRUCTURE (rebella 517e809 moderation/:
@@ -1024,7 +1028,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>LoadTiers.script("js/quiz-space-sweep.js?v=0da0a804",2,{id:"space"})</script>
+<script>LoadTiers.script("js/quiz-space-sweep.js?v=0da0a804",2,{id:"space",w:7.4})</script>
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
