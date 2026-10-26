@@ -1,4 +1,4 @@
-# Dev tool only (not loaded by any page). Renders media/space-loop.webm|mp4 + poster; run from /workspace/saturnloop3 (reads js/phi-sun.js via PHI_SUN).
+# Dev tool only (not loaded by any page). Renders media/space-loop.webm|mp4 + poster (portrait) and, with ORIENT=land, media/space-loop-land.* ; reads js/phi-sun.js via PHI_SUN.
 # Saturn loop v3 (Danny 12:34 AWST 26 Oct 2026): every speed one phi step slower, Uranus on a larger orbit (Kepler III on cited
 # semimajor axes), a small star-like Sun at the shared anchor (rule 13) with both orbits centred on it in perspective.
 # Shared numbers come from js/phi-sun.js (the SKY JSON block), the same file the page reads.
@@ -17,8 +17,11 @@ GA = IP * IP                                     # golden angle as a fraction of
 REF = json.load(open('/workspace/orbit-ref-data-draft.json'))['ringed_planet']
 SKYC = json.loads(re.sub(r'//[^\n]*', '', open(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.environ.get('PHI_SUN', '../dp-loadorder-wt/js/phi-sun.js'))).read().split('/*SKY*/')[1]))
 W, H, FPS = 720, 1280, 24                        # anchor: the existing loop's frame size and frame rate (media/space-loop.webm)
+LAND = os.environ.get('ORIENT') == 'land'           # landscape variant (media/space-loop-land.*): the same frame turned on its side
+if LAND: W, H = H, W
 SEC = SKYC['loopSec']
 N = FPS * SEC; S = 2; SW, SH = W * S, H * S      # 2x supersample
+Z = min(W, H) * S                                # size unit: the short side, so planets keep their size in either orientation
 LOOP = SEC
 SWEEP = LOOP * PHI ** SKYC['sweepExp']            # Danny 12:34: one phi step slower than v2's PHI^-4
 SUNX, SUNY = W * S * (1 - PHI ** -SKYC['k']), H * S * PHI ** -SKYC['k']   # rule 13: the shared Sun anchor, same ratio as the page
@@ -42,7 +45,7 @@ def disc(d, x, y, r, fill): d.ellipse((x - r, y - r, x + r, y + r), fill=fill)
 # ---- Saturn (cited shape) ----
 F = REF['flattening']; EQ = REF['ring_radii_km']['equator']; RR = REF['ring_radii_km']
 SB = math.sin(math.radians(abs(REF['ring_opening_now']['obs_sub_lat_deg']['2026-10-26'])))   # ring opening as seen from Earth now
-R = W * S * PHI ** (-7 / 2)                       # planet radius, half a rung under PHI^-3 of the frame width
+R = Z * PHI ** (-7 / 2)                       # planet radius, half a rung under PHI^-3 of the frame width
 TILT = -TAU * PHI ** -6                           # ring tilt on screen (about the trial's -16..-20 deg)
 # ring regions in planet radii, opacity 1 - exp(-tau) with tau the midpoint of the cited range
 RINGS = [(RR['C_inner'] / EQ, RR['B_inner'] / EQ, (5e-2 + 0.35) / 2),        # cite: NSSDC_RINGS C ring tau 0.05-0.35
@@ -111,6 +114,10 @@ def saturn(u, g=None):                            # u = 0..1 through the pass; g
 A_S = W * S * PHI                                  # Saturn's orbit semi-major (frame widths x PHI: its far ends sit off-frame)
 A_U = A_S * SKYC['uranusAU'] / SKYC['saturnAU']      # cite: true semimajor-axis ratio (NSSDC)
 KEP = (SKYC['uranusAU'] / SKYC['saturnAU']) ** (3 / 2)   # cite: Kepler III, Uranus period / Saturn period
+# depth squash (minor/major) of both orbits. Portrait: PHI^-2 (v3, unchanged). Landscape: the whole frame height shows under
+# object-fit cover, so squash the shared orbit plane until the OUTER orbit's near point sits at the golden point of the frame
+# below the Sun: SUNY + (SH - SUNY) / PHI. Saturn (similar ellipse, smaller) then crosses higher, in the upper band.
+Q = (SH - SUNY) * IP / A_U if LAND else IP ** 2
 def arc(A, margin):                                # the near-side angles where the planet enters (left) and leaves (right) the frame
     return math.acos(max(-1, (-margin - SUNX) / A)), math.acos(min(1, (SW + margin - SUNX) / A))
 SL, SR = arc(A_S, BOX); OMEGA = (SL - SR) / SWEEP   # Saturn crosses its visible arc in SWEEP
@@ -118,9 +125,9 @@ UL, UR = arc(A_U, UBOX); U_DUR = (UL - UR) / (OMEGA / KEP)
 U0 = T0 + SWEEP + (LOOP - T0 - SWEEP - U_DUR) * IP ** 2   # Uranus pass after Saturn's, golden share of the free time
 assert 0 < T0 and U0 > T0 + SWEEP and U0 + U_DUR < LOOP, (T0, SWEEP, U0, U_DUR)
 def onorbit(A, th):
-    return SUNX + A * math.cos(th), SUNY + A * IP ** 2 * math.sin(th), PHI ** (math.sin(th) - 1)   # x, y, perspective scale
+    return SUNX + A * math.cos(th), SUNY + A * Q * math.sin(th), PHI ** (math.sin(th) - 1)   # x, y, perspective scale
 def sun(d):                                        # small, star-like: a hot core, a soft halo, four faint rays
-    r = W * S * PHI ** -8
+    r = Z * PHI ** -8
     for j in range(round(PHI ** 4), 0, -1):
         q = j / round(PHI ** 4); disc(d, SUNX, SUNY, r * PHI ** (PHI * q * PHI), hsv(IP ** 5 * IP, IP ** 2 * q, 1) + (int(A8 * IP ** 4 * (1 - q) ** IP),))
     disc(d, SUNX, SUNY, r, SAND + (A8,))
@@ -129,7 +136,7 @@ def sun(d):                                        # small, star-like: a hot cor
         d.line((SUNX - math.cos(a) * L, SUNY - math.sin(a) * L, SUNX + math.cos(a) * L, SUNY + math.sin(a) * L), fill=SAND + (int(A8 * IP ** 3),), width=max(1, int(S * IP)))
 def orbit_lines(d):
     for A in (A_S, A_U):
-        d.ellipse((SUNX - A, SUNY - A * IP ** 2, SUNX + A, SUNY + A * IP ** 2), outline=SKY + (int(A8 * IP ** 6),), width=max(1, int(S * IP)))
+        d.ellipse((SUNX - A, SUNY - A * Q, SUNX + A, SUNY + A * Q), outline=SKY + (int(A8 * IP ** 6),), width=max(1, int(S * IP)))
 # ---- teal system from the trial, faster ----
 def teal_planet(Rt):
     size = int(Rt * (2 + IP ** 3 * PHI)); c = size / 2
@@ -138,7 +145,7 @@ def teal_planet(Rt):
     m = Image.new('L', (size, size), 0); disc(ImageDraw.Draw(m), c, c, Rt, A8); p.putalpha(m)
     ImageDraw.Draw(p).ellipse((c - Rt, c - Rt, c + Rt, c + Rt), outline=SKY + (int(A8 * (1 - IP ** 5)),), width=int(PHI ** 2 * S))
     return p
-TPR = W * S * PHI ** -4 * IP ** IP; TP = teal_planet(TPR)
+TPR = Z * PHI ** -4 * IP ** IP; TP = teal_planet(TPR)
 ORB = [(TPR * PHI ** 2, TPR * IP ** IP), (TPR * PHI ** 2 * PHI ** IP, TPR * PHI ** IP)]
 MOONS = [(0, round(PHI), IP ** 2, TPR * IP ** 3 * PHI, SAND), (1, -round(PHI ** 2), PHI ** 2, TPR * IP ** 5, hsv(GA, IP ** 2, 1)),
          (1, -round(PHI ** 2), PHI ** 2 + math.pi, TPR * IP ** 6 * PHI, hsv(2 * GA, IP ** 2, 1))]
