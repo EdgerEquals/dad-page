@@ -17,8 +17,13 @@
 .q-head .qh-djpop[hidden]{display:none}
 .q-head .qh-djpop .qh-c{position:relative;padding-top:.45rem;pointer-events:none}
 .q-head .qh-djpop .dad-dj{pointer-events:auto;position:relative;padding-right:2.2rem;box-shadow:0 10px 28px rgba(0,0,0,.75),0 0 0 1px var(--dpc-border-hi,#1F5478)}
-.q-head .qh-djpop .djp-x{position:absolute;top:.35rem;right:.35rem;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;cursor:pointer;z-index:1;
-  border:1px solid var(--dpc-border,#143A57);background:var(--dpc-panel-2,#071829);color:var(--dpc-heading,#9DBCCE);font:700 1rem/1 system-ui,sans-serif;padding:0}
+/* panelclose (Danny 21:21 AWST 26 Oct, t252u: the close button scrolled away with the panel): the X floats. It is the panel's first flex
+   item, sticky at the top of the panel's own scroll box, aligned into the right padding (2.2rem - .35rem, the old right offset), and its
+   height + the column gap are taken back out of the flow (negative bottom margin), so nothing else moves. Same 28px target as before;
+   a translucent black backing (PHI^-1 via --djb-1) under the palette ring so it reads over the chips. Safe-area: the panel sits inside
+   .qh-c, which already pads by the safe-area insets, and the header pads the top inset. */
+.q-head .qh-djpop .djp-x{position:-webkit-sticky;position:sticky;top:.35rem;align-self:flex-end;flex:none;margin:0 calc(.35rem - 2.2rem) calc(-28px - .3rem) 0;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;cursor:pointer;z-index:2;
+  border:1px solid var(--dpc-border-hi,#1F5478);background:rgba(0,0,0,var(--djb-1,.618));color:var(--dpc-heading,#9DBCCE);font:700 1rem/1 system-ui,sans-serif;padding:0}
 .q-head .qh-djpop .djp-x:hover{border-color:var(--dpc-border-hi,#1F5478)}
 .q-head .qh-djpop .djp-x:focus-visible{outline:2px solid var(--dpc-accent,#0AF2FF);outline-offset:1px}
 /* still openable while the header is compacted (scrolled) */
