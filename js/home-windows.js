@@ -126,12 +126,23 @@
     fq = 0;
     var top = hd ? Math.max(0, hd.getBoundingClientRect().bottom) : 0, bot = ft ? ft.getBoundingClientRect().top : innerHeight;
     var cs = getComputedStyle(main), w = Math.max(0, main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) || de.clientWidth;   // the measured CONTENT width
-    var h = Math.max(0, bot - top), uu = de.clientWidth > innerHeight ? Math.max(h / PHI, w * Math.pow(PHI, -2)) : Math.min(w, h);   // orientation from the viewport, size from the box
-    de.style.setProperty('--hm-top', top + 'px'); de.style.setProperty('--hm-h', h + 'px'); de.style.setProperty('--hw-u', uu + 'px');
-    var card = doc.querySelector('.fc-card'); if (!card) return;
-    var room = h * (1 - Math.pow(PHI, -3)), cu = uu, n;                                     // phi: keep PHI^-3 of the box free
+    // fit2 (Ed 17:03 AWST 26 Oct, 'still too big in portrait'): in portrait the box is about square on a small phone (header + footer take ~PHI^-2
+    // of the height), so U = the whole short side made the card and every window about half the visible box: one card and two half windows per
+    // screen, the home 2.5 screens tall. Portrait now starts one rung down (short side x PHI^-1) and keeps stepping down half a rung until the
+    // logo card AND the whole first row of windows are on the first screen. Landscape is unchanged.
+    var portrait = de.clientWidth <= innerHeight, h = Math.max(0, bot - top), uu = portrait ? Math.min(w, h) / PHI : Math.max(h / PHI, w * Math.pow(PHI, -2));   // orientation from the viewport, size from the box
+    de.style.setProperty('--hm-top', top + 'px'); de.style.setProperty('--hm-h', h + 'px');
+    var card = doc.querySelector('.fc-card');
+    var room = h * (1 - Math.pow(PHI, -3)), cu, n, k;                                       // phi: keep PHI^-3 of the box free
     var rem = parseFloat(getComputedStyle(de).fontSize), floor = rem * PHI * PHI / Math.pow(PHI, -3);   // the mark never drops under PHI^2 rem (text is the reader's, it does not shrink)
-    for (n = 0; n < 8; n++) { de.style.setProperty('--fc-u', cu + 'px'); if (card.offsetHeight <= room && card.offsetWidth <= w * (1 - Math.pow(PHI, -3))) break; if (cu / PHI < floor) break; cu /= PHI; }   // unit: 8 rungs is ample
+    for (k = 0; k < 4; k++) {                                                                // unit: 4 half-rungs is ample
+      de.style.setProperty('--hw-u', uu + 'px'); cu = uu;
+      if (card) for (n = 0; n < 8; n++) { de.style.setProperty('--fc-u', cu + 'px'); if (card.offsetHeight <= room && card.offsetWidth <= w * (1 - Math.pow(PHI, -3))) break; if (cu / PHI < floor) break; cu /= PHI; }   // unit: 8 rungs is ample
+      if (!portrait) break;
+      var w0 = grid.firstElementChild, fr = w0 ? w0.getBoundingClientRect().bottom - main.getBoundingClientRect().top + main.scrollTop : 0;   // first row bottom, in the scroll box's own coordinates
+      if (!w0 || fr <= h || uu / Math.sqrt(PHI) < floor) break;
+      uu /= Math.sqrt(PHI);                                                                  // phi: half a rung down
+    }
   }
   function soon() { if (!fq) fq = requestAnimationFrame(fit); }
   fit(); addEventListener('resize', soon); addEventListener('orientationchange', soon);
