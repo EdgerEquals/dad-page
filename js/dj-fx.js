@@ -122,7 +122,8 @@
     if (PAD || padFl) { var fb = bpm / SPM; padFl = !!PAD;                 // logo pad flanger: sweep at the beat rate x PHI^-3 .. x PHI^-2 with distance; silent at rest
       to(flW.gain, PAD ? PAD.flw * IPH * IPH : 0, tau); to(flFb.gain, PAD ? PAD.flw * IPH : 0, tau); to(flL.frequency, PAD ? fb * Math.pow(PHI, PAD.r - 3) : 0, tau); }                         // a transition owns the sweeps until its tail is done
     var fv = E.filter.v, span = Math.log(FHI / FLO);
-    to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); to(hp.frequency, FLO * Math.exp(span * IPH * Math.max(0, fv)), tau);
+    to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); var hpF = FLO * Math.exp(span * IPH * Math.max(0, fv)), bR = !PAD && K.bassRoot ? K.bassRoot() : null; if (bR) hpF = Math.min(hpF, Math.max(FLO, bR.f * Math.pow(PHI, -(1 + bR.w))));   // bass fix 3: at rest the HP stays under the bass fundamental (transitions and the pad keep the full sweep)
+    to(hp.frequency, hpF, tau);
     var e = E.echo.v, dT = beat / 2, now = c.currentTime, q = Math.pow(PHI, -6);
     if (now >= thrU) {                                                    // a throw's tail owns the echo (and the pad's echo corner) until it has rung out
     if (Math.abs(dT - eDel.delayTime.value) > q * q) {                    // tempo change: no glide on delayTime (that warbles the pitch); dip, jump, return

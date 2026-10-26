@@ -193,6 +193,20 @@
   function harmRhythm(dm, rr) { var t = DIAL.hrLo + dm.space * (DIAL.hrHi - DIAL.hrLo); return wPick(HBARS, function (b) { return Math.abs(Math.log2(b) - t); }, Math.pow(PHI, PHI * PHI * dm.tension), rr()); }
   function modePos(sc) { return 1 - FIFTHS.indexOf(sc); }               // a genre scale's place: lydian +1, major 0, dorian -2, minor -3
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  // PHONE BASS (MIDI Bot bass + beats plan fix 1, Danny 18:48 AWST 26 Oct): an iPhone speaker plays little below 150-200 Hz, so each track
+  // adds a harmonic layer beside its unchanged sub path (missing fundamental; Larsen & Aarts, JAES 50(3) 2002; MaxxBass): HP at the
+  // bass root x PHI -> tanh shaper driven D = PHI^(PHI^2 + 2 w - 1) (built once, like the crush curve) -> LP at root x PHI^5 -> gain
+  // H x PHI^-(PHI^2 + 1), H = PHI^(2 w - 1) x PHI^-1 (PHI^-2 .. 1, all from the track's weight pump w). 5 nodes per track, not per note.
+  var TNH = null;
+  function phoneBass(src, dst, br, w) {
+    if (!ctx.createWaveShaper) return null; w = clamp(isFinite(w) ? w : IPH, 0, 1);
+    if (!TNH) { var n = 1024; TNH = new Float32Array(n); for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; TNH[i] = Math.tanh(PHI * PHI * x); } }   // phi: tanh over +-PHI^2 of input
+    var D = Math.pow(PHI, PHI * PHI + 2 * w - 1), H = Math.pow(PHI, 2 * w - 1) * IPH;   // drive into the +-PHI^2 curve
+    var hp = ctx.createBiquadFilter(), sh = ctx.createWaveShaper(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    hp.type = 'highpass'; hp.frequency.value = br * PHI; lp.type = 'lowpass'; lp.frequency.value = br * Math.pow(PHI, 5); sh.curve = TNH;
+    var pre = ctx.createGain(); pre.gain.value = D; g.gain.value = H * Math.pow(PHI, -(PHI * PHI + 1));   // saturated: the layer sits at H x PHI^-(PHI^2 + 1) of full scale
+    src.connect(hp); hp.connect(pre); pre.connect(sh); sh.connect(lp); lp.connect(g); g.connect(dst); return { hp: hp, lp: lp, g: g, pre: pre };
+  }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function chordNotes(sc, root, deg, sev, cnt) { var n = [], c = cnt || (sev ? 4 : 3); for (var i = 0; i < c; i++) { var d = deg + i * 2; n.push(root + sc[d % 7] + 12 * Math.floor(d / 7)); } return n; }
 
@@ -238,7 +252,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=autosweep1', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=djbass2', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
   var VURL = 'js/dj-voice.js?v=djvoice1', vReq = false, VH = null;
@@ -323,7 +337,7 @@
     }
     lp.connect(g); env(g, t, a, vel / Math.sqrt(n), opt.hold != null ? opt.hold : 0.01, rel);   // equal-power: the copies sum to the old level
     var to = !tr.tk && tr.dk ? tr.dk : tr.out;
-    if (!crowd && ctx.createStereoPanner) { var pn = ctx.createStereoPanner(), w = (tr.dm ? tr.dm.space : 1 - u) * IPH + IPH * IPH; pn.pan.value = Math.sin(Math.log2(f) * 12 * 2 * Math.PI * IPH) * w; g.connect(pn); pn.connect(to); }   // unit: 12 semitones per octave; phi: golden-angle spread
+    if (!crowd && ctx.createStereoPanner) { var pn = ctx.createStereoPanner(), w = (tr.dm ? tr.dm.space : 1 - u) * IPH + IPH * IPH; var bh = tr.g && tr.g.br ? clamp(Math.log2(f / (tr.g.br * PHI * PHI)), 0, 1) : 1; pn.pan.value = Math.sin(Math.log2(f) * 12 * 2 * Math.PI * IPH) * w * bh; g.connect(pn); pn.connect(to); }   // unit: 12 semitones per octave; phi: golden-angle spread
     else g.connect(to);
     if (opt.rev) { var s = ctx.createGain(); s.gain.value = opt.rev; g.connect(s); s.connect(tr.rev); }
   }
@@ -387,6 +401,7 @@
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
     var dk = ctx.createGain(); dk.gain.value = 1; dk.connect(out); var L = { drums: lay(xo), lead: lay(xo), bass: lay(dk), pad: lay(dk) };
+    var hb0 = phoneBass(L.bass.out, dk, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
     var T = { dk: dk, dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
@@ -948,7 +963,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { dimX: function (w) { return dimX(w); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },
