@@ -79,9 +79,9 @@
     G.rx = G.fs * PHI; G.ry = G.rx * Math.pow(IP, 2);                      // phi: orbit around the Moon
     var low = fy - G.fs * PHI;                                             // phi: one node-size x PHI above the footer
     G.sx = W * Math.pow(IP, 5); G.sy = low; G.dx = W * (1 - Math.pow(IP, 5)); G.dy = low;   // phi: near the bottom corners
-    put(big, G.ex, G.ey, G.bfs, -OBL, OPB);
-    put(moon, G.mx, G.my, G.fs, 0, OP, SOUTH);
-    put(small, G.mx + G.fs * PHI, G.my + G.fs * IP, G.fs * IP, 0, OP);
+    put(big, G.ex, G.ey, G.bfs, -OBL, opAim());                         // pingop (Danny 14:41): Earth + Moon group on the 1-PHI^-3 rung too
+    put(moon, G.mx, G.my, G.fs, 0, opAim(), SOUTH);
+    put(small, G.mx + G.fs * PHI, G.my + G.fs * IP, G.fs * IP, 0, opAim());
     put(scope, G.sx, G.sy, G.fs, 0, opAim()); put(dish, G.dx, G.dy, G.fs, 0, opAim());
     point();
   }
@@ -120,7 +120,7 @@
       q.front = sn > 0; q.peak = sn > PEAK;
       var o = q.n.o.style; o.fontSize = (G.fs * q.s) + 'px'; o.zIndex = q.front ? 2 : 0; moon.o.style.zIndex = 1;
       o.transform = 'translate3d(' + (G.mx + G.rx * Math.cos(th)) + 'px,' + (G.my + G.ry * sn) + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) scale(' + sc + ')';   // unit: centre on the point
-      o.opacity = OP * sc * (q.front ? 1 : IP);                           // phi: behind = one rung dimmer
+      o.opacity = (q.op || OPA) * sc * (q.front ? 1 : IP);                // phi: base 1-PHI^-3 (pumped), behind = one rung dimmer
     });
   }
   var raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);                      // phi: frame cap PHI^-7 s
@@ -133,7 +133,7 @@
   function onScreen(n) { var r = n.o.getBoundingClientRect(); return r.width > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight && +getComputedStyle(n.o).opacity > 0; }
   function pulse(n) {
     if (!n.p.animate) return;
-    n.p.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(' + Math.pow(PHI, IP) + ')', opacity: PEAK / OP }, { transform: 'scale(1)', opacity: 1 }],
+    n.p.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(' + Math.pow(PHI, IP) + ')', opacity: 1 }, { transform: 'scale(1)', opacity: 1 }],
       { duration: MS * Math.pow(PHI, 0) * pumpOut(), easing: 'ease-out' });   // phi: one-second pulse (PHI^0), pumped; opacity relative to the base
   }
   var hops = [[scope, Math.pow(PHI, 0)], [big, Math.pow(IP, 1)], [dish, LIGHT], [moon, Math.pow(IP, 2)]];   // phi rungs; dish -> Moon = light time (cite)
@@ -149,7 +149,7 @@
 
   doc.body.appendChild(Lr); measure(); sky(); spinBig(performance.now());
   if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); orbit(t0); }      // unit: still, both in front (quarter turn)
-  else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); [scope, dish].forEach(function (n) { n.op = opAim(); n.o.style.opacity = n.op; }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
+  else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); [scope, dish, big, moon, small].forEach(function (n) { n.op = opAim(); n.o.style.opacity = n.op; }); ORB.forEach(function (q) { q.op = opAim(); }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
   addEventListener('resize', measure); addEventListener('orientationchange', measure);
   if (root.visualViewport) visualViewport.addEventListener('resize', measure);
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(measure);                  // emoji font box settles after load
