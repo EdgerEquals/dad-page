@@ -15,6 +15,9 @@
              ['\uD83D\uDEF0\uFE0F', 1,   0.28, 'qsFlip', 'ease-in-out', 7.375,             0.77, 0.29],    // satellite: flips (rotateY 0 -> 180 -> 360)
              ['\u2604\uFE0F',       0,   0.32, 'qsHalf', 'ease-in-out', 7.625,             0.73, 0.26],    // comet: 180 and back
              ['\uD83C\uDF19',       1,  -0.26, 'qsRock', 'ease-in-out', 7.875,             0.76, 0.30]];   // moon: gentle rock +-20deg
+  // Home (Danny 12:02 AWST 26 Oct): the comet moved to js/emoji-scene.js (fast crossing, heading = velocity); pages that set
+  // html[data-scene-comet] drop it here so it is not drawn twice. The other three suite emojis are unchanged.
+  if (document.documentElement.hasAttribute('data-scene-comet')) SET = SET.filter(function (d) { return d[3] !== 'qsHalf'; });
   var GROW = 1.3;
   var RINGS = [-20, 25];
   function orbitExp(ring, moon) { return ring === 0 ? 10 - 0.5 * moon : 9.5 - 0.25 * moon; }

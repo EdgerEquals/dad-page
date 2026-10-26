@@ -154,6 +154,13 @@ summary{cursor:pointer;color:var(--muted)}
       <table class="tbl"><thead><tr><th>Pump</th><th>Period</th><th>Swing</th><th>cos</th><th>w warm</th><th>w calm</th></tr></thead><tbody data-pumps></tbody></table>
     </details>
   </section>
+  <section class="tile" data-scene-dial="clouds" aria-labelledby="h-clouds"><!-- scene dial (Danny 12:04 AWST 26 Oct) -->
+    <h2 id="h-clouds">4 &middot; Thought clouds</h2>
+    <p class="what">How rarely a thought cloud appears on the home page (it grows, then fades). Rarer = longer gap.</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Clouds more often, one rung">more often</button><button type="button" data-sstep="1" aria-label="Clouds rarer, one rung">rarer</button></div>
+    <p class="note">Applies on this device the next time the home page loads.</p>
+  </section>
 </main>
 <div class="foot">
   <button type="button" id="dsUndo">Undo last step</button>
@@ -162,5 +169,6 @@ summary{cursor:pointer;color:var(--muted)}
 </div>
 <script src="js/season-pumps.js?v=1" defer></script>
 <script src="js/dial-sandbox.js?v=1" defer></script>
+<script src="js/scene-dials.js?v=1" defer></script>
 </body>
 </html>

@@ -1020,7 +1020,7 @@ body.paused .home-code::before{animation-play-state:paused}
   $('back').onclick=$('back2').onclick=function(){if(qi>0){qi--;render();}};
   $('skip').onclick=function(){MLOG.log('q'+(qi+1)+' skipped');next();};
   }
-  reset();theme('teen');SIM_LIGHTS();readout();
+  reset();if(!document.getElementById('home-main'))theme('teen');SIM_LIGHTS();readout();   // home: the middle layer is js/emoji-scene.js now (no rainbows; Danny 12:06 / 12:17 AWST 26 Oct)
 })();
 </script>
 <script src="js/quiz-dj-pill.js?v=788205e5" defer></script>
@@ -1028,7 +1028,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>LoadTiers.script("js/quiz-space-sweep.js?v=0da0a804",2,{id:"space",w:7.4})</script>
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a805",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=1",2,{id:"scene",w:6.5})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
