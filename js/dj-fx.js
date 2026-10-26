@@ -57,15 +57,17 @@
   function energy() {                                                     // pump energy u in (0,1): excited, urgent, hot and day push it up
     var p = D.pumps(); return 1 / (1 + Math.pow(PHI, p.tp + p.wp + p.up + p.mp));
   }
-  // CROSS-MODULATION (Danny 15:14): each effect hears the top-panel pumps through its own phi-weighted coupling (PHI^-1..PHI^1 per pump),
-  // so mood, urgency, sky and time move every effect differently; the coupling glides (tau PHI s, rule 6). A tiny 🎲 per effect re-rolls
-  // its rung and its coupling weights. The effects feed back a little: their smoothed mean (back(), tau PHI^2 s) leans the chain level
+  // CROSS-MODULATION (Danny 15:14; data layer, MIDI Bot pump-mapping sweep #2): each effect follows its own dimension of the start engine's
+  // data layer (roll and the auto transition style: drive; filter: brightness; echo and wash: space; crush: drive x tension), heard
+  // through the effect's own coupling weights per knob group (1 = as the music hears it; a tiny 🎲 re-rolls them PHI^-1..PHI^1), and the
+  // coupling glides (tau PHI s, rule 6). The effects feed back a little: their smoothed mean (back(), tau PHI^2 s) leans the chain level
   // down by up to PHI^-2 rungs and sways the pump-knob needles.
-  var PKS = ['tp', 'wp', 'up', 'mp'], CW0 = { roll: [-1, -1, 1, 1], filter: [1, 1, -1, -1], echo: [-1, 0, 0, 1], wash: [1, 1, -1, 0], crush: [-1, -1, 1, 0], trans: [1, 0, 1, -1] };   // unit: default coupling rung per pump (-1 = PHI^-1, 0 = 1, 1 = PHI)
+  var PKS = ['tp', 'wp', 'up', 'mp'], DIM = { roll: ['drive'], filter: ['brightness'], echo: ['space'], wash: ['space'], crush: ['drive', 'tension'], trans: ['drive'] };
   var wseed = {}, uk = {}, bk = 0, T0FX = c.currentTime;               // T0FX: the engine's own PHI^2 s fade-in owns the level until then
-  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return Math.pow(PHI, sd == null ? CW0[k][j] : 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
-  function uOf(k, dt) {                                                   // this effect's own pump energy, damped
-    var p = D.pumps(), w = cw(k), z = 0; PKS.forEach(function (x, j) { z += w[j] * p[x]; }); var tgt = 1 / (1 + Math.pow(PHI, z));
+  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return sd == null ? 1 : Math.pow(PHI, 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
+  function uOf(k, dt) {                                                   // this effect's own dimension (0..1), damped
+    var tgt = 1; if (K.dimX) { var X = K.dimX(cw(k)); DIM[k].forEach(function (d) { tgt *= 1 / (1 + Math.pow(PHI, -X[d])); }); } else tgt = energy();
+    if (k === 'wash') tgt = 1 - tgt;                                      // wash = (1 - u): more space, more wash
     uk[k] = uk[k] == null ? tgt : uk[k] + (tgt - uk[k]) * (1 - Math.exp(-(dt || IPH) / PHI)); return uk[k];
   }
   function back() { return bk; }

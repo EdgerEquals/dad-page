@@ -495,7 +495,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djclock1",1,{id:"dj"})</script><script>LoadTiers.script("js/logo-radio.js?v=3",1,{id:"dj"})</script><!-- logo radio: the logo tap starts the sound, the radio (Ed's DJ) carries it on after the zoom closes (Kids Club standard, Danny 26 Oct) --><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djdata1",1,{id:"dj"})</script><script>LoadTiers.script("js/logo-radio.js?v=3",1,{id:"dj"})</script><!-- logo radio: the logo tap starts the sound, the radio (Ed's DJ) carries it on after the zoom closes (Kids Club standard, Danny 26 Oct) --><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=djexp1"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/dj-buttons.css?v=1"><!-- music button (Bonnie's music-note button, Dad's palette) + DJ button family (Danny 15:27 AWST 26 Oct) -->
@@ -792,13 +792,17 @@ body.paused .home-code::before{animation-play-state:paused}
   }
   (function(){
     var force=(qs.get('weather')||'').toLowerCase();if(!WX[force]||force==='snow')force=null;window.SIM_WX.forced=force;
-    var KEY='dadWxPerth',url='https://api.open-meteo.com/v1/forecast?latitude=-31.95&longitude=115.86&current=weather_code,temperature_2m,is_day&timezone=Australia%2FPerth';
-    function use(d){window.SIM_WX.status=d?'ok':'fail';var cond=force||(d?wmo(d.code,d.day,d.temp):null);if(cond)showWx(cond,d?d.temp:null);else document.dispatchEvent(new Event('simwx'));}
+    var KEY='dadWxPerth',url='https://api.open-meteo.com/v1/forecast?latitude=-31.95&longitude=115.86&current=weather_code,temperature_2m,is_day,relative_humidity_2m,cloud_cover,pressure_msl,wind_speed_10m,wind_gusts_10m,uv_index&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,uv_index_max&hourly=pressure_msl&past_days=1&forecast_days=1&timezone=Australia%2FPerth';   // the DJ's data layer reads the extra fields from this same request (MIDI Bot pump-mapping sweep #2)
+    function use(d){window.SIM_WX.status=d?'ok':'fail';window.SIM_WX.f=d&&d.f||null;var cond=force||(d?wmo(d.code,d.day,d.temp):null);if(cond)showWx(cond,d?d.temp:null);else document.dispatchEvent(new Event('simwx'));}
     var cached=null;try{cached=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
-    if(cached&&Date.now()-cached.t<30*60*1000){use(cached);return;}
+    if(cached&&cached.f&&Date.now()-cached.t<(cached.U>0?cached.U*1000:30*60*1000)){use(cached);return;}   // keep it for the feed's own update period (current.interval)
     try{fetch(url,{cache:'no-store',referrerPolicy:'no-referrer'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
       var c=j&&j.current;if(!c||typeof c.weather_code!=='number')throw 0;
-      var d={t:Date.now(),code:c.weather_code,temp:c.temperature_2m,day:c.is_day===1};
+      var d={t:Date.now(),code:c.weather_code,temp:c.temperature_2m,day:c.is_day===1,U:c.interval};
+      var dl=j.daily||{},hr=j.hourly||{},last=function(a){return a&&a.length?a[a.length-1]:null;},ht=hr.time||[],hp=hr.pressure_msl||[],i=-1;
+      ht.forEach(function(x,k){if(x<=c.time)i=k;});var win=i<0?[]:hp.slice(Math.max(0,i-24),i+1).filter(function(v){return typeof v==='number';});   // unit: the last 24 hourly pressures
+      d.f={code:c.weather_code,temp:c.temperature_2m,tmin:last(dl.temperature_2m_min),tmax:last(dl.temperature_2m_max),rh:c.relative_humidity_2m,cc:c.cloud_cover,
+        p:c.pressure_msl,plo:win.length?Math.min.apply(null,win):null,phi:win.length?Math.max.apply(null,win):null,ws:c.wind_speed_10m,wg:c.wind_gusts_10m,wmax:last(dl.wind_speed_10m_max),uv:c.uv_index,uvmax:last(dl.uv_index_max)};
       try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){}
       use(d);
     }).catch(function(){use(null);});}catch(e){use(null);}
