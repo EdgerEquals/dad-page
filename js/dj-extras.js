@@ -108,9 +108,10 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     b.innerHTML = '<span aria-hidden="true">&#127922;</span>' + (label ? ' ' + label : '');
     b.addEventListener('pointerdown', function () { long = false; clearTimeout(held); if (hold) held = setTimeout(function () { long = true; hold(); }, IPH * 1e3); });   // phi: hold PHI^-1 s; unit: ms per s
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { b.addEventListener(n, function () { clearTimeout(held); }); });
-    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); if (long) { long = false; return; } on(); b.classList.remove('is-mixing'); void b.offsetWidth; b.classList.add('is-mixing'); });
+    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); if (long) { long = false; return; } on(); flash(b); });
     return b;
   }
+  function flash(b) { if (!b) return; b.classList.remove('is-mixing'); void b.offsetWidth; b.classList.add('is-mixing'); }
   function needle(fs) { var n = document.createElement('i'); n.className = 'dj-needle'; n.setAttribute('aria-hidden', 'true'); fs.appendChild(n); return n; }
   function place(n, labs, x) {                                            // x = fractional rung: between chip centres, on the chip's row
     if (!n || !labs.length) return; var i = clamp(Math.floor(x), 0, labs.length - 1), j = Math.min(i + 1, labs.length - 1), f = clamp(x - i, 0, 1), a = labs[i], b = labs[j];
@@ -131,11 +132,16 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     if (s == null) K.defMix(); else K.nextMix();
     var c = compute(); K.idle(c); paint(c); save(); syncChips();
   }
+  function pumpGo() { pumpDraw(pSeed == null ? Math.floor(Date.now() / 1e3) : pSeed + 1); }   // the pumps section's Random (tap)
+  function pumpLive() { pumpDraw(null); }                                  // ... and its hold: back to live
+  // HEADER RANDOM (Danny 20:22 AWST 26 Oct): the round header button presses this section's Random, so the kit carries the same handler,
+  // with the button's own flash when the panel is open.
+  var pBtn = null; K.pumpRandom = function (hold) { if (hold) pumpLive(); else pumpGo(); flash(pBtn); };
   function frac(x) { return x - Math.floor(x); }
   function buildChips() {
     var hd = document.createElement('div'); hd.className = 'dj-fx-hd';
     var h = document.createElement('span'); h.textContent = 'pumps'; hd.appendChild(h);
-    hd.appendChild(rbtn('dj-fxr', 'pumps', 'Random pumps (hold: back to live)', function () { pumpDraw(pSeed == null ? Math.floor(Date.now() / 1e3) : pSeed + 1); }, function () { pumpDraw(null); }));
+    hd.appendChild(pBtn = rbtn('dj-fxr', 'pumps', 'Random pumps (hold: back to live)', pumpGo, pumpLive));
     chips.appendChild(hd);
     GROUPS.forEach(function (gp) {
       var k = gp[0], fs = document.createElement('fieldset'), lg = document.createElement('legend'); fs.className = 'dj-grp'; lg.textContent = gp[1]; fs.appendChild(lg);

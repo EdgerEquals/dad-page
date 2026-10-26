@@ -348,11 +348,12 @@
     apply(PHI); save();                                                   // rule 6: a new effects mix glides in, tau PHI s
     if (btn) { btn.classList.remove('is-mixing'); void btn.offsetWidth; btn.classList.add('is-mixing'); }
   }
+  function fxGo() { draw(seed == null ? Math.floor(Date.now() / MS) : seed + 1); }   // the effects section's Random (tap); hold is draw(null)
   function wireBtn() {
     var held = 0, long = false;
     btn.addEventListener('pointerdown', function () { long = false; clearTimeout(held); held = setTimeout(function () { long = true; draw(null); }, IPH * MS); });   // phi: hold PHI^-1 s
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { btn.addEventListener(n, function () { clearTimeout(held); }); });
-    btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); if (long) { long = false; return; } draw(seed == null ? Math.floor(Date.now() / MS) : seed + 1); });
+    btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); if (long) { long = false; return; } fxGo(); });
     btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
   // ---------- continuity ----------
@@ -370,7 +371,7 @@
   EV(rollTick, Math.pow(PHI, -4) * MS);
   EV(chopTick, Math.pow(PHI, -4) * MS);                          // phi: chop look-ahead every PHI^-4 s                          // phi: roll look-ahead every PHI^-4 s
   build();
-  D.fx = { kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
+  D.fx = { random: function (hold) { if (hold) draw(null); else fxGo(); }, kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
     set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
     pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s

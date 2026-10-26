@@ -223,7 +223,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=pumprandom1';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=headrandom1';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -233,7 +233,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=djvoice1', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=headrandom1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
   var VURL = 'js/dj-voice.js?v=djvoice1', vReq = false, VH = null;
@@ -769,13 +769,21 @@
     if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { if (ox && pre) ox.pre = pre; remix(s, ox); })) { if (live) { live.bridge = true; var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); } if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
     remix(s);
   }
+  // HEADER RANDOM (Danny 20:22 AWST 26 Oct: the round header button should simply press both panel Random buttons): tap = the pumps
+  // section's Random, then the effects section's Random, the same handlers in the same order (open panel: both sections change and
+  // flash; closed: the same state changes). Hold (or shift) = both holds, back to live. Until the panel code has loaded, the pumps half
+  // is its new pump mix alone (the effects only exist once the sound has started).
+  function headRandom(hold) { var KK = window.DadAutoDJ && DadAutoDJ._kit, F = window.DadAutoDJ && DadAutoDJ.fx;
+    if (KK && KK.pumpRandom) KK.pumpRandom(hold); else { loadX(); if (hold) remix(null); else nextMix(); }
+    if (F && F.random) F.random(hold);
+    if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } }
   var mixBtn = null;
   function wireMix() {
     mixBtn = document.getElementById('dj-mix'); if (!mixBtn) return;
     var held = 0, longDone = false;
-    mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; remix(null); }, IPH * MS); });   // phi: hold PHI^-1 s
+    mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; headRandom(true); }, IPH * MS); });   // phi: hold PHI^-1 s
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { mixBtn.addEventListener(n, function () { clearTimeout(held); }); });
-    mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } if (e.shiftKey) remix(null); else mixGo(); });
+    mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } headRandom(e.shiftKey); });
     mixBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
   function resumeTap() {
