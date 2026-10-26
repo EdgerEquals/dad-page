@@ -17,6 +17,15 @@
    drawn size, same effect choice. A hit sends them away for a pumped PHI^5..PHI^6 s (PingLayer.away), then they arrive again the
    rule-14 way. The rocket's own pad and liftoff (until it has climbed PHI^-1 of the view from where it appeared) never count
    against them, so a launch beside the telescope cannot blow it up; a rocket higher in flight, or anything else crossing them, can.
+   ROCKETHIT (Danny 19:42 / 19:44 AWST 26 Oct): hit circles are one rung tighter (PHI^-1.5 of the half-box; fewer hits). Every hit
+   scatters energy: each emoji carries E (1 at rest); its effect and the emoji itself, knocked off along the debris line, both
+   play at E and die away on a ringing envelope E e^(-PHI u)(1 - u)(1 + PHI^-1 cos 2 pi f t) / (1 + PHI^-1), size AND opacity,
+   the emoji at f = 1 Hz, its effect at f PHI, so the two beat as they fade. The knocked-off emoji stays live with E PHI^-1 and
+   can hit something else (that one takes over its energy), a chain that dies by PHI^-1 per generation: it stops once E falls
+   below PHI^-2, so at most three hits in a row. Burn-up is the end of the line (Danny 19:57): only spin-out, burst and smoke
+   knock the emoji off live; flames and vaporise burn it up, its energy goes into the debris and fades, nothing follows.
+   ENERGY CHAIN (rule 15): energy = drawn area x measured speed^2; each body's debris and effect spread with its share of the pair's energy. The rocket, when hit, spins out on fire: a flame rides it, drawn smoke follows
+   over it at PHI^-1 of its path and a fireball blooms at the impact, trailing at PHI^-3 (so it is mostly left behind).
    Cost: one rAF loop capped at PHI^-6 s, rects of ~20-40 elements, a spatial grid, a swept test (no tunnelling between ticks);
    effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades. */
 (function () {
@@ -28,10 +37,10 @@
   var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p'];
   var HEAD = { 'rain': 'left:50%;bottom:0', 'es-comet': 'right:0;top:0;width:1em;height:1em' };   // unit: where a streak's glowing head is drawn
   var TICK = MS * Math.pow(IP, 6), FIND = MS * PHI * PHI, BACK = Math.pow(PHI, 3), GRACE = PHI;   // phi: tick PHI^-6 s, rescan PHI^2 s, back after PHI^3 s, PHI s grace
-  var RAD = Math.pow(IP, 1 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-0.5 of the half-box (glyph ink, not padding), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
+  var RAD = Math.pow(IP, 3 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-1.5 of the half-box (rockethit: one rung tighter than PHI^-0.5, glyph ink), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
   var css = '.ec-gone{visibility:hidden!important}.ec-h{position:absolute;width:0;height:0;pointer-events:none;visibility:hidden}' +
     '.ec-l{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;contain:strict}' +   // unit: just under the launcher's top layer
-    '.ec-l>*{position:absolute;left:0;top:0;line-height:1;will-change:transform,opacity;font-style:normal}' +
+    '.ec-l>*,.ec-g>*{position:absolute;left:0;top:0;line-height:1;will-change:transform,opacity;font-style:normal}.ec-g{width:0;height:0;transform-origin:0 0}' +   // unit: an effect group scales about the impact point
     '.ec-dot{border-radius:50%;background:radial-gradient(circle closest-side,#fff,#ffd700 38.2%,rgba(255,99,0,.618) 61.8%,transparent)}' +   // phi: 38.2 / 61.8 stops; anchor: white-hot to the Sun glow gold
     '.ec-fg{border-radius:50%;background:radial-gradient(circle closest-side,rgba(255,209,163,.854),rgba(255,137,18,.618) 38.2%,rgba(255,56,0,.236) 61.8%,transparent)}' +   // phi: stops + alphas; cite: blackbody 4000 K #ffd1a3, 2000 K #ff8912, 1000 K #ff3800 (Charity, vendian.org)
     '.ec-th,.ec-tc{border-radius:50% 50% 38.2% 38.2%/76.4% 76.4% 23.6% 23.6%;transform-origin:50% 100%}' +   // phi: a flame tongue, narrow tip, round root
@@ -63,10 +72,10 @@
     var el = b.el; if (!el.isConnected) return false;
     var r = el.getBoundingClientRect(), x, y, rad;
     if (b.head) { var h = b.head.getBoundingClientRect(); x = h.left + h.width / 2; y = h.top + h.height / 2;
-      rad = (b.kd === 'rain' ? el.offsetWidth * PHI * PHI : el.offsetHeight) / 2; }   // phi: the streak head glow is PHI^2 of its width; the comet head is 1em
+      rad = (b.kd === 'rain' ? el.offsetWidth * PHI * PHI : el.offsetHeight) / 2 * IP; }   // phi: the streak head glow is PHI^2 of its width; the comet head is 1em
     else { x = r.left + r.width / 2; y = r.top + r.height / 2; rad = Math.min(r.width, r.height) / 2 * RAD; }
     if (!r.width || !r.height || x < 0 || y < 0 || x > innerWidth || y > innerHeight) { b.t = 0; return false; }
-    var cs = getComputedStyle(b.hide); if (cs.visibility === 'hidden' || +cs.opacity < Math.pow(IP, 3)) { b.t = 0; return false; }   // phi: too faint to count
+    var cs = b.virt ? null : getComputedStyle(b.hide); if (cs && (cs.visibility === 'hidden' || +cs.opacity < Math.pow(IP, 3))) { b.t = 0; return false; }   // phi: too faint to count
     if (!b.t) { b.ox = x; b.oy = y; }                                      // unit: where it appeared this pass (the rocket: its pad)
     if (b.t) { var dt = (now - b.t) / MS; if (dt > 0) { b.vx = (x - b.x) / dt; b.vy = (y - b.y) / dt; } b.px = b.x; b.py = b.y; } else { b.px = x; b.py = y; b.vx = b.vy = 0; }
     (b.hist = b.hist || []).push([now, x, y]); while (b.hist.length > 34) b.hist.shift();   // phi: 34 samples (~PHI^2 s) of where it was
@@ -95,16 +104,18 @@
     if (now - last >= TICK) {
       last = now;
       if (now - lastFind > FIND) { lastFind = now; scan(); }
-      var on = B.filter(function (b) { return !b.gone && now > b.until && measure(b, now); });
+      DB = DB.filter(function (b) { return b.el.isConnected; });           // knocked-off emojis still flying
+      var on = B.filter(function (b) { return !b.gone && now > b.until && measure(b, now); }).concat(DB.filter(function (b) { return now > b.until && measure(b, now); }));
+      var open = live < MAXFX && now - lastHit > GAPS * MS;                 // the gate holds back fresh hits; a chain (a knocked-off emoji) is never held
       var cell = 0; on.forEach(function (b) { cell = Math.max(cell, b.r * 2 + Math.hypot(b.x - b.px, b.y - b.py)); });   // unit: one cell holds the biggest swept circle
-      if (cell && live < MAXFX && now - lastHit > GAPS * MS) {
+      if (cell && (open || DB.length)) {
         var G = {}, key = function (i, j) { return i + ',' + j; }, done = false;
         on.forEach(function (b, n) { var i = Math.floor(b.x / cell), j = Math.floor(b.y / cell), q = key(i, j); (G[q] = G[q] || []).push(n); b.ci = i; b.cj = j; });
         for (var n = 0; n < on.length && !done; n++) {
           var a = on[n];
           for (var di = -1; di <= 1 && !done; di++) for (var dj = -1; dj <= 1 && !done; dj++) {
             var g = G[key(a.ci + di, a.cj + dj)]; if (!g) continue;
-            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || liftoff(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
+            for (var m = 0; m < g.length; m++) { var c = on[g[m]]; if (g[m] <= n || (!open && !a.virt && !c.virt) || (a.pair && a.pair === c.pair) || !sameScene(a, c) || !moving(a, c) || !hit(a, c) || liftoff(a, c) || companions(a, c, now)) continue; collide(a, c, now); done = true; break; }
           }
         }
       }
@@ -116,7 +127,7 @@
 
   // ---------- the physics of one hit ----------
   var FX = ['smoke', 'flames', 'vaporise', 'burst'];                      // violence ladder, soft to hard
-  var count = 0, made = { burst: 0, smoke: 0, flames: 0, vaporise: 0, spin: 0 }, lastInfo = null;
+  var count = 0, made = { burst: 0, smoke: 0, flames: 0, vaporise: 0, spin: 0, rocket: 0 }, lastInfo = null;
   function collide(a, c, now) {
     lastHit = now; count++;
     var nx = c.x - a.x, ny = c.y - a.y, nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;   // unit: contact normal a -> c
@@ -124,13 +135,21 @@
     var size = a.r + c.r, w = 1 - Math.exp(-rv / (size * Math.pow(PHI, 3)) * k());   // phi: violence 0..1 from the closing speed in sizes per PHI^3 s (drift = smoke, the rocket = burst), pumped
     var glance = rv ? Math.abs(rvx * ny - rvy * nx) / rv : 0;            // unit: sine of the angle between the relative velocity and the normal
     var kindFx = glance > 1 - Math.pow(IP, 3) ? 'spin' : FX[Math.min(FX.length - 1, Math.floor(w * FX.length))];   // phi: glancing past 0.764 spins out
-    lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y] };
+    if (a.virt && !c.virt) c.E = a.E; if (c.virt && !a.virt) a.E = c.E;    // a knocked-off emoji hands its energy on
+    var Ka = ke(a), Kc = ke(c), Kt = Ka + Kc;                              // rule 15: mass from the drawn size, energy = mass x speed^2
+    var gen = Math.max(a.gen || 0, c.gen || 0) + 1, pair = ++pairs; gens[gen] = (gens[gen] || 0) + 1;
+    lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y], gen: gen, E: [a.E || 1, c.E || 1], rocket: !!(a.rk || c.rk), K: [Ka, Kc] };
     [a, c].forEach(function (b, i) {
       var sx = i ? 1 : -1, vn = b.vx * nx + b.vy * ny;                     // reflect the body's own velocity off the contact line
       var dx = b.vx - 2 * vn * nx, dy = b.vy - 2 * vn * ny, dl = Math.hypot(dx, dy);
       if (dl < 1) { dx = sx * nx; dy = sx * ny; dl = 1; }                  // unit: at rest, it is pushed straight off the other
       vanish(b, now);
-      play(kindFx, b, dx / dl, dy / dl, w);
+      var E = b.E || 1, g = Kt ? Math.sqrt(2 * (i ? Kc : Ka) / Kt) : 1; cur = null;   // unit: the debris spreads with its energy share (speed ~ sqrt(energy)), 1 when equal
+      if (b.rk && !RM) { made.rocket++; rocket(b, dx / dl, dy / dl, w * g, E, gen, pair); return; }
+      var life = MS * Math.pow(PHI, 3) * k();                              // phi: an effect's energy rings out over PHI^3 s (pumped)
+      if (!RM) cur = group(b.x, b.y, E * g, life);
+      play(kindFx, b, dx / dl, dy / dl, w); cur = null;
+      if (!RM && KEEP[kindFx]) knock(b, dx / dl, dy / dl, w * g, E, gen, pair, kindFx === 'spin', true);   // burnupend (Danny 19:57): only a non-destructive hit knocks the emoji off live; flames/vaporise burn it up, its energy goes into the debris and fades, nothing comes after
     });
   }
   function label(b) { return (b.el.className || b.el.tagName) + ' ' + (b.head ? '' : (b.el.textContent || '').trim().slice(0, 4)); }   // unit: a few UTF-16 units of the glyph, for info() only
@@ -138,16 +157,17 @@
   function away() { var P = root.PhiPumps; if (P && !spump) spump = P.node('collide:scenery', 3, 5, 1, null, 144); var m = 0; try { m = spump ? spump.modes() : 0; } catch (e) {}   // phi: 3 pumps, rungs 5.., Fibonacci seed
     return Math.pow(PHI, 5 + (1 + m) / 2); }                              // phi: PHI^5 .. PHI^6 s (11.1 .. 17.9 s), pumped
   function vanish(b, now) {
+    if (b.virt) { DB = DB.filter(function (q) { return q !== b; }); b.an && b.an.cancel(); return; }   // a knocked-off emoji ends here (its own effect plays)
     b.gone = true; b.hide.classList.add('ec-gone');
     var s = BACK * k(); if (b.scen) { s = away(); if (root.PingLayer && PingLayer.away) PingLayer.away(b.scen, s); b.away = s; }   // scenery stays away longer, then arrives again
-    setTimeout(function () { b.hide.classList.remove('ec-gone'); b.gone = false; b.t = 0; b.hist = []; b.until = performance.now() + GRACE * MS; }, s * MS);   // phi: back on its path after PHI^3 s (pumped), then PHI s grace
+    setTimeout(function () { b.hide.classList.remove('ec-gone'); b.gone = false; b.E = 1; b.t = 0; b.hist = []; b.until = performance.now() + GRACE * MS; }, s * MS);   // phi: back on its path after PHI^3 s (pumped), then PHI s grace
   }
 
   // ---------- effects (drawn, at the body's rendered size) ----------
-  function bit(cls, txt, x, y, s) { var e = doc.createElement('i'); if (cls) e.className = cls; if (txt) { e.textContent = txt; e.style.fontSize = s + 'px'; } else { e.style.width = e.style.height = s + 'px'; } e.style.transform = 'translate(' + (x - s / 2) + 'px,' + (y - s / 2) + 'px)'; L.appendChild(e); return e; }
+  function bit(cls, txt, x, y, s) { var e = doc.createElement('i'); if (cls) e.className = cls; if (txt) { e.textContent = txt; e.style.fontSize = s + 'px'; } else { e.style.width = e.style.height = s + 'px'; } e.style.transform = 'translate(' + (x - s / 2) + 'px,' + (y - s / 2) + 'px)'; (cur || L).appendChild(e); return e; }
   function hold(fr) { if (fr.length !== 2 || fr[1].opacity !== 0) return fr; var m = {}; for (var p in fr[0]) m[p] = fr[0][p]; m.offset = IP;   // phi: stays solid to PHI^-1 of its life, then fades
     m.transform = undefined; delete m.transform; m.opacity = fr[0].opacity; return [fr[0], m, fr[1]]; }
-  function fly(e, frames, ms, ease) { frames = hold(frames); live++; var an = e.animate(frames, { duration: ms, easing: ease || 'ease-out', fill: 'forwards' }); an.onfinish = an.oncancel = function () { live--; e.remove(); }; return an; }
+  function fly(e, frames, ms, ease) { frames = hold(frames); live++; var an = e.animate(frames, { duration: ms, easing: ease || 'ease-out', fill: 'forwards' }); an.onfinish = an.oncancel = function () { live--; done(e); }; return an; }
   function T(x, y, s, r, sc) { return 'translate(' + x + 'px,' + y + 'px) translate(-50%,-50%) rotate(' + (r || 0) + 'rad) scale(' + (sc == null ? 1 : sc) + ')'; }   // unit: centred on the point
   function glyphOf(b) { var t = (b.el.textContent || '').trim(); return /\p{Extended_Pictographic}/u.test(t) ? t : '\u2728'; }   // a drawn streak breaks into sparkles
   function puffs(x, y, S, dx, kk) { var i, n, d, e;
@@ -160,7 +180,7 @@
   // the cooler outer tongues 2500 K -> 1000 K, the glow 4000 K -> 1000 K; then the existing smoke. Pieces: 1 glow, 5 tongues, 3 embers
   // (Fibonacci), all transform + opacity WAAPI in the effect layer. Every wobble is golden-sequence jitter, frac((i + seed) PHI).
   function jit(i, s) { var v = (i + s) * PHI; return 2 * (v - Math.floor(v)) - 1; }   // phi: golden-sequence noise, -1..1
-  function burn(e, fr, ms, delay) { live++; var an = e.animate(fr, { duration: ms, delay: delay || 0, easing: 'linear', fill: 'both' }); an.onfinish = an.oncancel = function () { live--; e.remove(); }; return an; }
+  function burn(e, fr, ms, delay) { live++; var an = e.animate(fr, { duration: ms, delay: delay || 0, easing: 'linear', fill: 'both' }); an.onfinish = an.oncancel = function () { live--; done(e); }; return an; }
   function fire(b, x, y, S, dx, dy, w, kk) {
     var life = MS * Math.pow(PHI, 1 + w) * kk, H = S * Math.pow(PHI, w), base = y + S * IP * IP, i, j, n = 21, e, f;   // phi: burns PHI^(1+w) s (pumped), flames PHI^w of its drawn size; unit: root just below its centre
     function env(u) { return u < Math.pow(IP, 4) ? u / Math.pow(IP, 4) : Math.pow(Math.max(0, (1 - u) / (1 - Math.pow(IP, 4))), IP); }   // phi: catches in PHI^-4 of its life, then burns down
@@ -170,7 +190,7 @@
     for (j = 0; j < 5; j++) {                                              // 5 tongues: 3 hot in the middle, 2 cooler flanks that catch later and die sooner
       var hot = j < 3, side = hot ? j - 1 : (j === 3 ? -1 : 1) * PHI, wd = S * (hot ? IP : IP * IP), ht = H * (hot ? PHI : 1);   // phi: tall hot tongues PHI x its flame height, flanks PHI^-1 of that
       var del = hot ? life * Math.pow(IP, 5) * j : life * Math.pow(IP, 3), dur = hot ? life - del : life * IP;   // phi: staggered catch
-      e = doc.createElement('i'); e.className = hot ? 'ec-th' : 'ec-tc'; e.style.width = wd + 'px'; e.style.height = ht + 'px'; L.appendChild(e); f = [];
+      e = doc.createElement('i'); e.className = hot ? 'ec-th' : 'ec-tc'; e.style.width = wd + 'px'; e.style.height = ht + 'px'; (cur || L).appendChild(e); f = [];
       for (i = 0; i <= n; i++) { var v = i / n, gg = env(v), lick = (1 + jit(i, j * PHI)) / 2;   // unit: 0..1 lick height this frame
         var px = x + side * S * Math.pow(IP, 3) + jit(i, j + IP) * S * Math.pow(IP, 4), py = base - lick * ht * Math.pow(IP, 4);   // phi: spaced PHI^-3 sizes apart, PHI^-4 sway, licks up PHI^-4 of its height
         f.push({ offset: v, transform: 'translate(' + px + 'px,' + py + 'px) translate(-50%,-100%) rotate(' + (jit(i, j) * TAU / 34 + dx * TAU / 89) + 'rad) scale(' + (gg * (1 - Math.pow(IP, 3) * lick)) + ',' + (gg * (IP * IP + (1 - IP * IP) * lick)) + ')',   // phi: 1/34 turn flicker, leans 1/89 turn with the debris; thin as it licks tall
@@ -183,7 +203,48 @@
       for (i = 0; i <= 8; i++) { var q = i / 8; f.push({ offset: q, transform: T(x + (jit(i, j + 3) * IP + dx * q) * S * IP, base - d * q, 0, 0, 1 - IP * q), opacity: q > 0 && q < 1 ? (i % 3 ? 1 : IP) * (1 - q * q) : 0 }); }   // phi: sparks out of the fire, winks (every third frame dims to PHI^-1), fades as q^2
       burn(e, f, el, ed);
     }
-    setTimeout(function () { puffs(x, base - H * IP, S, dx, kk); }, life * (1 - Math.pow(IP, 3)));   // phi: collapses into the smoke as the last PHI^-3 of the burn dies
+    var gp = cur; setTimeout(function () { var o = cur; cur = gp && gp.isConnected ? gp : null; puffs(x, base - H * IP, S, dx, kk); cur = o; }, life * (1 - Math.pow(IP, 3)));   // phi: collapses into the smoke as the last PHI^-3 of the burn dies
+  }
+  // ---------- energy, ringing, chains, the rocket on fire (rockethit, Danny 19:42 / 19:44 AWST 26 Oct) ----------
+  var cur = null, DB = [], pairs = 0, gens = {}, RD = IP, RF = 1, NR = 34;   // phi: ring depth PHI^-1; the emoji rings at PHI^0 Hz, its effect at PHI x; 34 keys (Fibonacci)
+  function done(e) { var p = e.parentNode; e.remove(); if (p && p !== L && !p.firstChild && p._end) p.remove(); }
+  function ring(E, u, ms, f) { return E * Math.exp(-PHI * u) * (1 - u) * (1 + RD * Math.cos(TAU * f * u * ms / MS)) / (1 + RD); }   // phi: damped, ringing; 1 at the hit for E = 1
+  function group(x, y, E, ms) {                                            // the effect's pieces share one ringing envelope (size about the impact point + opacity)
+    var g = doc.createElement('div'), f = [], i; g.className = 'ec-g'; L.appendChild(g);
+    for (i = 0; i <= NR; i++) { var u = i / NR, a = ring(E, u, ms, RF * PHI); f.push({ offset: u, transform: 'translate(' + x + 'px,' + y + 'px) scale(' + a + ') translate(' + -x + 'px,' + -y + 'px)', opacity: Math.min(1, a) }); }
+    g.animate(f, { duration: ms, easing: 'linear', fill: 'forwards' }).onfinish = function () { g._end = true; if (!g.firstChild) g.remove(); };
+    return g;
+  }
+  function spinPath(x, y, dx, dy, S, w) { return function (v) { return [x + dx * S * PHI * PHI * v, y + dy * S * PHI * v + innerHeight * IP * v * v]; }; }   // unit: across ~ t, gravity ~ t^2 (the spin-out's projectile)
+  var KEEP = { spin: 1, burst: 1, smoke: 1 };                                  // non-destructive outcomes: the emoji survives (and may chain); flames + vaporise are the end of the line
+  function ke(b) { return b.r * b.r * (b.vx * b.vx + b.vy * b.vy); }           // rule 15: mass ~ drawn area (r^2), speed measured from its own motion
+  function slidePath(x, y, dx, dy, S, w) { return function (v) { var q = 1 - (1 - v) * (1 - v), d = S * PHI * PHI * (1 + w) * q; return [x + dx * d, y + dy * d]; }; }   // phi: deflected PHI^2 (1 + w) sizes, slowing (ease-out)
+  // the emoji knocked off: a drawn copy on the spin-out (or deflection) path, size + opacity on the ringing envelope at f; it stays live with E PHI^-1
+  function knock(b, dx, dy, w, E, gen, pair, spin, live) {
+    var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), P = (spin ? spinPath : slidePath)(b.x, b.y, dx, dy, S, w), sp = (dx >= 0 ? 1 : -1) * TAU * (spin ? PHI * PHI * (1 + w) : IP), e = bit('', glyphOf(b), 0, 0, S), f = [], i;   // phi: spin-out PHI^2 turns, a deflection PHI^-1 turn
+    for (i = 0; i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, ms, RF); f.push({ offset: v, transform: T(p[0], p[1], 0, sp * v * v, a), opacity: Math.min(1, a) }); }
+    var an = fly(e, f, ms, 'linear');
+    if (live && E * IP >= IP * IP) DB.push({ virt: true, el: e, hide: e, an: an, E: E * IP, gen: gen, pair: pair, kd: '', x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: performance.now() + MS * Math.pow(IP, 3) });   // phi: live after PHI^-3 s, while E PHI^-1 >= PHI^-2
+    return P;
+  }
+  function rocket(b, dx, dy, w, E, gen, pair) {                            // the rocket spins out on fire
+    var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), x = b.x, y = b.y, P = knock(b, dx, dy, w, E, gen, pair, true, false), i, j, e, f;   // a burning rocket is burnt up: it spins out but causes no further hits
+    if (RM) return;
+    e = doc.createElement('i'); e.className = 'ec-th'; e.style.width = S * IP + 'px'; e.style.height = S * PHI + 'px'; L.appendChild(e); f = [];   // phi: a flame rides it
+    for (i = 0; i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, ms, RF); f.push({ offset: v, transform: 'translate(' + p[0] + 'px,' + (p[1] + S * IP * IP) + 'px) translate(-50%,-100%) rotate(' + jit(i, 1) * TAU / 34 + 'rad) scale(' + a * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) + ')', opacity: Math.min(1, a) }); }   // phi: 1/34 turn flicker, PHI^-3 lick
+    burn(e, f, ms);
+    for (j = 0; j < 5; j++) {                                              // drawn smoke follows over it at PHI^-1 of its path, each puff later and bigger
+      e = bit('ec-puff', '', 0, 0, S * IP); f = []; var dl = ms * Math.pow(IP, 3) * j;   // phi: a puff every PHI^-3 of the flight
+      for (i = 0; i <= NR; i++) { var u = i / NR, tt = Math.min(1, (dl + u * ms) / ms), q = P(tt), a2 = ring(E, u, ms, RF * PHI);
+        f.push({ offset: u, transform: T(x + (q[0] - x) * IP, y + (q[1] - y) * IP - S * IP * u, 0, 0, (IP + PHI * u) * a2), opacity: Math.min(1, a2) * (1 - Math.pow(IP, 3)) }); }   // phi: swells PHI^-1 -> PHI, rises PHI^-1 sizes, rings at f PHI
+      burn(e, f, ms, dl);
+    }
+    e = bit('ec-fg', '', 0, 0, S * PHI); f = [];                            // the fireball blooms at the impact and trails at PHI^-3
+    for (i = 0; i <= NR; i++) { var uu = i / NR, r = P(uu), a3 = ring(E, uu, ms, RF * PHI), bl = uu < Math.pow(IP, 4) ? uu / Math.pow(IP, 4) : 1;   // phi: blooms over PHI^-4 of its life
+      f.push({ offset: uu, transform: T(x + (r[0] - x) * Math.pow(IP, 3), y + (r[1] - y) * Math.pow(IP, 3), 0, 0, (IP * IP + (PHI - IP * IP) * bl) * a3), opacity: Math.min(1, a3 * PHI) }); }   // phi: PHI^-2 -> PHI of its size
+    burn(e, f, ms);
+    for (j = 0; j < 3; j++) { var an2 = TAU * (j / 3 + IP), dd = S * PHI * (1 + w); e = bit('ec-dot', '', 0, 0, S * IP * IP);   // phi: 3 sparks off the fireball
+      fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(an2) * dd, y + Math.sin(an2) * dd, 0, 0, IP), opacity: 0 }], MS * k(), 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
   }
   function play(fx, b, dx, dy, w) {
     made[fx]++;
@@ -205,13 +266,13 @@
       fire(b, x, y, S, dx, dy, w, kk);
     } else if (fx === 'smoke') {
       puffs(x, y, S, dx, kk);
-    } else {                                                               // spin-out: tumble away along the debris line, falling (projectile: steady across, gravity down)
-      e = bit('', glyphOf(b), 0, 0, S); var fs = []; var spin = (dx >= 0 ? 1 : -1) * TAU * PHI * PHI * (1 + w);   // phi: PHI^2 turns, more for a harder hit
-      for (i = 0, n = 21; i <= n; i++) { var v = i / n; fs.push({ offset: v, transform: T(x + dx * S * PHI * PHI * v, y + dy * S * PHI * v + innerHeight * IP * v * v, 0, spin * v * v, 1 - (1 - IP) * v), opacity: 1 - v * v * v }); }   // unit: across ~ t, gravity ~ t^2 (Newton); spin ~ t^2 (it spins up)
-      fly(e, fs, MS * PHI * PHI * kk, 'linear');                           // phi: falls for PHI^2 s; the curve is in the keyframes
+    } else {                                                               // spin-out: the emoji tumbles away (knock(), spin path) - here only a glancing scrape
+      for (i = 0, n = 3; i < n; i++) { a = Math.atan2(dy, dx) + Math.PI + (i - 1) * TAU / 13; d = S * (1 + i * IP);   // phi: 3 scrape sparks thrown back, 1/13 turn apart
+        e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3)); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, 0, IP), opacity: 0 }], MS * IP * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
     }
   }
-  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live }; },
+  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens }; },
+    chains: function () { return DB.map(function (q) { return { E: q.E, gen: q.gen, x: Math.round(q.x), y: Math.round(q.y) }; }); },   // debug: knocked-off emojis still live
     test: function (fx, x, y, s) { play(fx || 'burst', { x: x || innerWidth / 2, y: y || innerHeight / 2, fs: s || 32, el: { textContent: '\uD83D\uDEF8' } }, 1, 0, 1 - IP); } };   // unit: debug only, centre of the screen
   scan(); go();
 })();
