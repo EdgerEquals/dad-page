@@ -64,11 +64,12 @@
     P.forEach(function (p) { p.e.style.fontSize = G.fs + 'px'; });
     L.style.zIndex = zTop();
   }
-  var vid = doc.getElementById('bgloop'), t0 = performance.now(), raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);   // phi: frame cap PHI^-7 s
+  var lastVT = null, vid = doc.getElementById('bgloop'), t0 = performance.now(), raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);   // phi: frame cap PHI^-7 s
   if (root.RhythmContinuity) RhythmContinuity.phase('scene:topsweep', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   function clock(now) {
     var t = (now - t0) / MS;
-    if (vid && !vid.paused && vid.readyState > 1) {                      // soft lock onto the video loop (rule 13: one timeline)
+    var vt = vid ? vid.currentTime : null, moving = vt !== lastVT; lastVT = vt;   // sweeplock: lock only while the video's clock advances (a stalled loop seam must not freeze the planets)
+    if (vid && moving && !vid.paused && vid.readyState > 1) {            // soft lock onto the video loop (rule 13: one timeline)
       var d = vid.currentTime - (t - Math.floor(t / LOOP) * LOOP);
       if (d > LOOP / 2) d -= LOOP; if (d < -LOOP / 2) d += LOOP;
       t0 -= d * Math.pow(IP, 3) * MS; t = (now - t0) / MS;
