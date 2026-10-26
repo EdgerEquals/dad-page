@@ -86,7 +86,7 @@
   function toFig(ux,uy){var a=st.art,W=a.offsetWidth,H=a.offsetHeight,s=Math.min(W/VB[2],H/VB[3]),x=(ux-VB[0])*s+(W-VB[2]*s)/2-W/2,y=(uy-VB[1])*s+(H-VB[3]*s)/2-H/2,r=-5.5*Math.PI/180;
     return [a.offsetLeft+W/2+x*Math.cos(r)-y*Math.sin(r),a.offsetTop+H/2+x*Math.sin(r)+y*Math.cos(r),s];}
   function snd(name){try{st&&st.snd&&st.snd.event(name);}catch(e){}}
-  var SND='js/logo-sound.js?v=4',sndLoading=null;
+  var SND='js/logo-sound.js?v=5',sndLoading=null;
   function music(){if(!st||!st.ac||!st.out)return;var me=st;
     function go(){if(me!==st||me.snd||!window.LogoSound)return;try{me.snd=LogoSound.create(me.ac,me.out,{logo:'rebella-logo',events:{'star-drop':0.236,'shimmer':0.236},
       subscribe:['pump:page','daytime','tide','moon','ratio-pump','clock','component:theme','phi-adapt:rebella-logo']});/* rule 10: the logo listens to the page */}catch(e){}}

@@ -106,6 +106,7 @@
   // ---------- audio graph ----------
   var AC = window.AudioContext || window.webkitAudioContext;
   var ctx = null, master = null, bus = null, revIn = null, meter = null, out = null;
+  var duck = null, kMeter = null, ducked = false, kRef = null, refS = 0, refT = 0;     // logo duck + the level the logos follow (Danny 14:23/14:26)
   // ---------- media bridge: WebAudio -> MediaStream -> hidden <audio>, so iOS treats the DJ as media playback ----------
   var el = null, direct = true;
   function bridge() {
@@ -161,8 +162,10 @@
       bus = ctx.createGain(); bus.gain.value = 0.55;                       // the pump volume
       var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
       revIn = ctx.createGain(); revIn.gain.value = 0;                     // the reverb (and its impulse) arrives with js/dj-extras.js and glides in
-      bus.connect(master); master.connect(comp); comp.connect(ctx.destination); out = comp; bridge(); if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
+      duck = ctx.createGain(); duck.gain.value = ducked ? IPH : 1;           // the logo duck sits after the meter's tap, so the meter reads undipped
+      bus.connect(master); master.connect(comp); comp.connect(duck); duck.connect(ctx.destination); out = duck; bridge(); if (X && X.reverb) X.reverb(ctx, revIn, bus, Math.pow(PHI, 2));
       meter = ctx.createAnalyser(); meter.fftSize = 2048; comp.connect(meter);              // level check for tests only
+      kMeter = ctx.createAnalyser(); kw(ctx, comp).connect(kMeter);                          // undipped, K-weighted: the level the logos follow
     } catch (e) { ctx = null; }
     return ctx;
   }
@@ -345,10 +348,11 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed }; }
+  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef }; }
   function catchUp(e, s, mode) {
     if (mode === 'return') { wake(); return; }
     if (!s) return;
+    if (s.k > 0 && isFinite(s.k)) kRef = s.k;                             // learned level per unit of nominal volume (a calibration, kept)
     if (s.mix != null && isFinite(s.mix)) { mixSeed = s.mix; M = genome(mixSeed); }   // his mix choice carries through reloads and the daily restart
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
@@ -416,6 +420,26 @@
     if (window.LoadTiers) LoadTiers.add(3, loadX, 'dj extras', { id: 'dj' });
     setInterval(function () { if (!document.hidden) paint(compute()); }, 1000);
   }
+  // ---------- page-music level for the logos (Danny 14:23 + 14:26 AWST 26 Oct; js/logo-sound.js trimmer) ----------
+  function rmsOf(m) { if (!m) return 0; var a = new Float32Array(m.fftSize); m.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); }
+  function rms() { return rmsOf(meter); }
+  function kw(c, src) {                                                   // ITU-R BS.1770-4 K-weighting (cited): shelf +4 dB @ 1681.97 Hz, high-pass 38.13 Hz
+    var a = c.createBiquadFilter(), b = c.createBiquadFilter(); a.type = 'highshelf'; a.frequency.value = 1681.97; a.gain.value = 4;   // cite: ITU-R BS.1770-4 K-weighting
+    b.type = 'highpass'; b.frequency.value = 38.13; b.Q.value = 0.5003; src.connect(a); a.connect(b); return b;   // cite: ITU-R BS.1770-4 K-weighting
+  }
+  function nominal() { return sliderVol() * compute().vol; }
+  function ref() {                                                        // undipped live level while playing, else learned k x nominal
+    var now = performance.now() / MS, dt = refT ? now - refT : 0; refT = now;
+    if (playing && ctx && ctx.state === 'running') {
+      var x = rmsOf(kMeter); refS = refS ? refS + (x - refS) * (1 - Math.exp(-dt / PHI)) : x;   // phi: tau PHI s
+      var n = nominal(); if (n > 0 && refS > 0) kRef = kRef ? kRef + (refS / n - kRef) * (1 - Math.exp(-dt / Math.pow(PHI, 4))) : refS / n;   // phi: tau PHI^4 s
+      return refS;
+    }
+    refS = 0; return kRef ? kRef * nominal() : null;
+  }
+  function duckTo(on) { ducked = !!on; if (duck) duck.gain.setTargetAtTime(on ? IPH : 1, ctx.currentTime, on ? IPH * IPH : IPH); }   // rule 6: down tau PHI^-2 s, up tau PHI^-1 s
+  window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
+  setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   window.DadAutoDJ = { _kit: { extras: extras, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; } },
@@ -425,7 +449,7 @@
     get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
-    level: function () { if (!meter) return 0; var a = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); },
+    level: rms, get out() { return { level: rms(), k_level: rmsOf(kMeter), ref: refS, k: kRef, nominal: nominal(), duck: duck ? duck.gain.value : 1, ducked: ducked }; },
     get extras() { return !!X; }, get primed() { return primed; },
     get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

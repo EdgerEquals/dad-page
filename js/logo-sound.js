@@ -273,22 +273,42 @@
   // the scheduler, lazy Tone load, tide feed and solo rule stay here. SOLO: only one logo sounds at a time; creating an engine stops the one before.
   // LIVE: each running engine publishes a small state snapshot in LogoSound.live[logo id] (used by the live mini-mapped open/close sounds).
   var voices={},live={},current=null;
-  function create(ac,dest,o){o=o||{};var alive=true,seq=null,R=null,timer=0,next=0,log=o.record?[]:null,pend=[],V=o.voice?voices[o.voice]:null;
+  // LOUDNESS (Danny 14:23 + 14:26 AWST 26 Oct, shared.md Loudness): every logo engine sits PHI^-1 under the page music, and the page
+  // music ducks x PHI^-1 while a logo plays. The page's music engine publishes W.PageMusic = {ref(), duck(on)}: ref() is its UNDIPPED
+  // live output level (or, when silent, its learned nominal level), so the logo follows the music, never its own duck, and never chase.
+  // No PageMusic or no reference yet: the logo holds PHI^-1 of its own level (it can only get quieter, never jump louder by itself).
+  // Loudness is compared K-weighted (ITU-R BS.1770-4 stage 1 shelf +4 dB @ 1681.97 Hz, stage 2 high-pass 38.13 Hz, cited), so a bass-heavy
+  // logo voice and a bright DJ are judged by ear, not by raw RMS. The same helper sits in js/dad-autodj-quiz.js (kw).
+  function kw(ac,src){var a=ac.createBiquadFilter(),b=ac.createBiquadFilter();a.type='highshelf';a.frequency.value=1681.97;a.gain.value=4;   // cite: ITU-R BS.1770-4 K-weighting
+    b.type='highpass';b.frequency.value=38.13;b.Q.value=0.5003;src.connect(a);a.connect(b);return b;}   // cite: ITU-R BS.1770-4 K-weighting
+  function trimmer(ac,dest){var IP=1/PHI,tap=ac.createGain(),trim=ac.createGain(),an=ac.createAnalyser(),buf,r=0,t0=0;
+    tap.connect(trim);trim.connect(dest);kw(ac,tap).connect(an);trim.gain.value=IP;buf=new Float32Array(an.fftSize);
+    function rms(){an.getFloatTimeDomainData(buf);var q=0;for(var i=0;i<buf.length;i++)q+=buf[i]*buf[i];return Math.sqrt(q/buf.length);}
+    function pm(on){var p=W.PageMusic;try{if(p&&p.duck)p.duck(on);}catch(e){}try{W.dispatchEvent(new Event(on?'logosound:on':'logosound:off'));}catch(e){}}
+    return {tap:tap,trim:trim,get pre(){return r;},
+      servo:function(){var now=ac.currentTime,dt=t0?now-t0:0,x=rms(),p=W.PageMusic,ref=null;t0=now;
+        if(x>r*IP*IP)r=r?r+(x-r)*(1-Math.exp(-dt/PHI)):x;                  // smoothed note level (rests ignored), tau PHI s
+        try{ref=p&&p.ref?p.ref():null;}catch(e){}
+        if(!(ref>0)||!(r>0))return;
+        trim.gain.setTargetAtTime(clamp(IP*ref/r,Math.pow(PHI,-6),1),now,IP);},   // rule 6: free-wheel glide, tau PHI^-1 s
+      on:function(){pm(true);},off:function(){pm(false);}};}
+  function create(ac,dest,o){o=o||{};var alive=true,seq=null,R=null,timer=0,next=0,lv=trimmer(ac,dest),log=o.record?[]:null,pend=[],V=o.voice?voices[o.voice]:null;
     var api={event:function(n){if(seq)seq.event(n);else pend.push(['e',n]);},nudge:function(a){if(seq)seq.nudge(a);else pend.push(['n',a]);},
       state:function(){return seq?seq.state():null;},log:function(){return log?log.slice():null;},
-      stop:function(fade){if(!alive)return;alive=false;if(current===api)current=null;clearTimeout(timer);if(R&&seq){seq.allOff(ac.currentTime).forEach(R.midi);R.stop(ac.currentTime,fade);}}};
+      stop:function(fade){if(!alive)return;alive=false;if(current===api)current=null;clearTimeout(timer);if(R&&seq){seq.allOff(ac.currentTime).forEach(R.midi);R.stop(ac.currentTime,fade);}lv.off();}};
+    api.level=lv;
     if(current&&current!==api){try{current.stop();}catch(e){}}current=api;
     Promise.all([loadTone(),feedTide()]).then(function(r){var T=r[0];if(!alive)return;
       try{if(!T.getContext||T.getContext().rawContext!==ac)T.setContext(ac);}catch(e){}
       var so={subscribe:o.subscribe,events:o.events,logo:o.logo,forceM:o.forceM,forceD:o.forceD,feeds:o.feeds,forceHour:o.forceHour};
-      R=V?V.Renderer(T,dest):ToneRenderer(T,dest);seq=V?V.Sequencer(so):Sequencer(so);
+      R=V?V.Renderer(T,lv.tap):ToneRenderer(T,lv.tap);seq=V?V.Sequencer(so):Sequencer(so);
       pend.forEach(function(p){p[0]==='e'?seq.event(p[1]):seq.nudge(p[1]);});pend=[];
-      R.ready.then(function(){if(!alive)return;next=ac.currentTime+0.1;R.fadeIn(ac.currentTime);tick();});
+      R.ready.then(function(){if(!alive)return;next=ac.currentTime+0.1;R.fadeIn(ac.currentTime);lv.on();tick();});
     }).catch(function(){});
     function tick(){if(!alive)return;if(next<ac.currentTime)next=ac.currentTime+0.05;
       while(next<ac.currentTime+0.3){var evs=seq.step(next);for(var i=0;i<evs.length;i++){R.midi(evs[i]);if(log){log.push(evs[i]);if(log.length>4000)log.splice(0,1000);}}next+=(seq.stepLen||STEP);}
       if(o.logo){try{var q=seq.state();live[o.logo]={at:Date.now(),m:q.m,D:q.D,midi:q.root&&q.root.midi,loud:q.loud,day:q.day};}catch(e){}}
-      timer=setTimeout(tick,100);}
+      lv.servo();timer=setTimeout(tick,100);}
     return api;}
   W.LogoSound={create:create,Sequencer:Sequencer,wave:wave,feedTide:feedTide,dayCurve:dayCurve,THRESHOLDS:E.slice(),CH:CH,CC:CC,STEP:STEP,RSTEP:RSTEP,CALM:CALM,
     voices:voices,live:live,current:function(){return current;},
