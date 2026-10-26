@@ -67,7 +67,7 @@
   // a short map of the engine's current state (root 27-40 Hz with harmonics 2-4, a 5:8 arp in the current blend, the current dissonance,
   // a celesta ping with partials to ~12-16 kHz). Open PHI^-1 = 0.618 s, close 3x longer = 1.854 s; level follows the day curve (night 0.40,
   // extreme lows eased a further x0.618 at night) through a limiter. Only one logo sounds at a time (LogoSound solo + modal).
-  var DSND={ls:'js/logo-sound.js?v=5',ref:'js/music-ref-data.js?v=1',dad:'js/logo-sound-dad.js?v=1'},dadEng=null,dadOut=null,dadLoading=null,fedPP=false;
+  var DSND={ls:'js/logo-sound.js?v=6',ref:'js/music-ref-data.js?v=1',dad:'js/logo-sound-dad.js?v=1'},dadEng=null,dadOut=null,dadLoading=null,fedPP=false;
   function inj(src){return new Promise(function(res){var sc=document.createElement('script');sc.src=src;sc.async=true;sc.onload=sc.onerror=res;document.head.appendChild(sc);});}
   function clamp1(x,a,b){return x<a?a:x>b?b:x;}
   function dc(h){h=((h%24)+24)%24;if(h<6||h>=21)return 0;if(h<12)return 0.5-0.5*Math.cos(Math.PI*(h-6)/6);if(h<=17)return 1;return 0.5+0.5*Math.cos(Math.PI*(h-17)/4);}
@@ -129,7 +129,7 @@
     x.focus({preventScroll:true});}
   function close(){if(!cur)return;var b=cur;
     if(b.getAttribute('data-zoom')==='rebella'){try{window.RebellaZoomLife&&RebellaZoomLife.stop();}catch(e){}chord(false);clearTimeout(acT);acT=setTimeout(function(){try{if(AC&&!cur&&AC.state==='running')AC.suspend();}catch(e){}},1000);}
-    if(b.getAttribute('data-zoom')==='dad'){if(dadEng){try{dadEng.stop(0.382);}catch(e){}dadEng=null;}dadSting(false);clearTimeout(acT);acT=setTimeout(function(){try{if(AC&&!cur&&AC.state==='running')AC.suspend();}catch(e){}},2618);}
+    if(b.getAttribute('data-zoom')==='dad'){if(dadEng){try{dadEng.stop();}catch(e){}dadEng=null;}dadSting(false);clearTimeout(acT);acT=setTimeout(function(){try{if(AC&&!cur&&AC.state==='running')AC.suspend();}catch(e){}},Math.round(Math.pow((1+Math.sqrt(5))/2,3)*1e3));/* logo lands on the radio level and fades (shared.md 16:42); rest the context after PHI^3 s, once it is silent */}
     b.setAttribute('aria-expanded','false');ov.classList.remove('is-open');
     if(rm.matches){ov.hidden=true;endPhys();}else{var f=fromBtn();fig.style.transform='none';void fig.offsetWidth;fig.style.transition='';fig.style.transform=f;
       t=setTimeout(function(){ov.hidden=true;fig.style.transform='';endPhys();},D);}

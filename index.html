@@ -495,7 +495,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djnoise2",1,{id:"dj"})</script><script>LoadTiers.script("js/logo-radio.js?v=1",1,{id:"dj"})</script><!-- logo radio: the logo tap starts the sound, the radio (Ed's DJ) carries it on after the zoom closes (Kids Club standard, Danny 26 Oct) --><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djnoise2",1,{id:"dj"})</script><script>LoadTiers.script("js/logo-radio.js?v=2",1,{id:"dj"})</script><!-- logo radio: the logo tap starts the sound, the radio (Ed's DJ) carries it on after the zoom closes (Kids Club standard, Danny 26 Oct) --><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=djexp1"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/dj-buttons.css?v=1"><!-- music button (Bonnie's music-note button, Dad's palette) + DJ button family (Danny 15:27 AWST 26 Oct) -->
@@ -1073,7 +1073,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 (function(){var b=document.querySelector(".q-head .dad-zoom"),i=b&&b.querySelector(".dad-mark");if(!b||!i)return;var st=0,q=[];
 function js(u,cb){var s=document.createElement("script");s.src=u;s.async=false;s.onload=s.onerror=cb;document.head.appendChild(s);}
 function heavy(cb){if(cb)q.push(cb);if(window.LogoZoom){q.splice(0).forEach(function(f){f();});return;}if(st)return;st=1;
-  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=16",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
+  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=17",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
 function anim(){if(window.EqLOD)return;var h=i.getAttribute("data-head-src");if(h&&i.src.indexOf(h)<0){var im=new Image();im.onload=function(){i.src=h;};im.src=h;}}
 b.addEventListener("click",function(e){if(window.LogoZoom)return;e.preventDefault();e.stopPropagation();heavy(function(){LogoZoom.open("dad");});});
 if(window.LoadTiers){LoadTiers.add(3,function(){anim();heavy();LoadTiers.prefetch(i.getAttribute("data-zoom-src"),{id:"dad-mark"});if(i.getAttribute("data-zoom-stage"))LoadTiers.prefetch(i.getAttribute("data-zoom-stage"),{id:"dad-mark"});LoadTiers.script("js/eq-physics.js?v=3",3,{id:"dad-mark"});},"dad mark heavy",{id:"dad-mark",last:true});}

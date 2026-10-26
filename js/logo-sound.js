@@ -273,29 +273,38 @@
   // the scheduler, lazy Tone load, tide feed and solo rule stay here. SOLO: only one logo sounds at a time; creating an engine stops the one before.
   // LIVE: each running engine publishes a small state snapshot in LogoSound.live[logo id] (used by the live mini-mapped open/close sounds).
   var voices={},live={},current=null;
-  // LOUDNESS (Danny 14:23 + 14:26 AWST 26 Oct, shared.md Loudness): every logo engine sits PHI^-1 under the page music, and the page
-  // music ducks x PHI^-1 while a logo plays. The page's music engine publishes W.PageMusic = {ref(), duck(on)}: ref() is its UNDIPPED
+  // LOUDNESS (Danny 16:42 AWST 26 Oct, shared.md 'Logo a bit louder than the radio', replaces 14:23): every logo engine sits one phi
+  // step ABOVE the page music (logo = music x PHI), under the loudness ceiling rail (trim at most one phi rung of headroom and never past full scale on the logo's recent peak), and the page
+  // music ducks x PHI^-1 while a logo plays (14:26). It opens a rung low and glides up (free-wheel, tau B x PHI^-6 = PHI^-1 s with the
+  // dashboard's B = PHI^5); on stop it LANDS: the trim glides down to the radio level (music x 1) over G = B x PHI^-4 = PHI s, then fades
+  // out from there (tau G x PHI^-2) while the music comes back up from its dip, so neither end jumps. The page's music engine publishes W.PageMusic = {ref(), duck(on)}: ref() is its UNDIPPED
   // live output level (or, when silent, its learned nominal level), so the logo follows the music, never its own duck, and never chase.
   // No PageMusic or no reference yet: the logo holds PHI^-1 of its own level (it can only get quieter, never jump louder by itself).
   // Loudness is compared K-weighted (ITU-R BS.1770-4 stage 1 shelf +4 dB @ 1681.97 Hz, stage 2 high-pass 38.13 Hz, cited), so a bass-heavy
   // logo voice and a bright DJ are judged by ear, not by raw RMS. The same helper sits in js/dad-autodj-quiz.js (kw).
   function kw(ac,src){var a=ac.createBiquadFilter(),b=ac.createBiquadFilter();a.type='highshelf';a.frequency.value=1681.97;a.gain.value=4;   // cite: ITU-R BS.1770-4 K-weighting
     b.type='highpass';b.frequency.value=38.13;b.Q.value=0.5003;src.connect(a);a.connect(b);return b;}   // cite: ITU-R BS.1770-4 K-weighting
-  function trimmer(ac,dest){var IP=1/PHI,tap=ac.createGain(),trim=ac.createGain(),an=ac.createAnalyser(),buf,r=0,t0=0;
+  function trimmer(ac,dest){var IP=1/PHI,tap=ac.createGain(),trim=ac.createGain(),an=ac.createAnalyser(),buf,r=0,t0=0,landed=false,lastRef=null;
     tap.connect(trim);trim.connect(dest);kw(ac,tap).connect(an);trim.gain.value=IP;buf=new Float32Array(an.fftSize);
-    function rms(){an.getFloatTimeDomainData(buf);var q=0;for(var i=0;i<buf.length;i++)q+=buf[i]*buf[i];return Math.sqrt(q/buf.length);}
+    var pk=0;function rms(){an.getFloatTimeDomainData(buf);var q=0,m=0;for(var i=0;i<buf.length;i++){q+=buf[i]*buf[i];m=Math.max(m,Math.abs(buf[i]));}pk=Math.max(m,pk*IP);return Math.sqrt(q/buf.length);}   // pk: recent peak, falls a rung per servo tick
+    function cap(){return Math.min(PHI,pk>0?1/pk:PHI);}                                       // the ceiling rail: one phi rung of headroom at most, and never past full scale
     function pm(on){var p=W.PageMusic;try{if(p&&p.duck)p.duck(on);}catch(e){}try{W.dispatchEvent(new Event(on?'logosound:on':'logosound:off'));}catch(e){}}
     return {tap:tap,trim:trim,get pre(){return r;},
-      servo:function(){var now=ac.currentTime,dt=t0?now-t0:0,x=rms(),p=W.PageMusic,ref=null;t0=now;
+      servo:function(){if(landed)return;var now=ac.currentTime,dt=t0?now-t0:0,x=rms(),p=W.PageMusic,ref=null;t0=now;
         if(x>r*IP*IP)r=r?r+(x-r)*(1-Math.exp(-dt/PHI)):x;                  // smoothed note level (rests ignored), tau PHI s
         try{ref=p&&p.ref?p.ref():null;}catch(e){}
-        if(!(ref>0)||!(r>0))return;
-        trim.gain.setTargetAtTime(clamp(IP*ref/r,Math.pow(PHI,-6),1),now,IP);},   // rule 6: free-wheel glide, tau PHI^-1 s
+        if(!(ref>0)||!(r>0))return;lastRef=ref;
+        trim.gain.setTargetAtTime(clamp(PHI*ref/r,Math.pow(PHI,-6),cap()),now,IP);},   // logo = music x PHI (under the ceiling rail); rule 6: free-wheel glide, tau PHI^-1 s
+      land:function(G){landed=true;var now=ac.currentTime,p=W.PageMusic,ref=lastRef;try{if(p&&p.ref)ref=p.ref()||ref;}catch(e){}   // glide down to the radio level (music x 1)
+        if(ref>0&&r>0)try{trim.gain.cancelScheduledValues(now);trim.gain.setValueAtTime(trim.gain.value,now);trim.gain.setTargetAtTime(clamp(ref/r,Math.pow(PHI,-6),cap()),now,G*IP*IP);}catch(e){}},   // phi: tau G x PHI^-2
       on:function(){pm(true);},off:function(){pm(false);}};}
   function create(ac,dest,o){o=o||{};var alive=true,seq=null,R=null,timer=0,next=0,lv=trimmer(ac,dest),log=o.record?[]:null,pend=[],V=o.voice?voices[o.voice]:null;
     var api={event:function(n){if(seq)seq.event(n);else pend.push(['e',n]);},nudge:function(a){if(seq)seq.nudge(a);else pend.push(['n',a]);},
       state:function(){return seq?seq.state():null;},log:function(){return log?log.slice():null;},
-      stop:function(fade){if(!alive)return;alive=false;if(current===api)current=null;clearTimeout(timer);if(R&&seq){seq.allOff(ac.currentTime).forEach(R.midi);R.stop(ac.currentTime,fade);}lv.off();}};
+      stop:function(fade){if(!alive)return;alive=false;if(current===api)current=null;clearTimeout(timer);
+        if(fade==null){var G=PHI,now=ac.currentTime;lv.land(G);                    // phi: G = B x PHI^-4 = PHI s (B = PHI^5): land on the radio level, then fade from there
+          if(R&&seq){seq.allOff(now+G).forEach(R.midi);R.stop(now+G,G/PHI/PHI);}setTimeout(function(){lv.off();},G*1000);return;}   // the music leaves its dip as the logo fades out
+        if(R&&seq){seq.allOff(ac.currentTime).forEach(R.midi);R.stop(ac.currentTime,fade);}lv.off();}};
     api.level=lv;
     if(current&&current!==api){try{current.stop();}catch(e){}}current=api;
     Promise.all([loadTone(),feedTide()]).then(function(r){var T=r[0];if(!alive)return;
