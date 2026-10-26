@@ -18,7 +18,7 @@
    pointer-events none, aria-hidden. Paused with the tab hidden / body.paused / html.wx-paused; hidden for reduced motion.
    SCROLL FADE (t643u/t644u): html.qorb-away (set by the JS once scrollY > innerHeight/12) fades BOTH orbit layers
    (this one + .qs-layer) out over PHI^-1 s, and back in when scrolled back above it. Other emojis are untouched. */
-.qf-layer{position:absolute;left:0;top:0;width:100%;height:var(--qf-h,100vh);z-index:4;pointer-events:none;overflow:hidden;
+.qf-layer{position:absolute;left:0;top:0;width:100%;height:var(--qf-h,100svh);z-index:4;pointer-events:none;overflow:hidden;
   clip-path:inset(var(--qf-ct,0px) 0 var(--qf-cb,0px) 0);transition:opacity .618s ease}
 .qf-orb{position:absolute;left:var(--cx,50%);top:var(--cy,50%);width:0;height:0;transform:rotate(var(--tilt,-20deg))}
 .qf-x{position:absolute;left:0;top:0;animation:qfX var(--qf-half,25s) cubic-bezier(.3642,0,.6358,1) var(--dx,0s) infinite alternate}
@@ -37,3 +37,6 @@
 .qs-layer{transition:opacity .618s ease}
 html.qorb-away .qf-layer,html.qorb-away .qs-layer{opacity:0}
 @media (prefers-reduced-motion:reduce){.qf-layer{display:none}}
+/* edgefix (Danny 12:57 AWST 26 Oct): the fallback height before quiz-front-orbit.js measures --qf-h is the SMALL viewport (svh).
+   100vh is the large viewport on iOS (toolbar hidden), so the layer briefly made the page scrollable and the scroll
+   indicator flashed down the right edge at startup. */

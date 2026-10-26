@@ -201,8 +201,8 @@ window.QUIZ_COPY = {
 :root{--bg:#161B1F;--bg-top:#0A3F4C;--surface:#11303A;--surface-2:#0E252D;--line:rgba(78,170,190,.32);--teal-hi:#2A8FA3;--ink:var(--dad-sand);--heading:var(--dad-sand);--accent:var(--dad-amber);--deep:#B9762A;
   --f-body:"Alegreya Sans",Helvetica,Arial,sans-serif;--f-hand:"Gochi Hand",cursive;--f-script:"Kaushan Script",cursive;--f-serif:"Lora",Georgia,serif;--shadow:0 8px 24px rgba(0,0,0,.35)}
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100vh;font-family:var(--f-body);font-size:1.15rem;line-height:1.5;color:var(--ink);background:linear-gradient(180deg,var(--bg-top) 0,#0F2A33 38%,var(--bg) 100%) fixed var(--bg);overflow-x:hidden}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}.qs-layer,.es-layer{position:fixed;left:0;right:0;top:0;bottom:0;overflow:hidden;overflow:clip;pointer-events:none}.qf-layer{position:absolute;left:0;top:0;width:100%;overflow:hidden;overflow:clip;pointer-events:none}/* edgefix: scene layers are clipped from first paint, even if their print-swapped stylesheet lands after their script (no transient scroll height) *//* edgefix (Danny 12:57 AWST 26 Oct): dark canvas from first paint, never a white strip */
+body{margin:0;min-height:100vh;min-height:100svh;font-family:var(--f-body);font-size:1.15rem;line-height:1.5;color:var(--ink);background:linear-gradient(180deg,var(--bg-top) 0,#0F2A33 38%,var(--bg) 100%) fixed var(--bg);overflow-x:hidden}
 body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(180deg,var(--bg-top) 0,#0F2A33 38%,var(--bg) 100%),radial-gradient(ellipse at 80% 0,rgba(242,165,65,.10),transparent 55%)}
 /* Themed animated layers (decorative): two layers so a theme can cross-fade */
 .fx{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .8s ease}
@@ -496,7 +496,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit4"><!-- terminal status pill + matrix terminal colours + footer simmie$ light (Danny 13:18 AWST 24 Oct, t637u-t639u) -->
 <link rel="stylesheet" href="css/quiz-head-row.css?v=1"><!-- header row: weather right in portrait, ticker in the middle in landscape (Danny 13:26 AWST 24 Oct, t646u) -->
 <script>LoadTiers.script("js/quiz-term-status.js?v=pillpulse7",2,{id:"tty",w:6.4})</script>
-<link rel="stylesheet" href="css/quiz-front-orbit.css?v=c55ddc97" media="print" onload="this.media='all'"><!-- front orbit emojis over the greeting + scroll fade of both orbit layers (Danny 13:22-13:24 AWST 24 Oct, t641u-t644u) -->
+<link rel="stylesheet" href="css/quiz-front-orbit.css?v=edgefix1" media="print" onload="this.media='all'"><!-- front orbit emojis over the greeting + scroll fade of both orbit layers (Danny 13:22-13:24 AWST 24 Oct, t641u-t644u) -->
 <link rel="stylesheet" href="css/quiz-popups.css?v=1" media="print" onload="this.media='all'"><!-- pop-up panels for every tappable item in the page chrome (Danny t660u 13:43 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-tty-detail.css?v=1"><!-- Simmie tty detail back: bright dots, amber timestamps, dashed teal top rule, amber AWST · AGE (Danny 25 Oct 12:26 AWST) -->
 <link rel="stylesheet" href="css/dad-mark-zoom.css?v=4"><link rel="stylesheet" href="css/dad-mark-waves.css?v=1"><!-- radiating, reflecting waves around Dad's mark (Danny t719u) --><!-- tap-to-enlarge for Dad's mark (Danny t699u) and the Rebella logo (t701u), 25 Oct -->
@@ -1029,7 +1029,7 @@ body.paused .home-code::before{animation-play-state:paused}
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a806",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=2",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=1",2,{id:"topsweep",w:8.4})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a806",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=2",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=2",2,{id:"topsweep",w:8.4})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>

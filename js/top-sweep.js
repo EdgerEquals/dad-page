@@ -22,7 +22,7 @@
   var FAINT = Math.pow(IP, dial('topsweep', 3));                         // phi: planet opacity ceiling PHI^-3 by default
   var CEIL = 1 - Math.pow(IP, 3);                                        // phi: sun pulse ceiling 0.764 (nearest rung to 0.8)
 
-  var css = '.tsl-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;contain:strict}' +
+  var css = '.tsl-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;overflow:clip;contain:strict}' +
     '.tsl-p{position:absolute;left:0;top:0;line-height:1;opacity:0;will-change:transform,opacity;margin:calc(-1em / 2) 0 0 calc(-1em / 2)}' +
     '.tsl-sun{position:absolute;left:calc(var(--sun-x) * 100%);top:calc(var(--sun-y) * 100%);width:0;height:0}' +   // unit: percent of the box (100% whole, 50% radius = circle, half = centring)
     '.tsl-g,.tsl-s{position:absolute;left:0;top:0;line-height:1;transform:translate(calc(-100% / 2),calc(-100% / 2))}' +   // unit: percent of the box (100% whole, 50% radius = circle, half = centring)
