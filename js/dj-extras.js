@@ -42,7 +42,7 @@
     var src = C().createBufferSource(), f = C().createBiquadFilter(); src.buffer = noise(); src.connect(f); f.connect(g);
     var len = kind === 'snare' ? 0.16 : kind === 'shaker' ? 0.06 : 0.035;
     f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = FHI * Math.pow(PHI, kind === 'snare' ? -5 : kind === 'shaker' ? -3 : -2);   // phi: bands PHI^-n under the top of hearing
-    g.gain.setValueAtTime(v * (kind === 'snare' ? 0.22 : kind === 'shaker' ? 0.05 : 0.06), t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * (kind === 'snare' ? 0.22 : kind === 'shaker' ? 0.05 : 0.06), t + len * Math.pow(PHI, -5)); g.gain.exponentialRampToValueAtTime(0.0001, t + len);   // phi: a PHI^-5 attack, no onset click (MIDI Bot review)
     src.start(t, Math.random() * 0.5); src.stop(t + len + 0.02);
   }
 

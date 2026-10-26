@@ -16,17 +16,26 @@
   function chunk(id, body) { return str(id).concat(u32(body.length), body); }
   function meta(type, data) { return [0xFF, type].concat(vlq(data.length), data); }   // unit: SMF meta event
   function vel(v) { return Math.max(1, Math.min(B7 - 1, Math.round(v * (B7 - 1)))); }
-  function build(ev, bpm, title) {
-    var t0 = ev.length ? ev[0][0] : Date.now(), tk = function (ms) { return Math.max(0, Math.round((ms - t0) / MS * bpm / SPM * PPQ)); };
-    var tempo = Math.round(SPM * US / bpm), tracks = [], rows = [];
+  function build(ev, bpm, title, tl) {
+    // TEMPO MAP (MIDI Bot review): crossfades between tracks of different BPM get a tempo change at the handover, and ticks integrate it
+    var t0 = ev.length ? ev[0][0] : Date.now(), seg = [[t0, bpm]];
+    if (tl && tl.length) { var b0 = null; tl.forEach(function (x) { if (x[0] <= t0) b0 = x[1]; }); seg = [[t0, b0 || tl[0][1]]];
+      tl.forEach(function (x) { if (x[0] > t0 && x[1] !== seg[seg.length - 1][1]) seg.push([x[0], x[1]]); }); }   // only real tempo changes
+    var tk = function (ms) { var k = 0; for (var i = 0; i < seg.length; i++) { var a = seg[i][0], b = i + 1 < seg.length ? Math.min(seg[i + 1][0], ms) : ms; if (b <= a) break; k += (b - a) / MS * seg[i][1] / SPM * PPQ; } return Math.max(0, Math.round(k)); };
+    var tempo = Math.round(SPM * US / seg[0][1]), tracks = [], rows = [];
     var c0 = meta(0x03, str('Dad\'s DJ' + (title ? ' - ' + title : '')));
-    c0 = [0].concat(c0, [0], meta(0x51, [(tempo >> 16) & 0xFF, (tempo >> 8) & 0xFF, tempo & 0xFF]), [0], meta(0x58, TS), [0], meta(0x2F, []));   // unit: tempo as 3 big-endian bytes (SMF meta 0x51)
+    c0 = [0].concat(c0, [0], meta(0x51, [(tempo >> 16) & 0xFF, (tempo >> 8) & 0xFF, tempo & 0xFF]), [0], meta(0x58, TS));   // unit: tempo as 3 big-endian bytes (SMF meta 0x51)
+    var lastT = 0; seg.slice(1).forEach(function (x) { var at = tk(x[0]), us = Math.round(SPM * US / x[1]); c0 = c0.concat(vlq(at - lastT), meta(0x51, [(us >> 16) & 0xFF, (us >> 8) & 0xFF, us & 0xFF])); lastT = at; rows.push([1, at, 'Tempo', us]); });   // unit: tempo bytes
+    c0 = c0.concat([0], meta(0x2F, []));
     tracks.push(c0);
-    rows.push([0, 0, 'Header', 1, PARTS.length + 1, PPQ], [1, 0, 'Start_track'], [1, 0, 'Title_t', '"Dad\'s DJ"'], [1, 0, 'Tempo', tempo], [1, 0, 'Time_signature'].concat(TS), [1, 0, 'End_track']);
+    rows.push([0, 0, 'Header', 1, PARTS.length + 1, PPQ], [1, 0, 'Start_track'], [1, 0, 'Title_t', '"Dad\'s DJ"'], [1, 0, 'Tempo', tempo], [1, 0, 'Time_signature'].concat(TS));
+    rows.push([1, lastT, 'End_track']);
     PARTS.forEach(function (P, pi) {
       var ch = P[2], es = [];
-      ev.forEach(function (e) { if (e[1] !== P[0]) return; var on = tk(e[0]), off = Math.max(on + 1, tk(e[0] + e[4] * MS)), n = Math.max(0, Math.min(B7 - 1, Math.round(e[2])));
-        es.push([on, 1, n, vel(e[3])], [off, 0, n, 0]); });
+      var notes = []; ev.forEach(function (e) { if (e[1] !== P[0]) return; var on = tk(e[0]); notes.push([on, Math.max(on + 1, tk(e[0] + e[4] * MS)), Math.max(0, Math.min(B7 - 1, Math.round(e[2]))), vel(e[3])]); });
+      notes.sort(function (a, b) { return a[0] - b[0]; }); var held = {};
+      notes.forEach(function (x) { var h = held[x[2]]; if (h && h[1] > x[0]) h[1] = x[0]; held[x[2]] = x; });   // same pitch again: end the earlier note there (no truncation of the new one)
+      notes.forEach(function (x) { if (x[1] > x[0]) es.push([x[0], 1, x[2], x[3]], [x[1], 0, x[2], 0]); });
       es.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });   // note-offs before note-ons at the same tick
       var body = [0].concat(meta(0x03, str(P[1]))), last = 0, tn = pi + 2;
       rows.push([tn, 0, 'Start_track'], [tn, 0, 'Title_t', '"' + P[1] + '"']);
@@ -42,8 +51,8 @@
   }
   function name(d) { d = d || new Date(); var p = function (n) { return (n < 10 ? '0' : '') + n; };   // unit: two-digit pad
     return 'dad-dj-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.mid'; }
-  function save(ev, bpm, title) {
-    var r = build(ev, bpm, title), fn = name(), blob = new Blob([r.bytes], { type: 'audio/midi' });
+  function save(ev, bpm, title, tl) {
+    var r = build(ev, bpm, title, tl), fn = name(), blob = new Blob([r.bytes], { type: 'audio/midi' });
     var file = null; try { file = new File([blob], fn, { type: 'audio/midi' }); } catch (e) {}
     function dl() { var u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = fn; a.rel = 'noopener'; document.body.appendChild(a); a.click();
       setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, SPM * MS); }

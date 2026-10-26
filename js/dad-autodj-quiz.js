@@ -83,7 +83,7 @@
     var vol = clamp(IPH * Math.pow(PHI, -sv / 4), 0.25, 0.8);   // phi: base level PHI^-1 (was a fixed 0.55)
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
     return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + sb / 2) * Math.pow(PHI, M.tempo), 62, 157),
-             vol: vol, trackLen: Math.pow(PHI, 7.5 + sl), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed };
+             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
   }
 
   // ---------- music theory + genre table ----------
@@ -144,7 +144,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=4';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=5';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -191,14 +191,33 @@
   // ---------- instruments (each plays one note into a track's output) ----------
   function env(g, t, a, peak, dur, rel) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setTargetAtTime(0.0001, t + Math.max(a, dur), rel); }
   function osc(type, f, t, end) { var o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(end); return o; }
+  // VOICE (MIDI Bot review #1, Danny 14:48: the 'computer game' fix). Each note is an ENSEMBLE of detuned copies (spread PHI^(1+u)
+  // cents apart, u = the track's pump energy; sustained voices 3 copies, short ones 2, bass 1), sustained voices share the track's slow
+  // VIBRATO (one LFO per track near PHI^0 Hz, depth PHI^-4 semitones x tension, eased in over PHI s), and every note sits at its own
+  // place in the STEREO field (pitch on the golden angle x PHI^-1 x width; width from space = 1 - u). NODE BUDGET: when many voices
+  // ring at once (more than PHI^7, older iPhones), copies drop to 1 and per-note panning to the layer's, so the per-note node count stays small.
+  var nlive = 0, CROWD = Math.pow(PHI, 7), CENT = 100;                     // phi: crowd limit; unit: cents per semitone
   function voice(tr, type, f, t, dur, vel, opt) {
     opt = opt || {};
-    var end = t + dur + (opt.rel || 0.2) * 5, g = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.setValueAtTime(opt.cut || tr.g.cut * PHI, t); if (opt.sweep) lp.frequency.setTargetAtTime(opt.cut * 0.25, t, opt.sweep);
-    var o = osc(type, f, t, end); o.connect(lp);
-    if (opt.det) { var o2 = osc(type, f, t, end); o2.detune.value = opt.det; o2.connect(lp); }
-    lp.connect(g); env(g, t, opt.a || 0.005, vel, opt.hold != null ? opt.hold : 0.01, opt.rel || 0.2); g.connect(tr.out);
+    var rel = opt.rel || 0.2, a = opt.a || 0.005, end = t + dur + rel * 5, g = ctx.createGain(), lp = ctx.createBiquadFilter(), crowd = nlive > CROWD;
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(opt.cut || tr.g.cut * PHI, t); if (opt.sweep) lp.frequency.setTargetAtTime(opt.cut * Math.pow(PHI, -3), t, opt.sweep);   // phi: sweep down three rungs
+    var sus = a > Math.pow(PHI, -5) || (opt.hold || 0) > dur * IPH, bass = opt.cut && opt.cut < tr.g.cut;   // phi: sustained = slow attack or long hold
+    var n = crowd || bass ? 1 : sus ? 3 : 2, u = tr.u == null ? IPH : tr.u, sp = Math.pow(PHI, 1 + u) + (opt.det || 0) * IPH;   // unit: copies; phi: spread in cents
+    for (var c = 0; c < n; c++) {
+      var o = osc(type, f, t, end); o.detune.value = n > 1 ? sp * (2 * c / (n - 1) - 1) : 0; o.connect(lp);
+      var vb = sus && tr.vib ? tr.vib : null; if (vb) vb.connect(o.detune);
+      nlive++; o.onended = (function (o, vb) { return function () { nlive--; if (vb) try { vb.disconnect(o.detune); } catch (e) {} }; })(o, vb);   // let the ended copy go
+    }
+    lp.connect(g); env(g, t, a, vel / Math.sqrt(n), opt.hold != null ? opt.hold : 0.01, rel);   // equal-power: the copies sum to the old level
+    var to = tr.out;
+    if (!crowd && ctx.createStereoPanner) { var pn = ctx.createStereoPanner(), w = (1 - u) * IPH + IPH * IPH; pn.pan.value = Math.sin(Math.log2(f) * 12 * 2 * Math.PI * IPH) * w; g.connect(pn); pn.connect(to); }   // unit: 12 semitones per octave; phi: golden-angle spread
+    else g.connect(to);
     if (opt.rev) { var s = ctx.createGain(); s.gain.value = opt.rev; g.connect(s); s.connect(tr.rev); }
+  }
+  function vibrato(tr) {                                                  // one LFO per track: rate ~PHI^0 Hz (pump-nudged), depth from tension, eased in
+    try { var l = ctx.createOscillator(), d = ctx.createGain(), t = ctx.currentTime, u = tr.u == null ? IPH : tr.u;
+      l.frequency.value = Math.pow(PHI, (u - 1 / 2) * IPH); d.gain.setValueAtTime(0, t); d.gain.setTargetAtTime(CENT * Math.pow(PHI, -4) * (IPH + (1 - u) * IPH), t, PHI);   // phi: PHI^-4 semitone x tension, eased over PHI s
+      l.connect(d); l.start(t); tr.vib = d; tr.lfo = l; } catch (e) {}
   }
   var INST = {
     pad:   function (tr, f, t, d, v) { voice(tr, tr.g.wave, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
@@ -222,7 +241,7 @@
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
     var L = { drums: lay(xo), lead: lay(xo), bass: lay(out), pad: lay(out) };
-    return { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
+    var T = { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
   // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
@@ -294,7 +313,8 @@
     var w = Date.now() + (t - ctx.currentTime) * MS; NL.push([w, part, m, v, d]);
     while (NL.length && NL[0][0] < w - WIN - SPM * MS / SPB) NL.shift();   // keep a little over a minute (look-ahead slack)
   }
-  function pl(part, inst, tr, m, t, d, v) { inst(tr, mtof(m), t, d, v); rec(part, m, t, d, v); }
+  function pl(part, inst, tr, m, t, d, v) { inst(tr, mtof(m), t, d, v); var o = (tr.tk || tr).out; rec(part, m, t, d, v * (o ? Math.min(1, o.gain.value) : 1)); }   // logged at the track's crossfade level
+  var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
 
   // ---------- scheduler (look-ahead) ----------
@@ -320,10 +340,11 @@
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
     fadeTrack(tr, true, t, len);
     old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); setTimeout(function () { kill(o); }, len * 1000 + 300); });
+    TL.push([Date.now() + len * MS / 2, tr.bpm]); while (TL.length > 1 && TL[1][0] < Date.now() - WIN) TL.shift();
     tracks.push(tr); fadingUntil = Date.now() + len * 1000; lastMood = c.p.mood;
     return tr;
   }
-  function kill(tr) { tr.dead = true; tracks = tracks.filter(function (x) { return x !== tr; }); setTimeout(function () { try { tr.out.disconnect(); tr.wet.disconnect(); tr.rev.disconnect(); } catch (e) {} }, 400); }
+  function kill(tr) { tr.dead = true; tracks = tracks.filter(function (x) { return x !== tr; }); setTimeout(function () { try { tr.out.disconnect(); tr.wet.disconnect(); tr.rev.disconnect(); if (tr.lfo) tr.lfo.stop(); } catch (e) {} }, 400); }
   function applyVol(c, len) { if (bus) bus.gain.setTargetAtTime(c.vol, ctx.currentTime, Math.max(0.05, len / 3)); }
   function boundary() {
     var c = compute();
@@ -516,7 +537,7 @@
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
   setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
-  var MIDIURL = 'js/dj-midi.js?v=1', midiP = null;
+  var MIDIURL = 'js/dj-midi.js?v=2', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
     sc.onload = function () { window.DadMidi ? ok(window.DadMidi) : no(); }; sc.onerror = function () { midiP = null; no(); }; document.head.appendChild(sc); }); return midiP; }
   function lastMinute() { var now = Date.now(); return NL.filter(function (e) { return e[0] <= now && e[0] >= now - WIN; }); }
@@ -526,12 +547,12 @@
     b.addEventListener('click', function (e) { e.stopPropagation(); var ev = lastMinute(), bpm = (spec() || {}).bpm || (cur && cur.bpm) || compute().bpm;
       if (!ev.length) { b.classList.remove('is-empty'); void b.offsetWidth; b.classList.add('is-empty'); b.title = 'Nothing played in the last minute yet'; return; }
       b.title = 'Export last minute as MIDI';
-      midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre); }).catch(function () {}); });
+      midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
   window.DadAutoDJ = { _kit: { grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
-      idle: function (c) { if (!playing) cur = c; } },
+      idle: function (c) { if (!playing) cur = c; }, get voices() { return nlive; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd } : null; },
