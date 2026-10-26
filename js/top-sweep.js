@@ -8,6 +8,7 @@
      SUN      a sun emoji exactly over the video's Sun: opacity pulses 0 .. 1 - PHI^-3 (the rung nearest 0.8 that Danny asked
               about, 0.764; 1 - PHI^-4 is 0.854), period = loop x PHI^-1, with a cheap radiate: a glow disc behind it breathing in
               scale and opacity (transform + opacity only).
+   RE-MEASURE (26 Oct): Kepler ellipses with the Sun at the right focus, fitted to the measured room (see measure()), so they stay on screen.
    Dial 'topsweep' (dials.html): faintness rung r, planet opacity ceiling PHI^-r. Reduced motion: one still frame, no pulse. */
 (function () {
   'use strict';
@@ -58,9 +59,14 @@
   var G = { cx: 0, cy: 0, a: 0, b: 0, fs: 0 };
   function measure() {
     var W = innerWidth, H = innerHeight; G.cx = W * SUN.x; G.cy = H * SUN.y;
-    var kmax = P.reduce(function (m, p) { return Math.max(m, p.k); }, 1);   // outer orbit fits the visible width left of the Sun
-    G.a = G.cx * IP / kmax; G.b = G.a * Math.pow(IP, 2);                  // phi: outer semi-major PHI^-1 of the Sun's x, depth PHI^-2 (stays on screen)
+    var kmax = P.reduce(function (m, p) { return Math.max(m, p.k); }, 1);
     G.fs = Math.min(W, H) * Math.pow(IP, 5);                              // phi: near-side planet size PHI^-5 of the viewport
+    // re-measure (26 Oct, after the Sun moved out to x = 1 - PHI^-5): a circle round the Sun put the planets off the right edge ~45% of
+    // the time. Now the Sun sits at the RIGHT FOCUS of each ellipse and the outer orbit is fitted to the room that is really there:
+    // its near-Sun end stops half a planet inside the right edge, its far end reaches PHI^-1 of the Sun's x (as before); e follows.
+    var R = Math.max(0, W - G.cx - G.fs / 2), Lr = G.cx * IP;             // unit: half a planet; phi: far reach PHI^-1 of the Sun's x
+    G.e = (Lr - R) / (Lr + R || 1); var aOut = (Lr + R) / 2;              // unit: a(1+e) = far reach, a(1-e) = near room
+    G.a = aOut / kmax; G.b = G.a * Math.pow(IP, 2);                       // phi: depth PHI^-2 (stays on screen)
     P.forEach(function (p) { p.e.style.fontSize = G.fs + 'px'; });
     L.style.zIndex = zTop();
   }
@@ -79,8 +85,9 @@
   function place(now) {
     var t = clock(now), wave = Math.sin(TAU * t / (SWEEP * PHI)) * Math.pow(IP, 4);   // phi: wave period = sweep x PHI, amplitude PHI^-4 rad
     P.forEach(function (p) {
-      var th = -TAU * (t / p.T + p.ph), sn = Math.sin(th), a = G.a * p.k, b = G.b * p.k;
-      var x = G.cx + a * Math.cos(th), y = G.cy + b * sn, sc = Math.pow(PHI, (sn - 1) * PHI);   // phi: perspective, near side full size
+      var M = -TAU * (t / p.T + p.ph), e = G.e || 0, th = M, j; for (j = 0; j < 8; j++) th -= (th - e * Math.sin(th) - M) / (1 - e * Math.cos(th));   // Kepler: mean -> eccentric anomaly (8 Newton steps)
+      var sn = Math.sin(th), a = G.a * p.k, b = G.b * p.k;
+      var x = G.cx + a * (Math.cos(th) - e), y = G.cy + b * sn, sc = Math.pow(PHI, (sn - 1) * PHI);   // the Sun at the right focus; phi: perspective, near side full size
       var rot = p.spin ? TAU * p.spin * t / (p.T / 2) : wave - TAU * Math.pow(IP, 6);    // phi: ringed planet tilt PHI^-6 turn + wave
       p.e.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + rot + 'rad) scale(' + sc + ')';
       p.e.style.opacity = FLOORP + (PEAKP - FLOORP) * (1 + sn) / 2;         // unit: far side floor, near side peak
@@ -96,5 +103,5 @@
   addEventListener('resize', measure);
   doc.addEventListener('visibilitychange', function () { L.classList.toggle('tsl-paused', doc.hidden); if (!doc.hidden) go(); });
   root.TopSweep = { info: function () { return { loop: LOOP, sweep: SWEEP, faint: FAINT, sunCeil: CEIL, sunPeriod: PER,
-    planets: P.map(function (p) { return { T: p.T, a: G.a * p.k, front: p.front }; }), z: L.style.zIndex }; } };
+    e: G.e, planets: P.map(function (p) { return { T: p.T, a: G.a * p.k, front: p.front }; }), z: L.style.zIndex }; } };
 })();
