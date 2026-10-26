@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Mic check (test page)</title>
+<!-- M0, THE iOS MIC TEST PAGE (MIDI Bot dynamics spec s6a / s9 M0; Danny 19:23 AWST 26 Oct 2026: "Yes, send all of it, vocals, ceiling,
+     and the mic test page first"). A test bench, linked from nowhere (no kids' page, no dashboard link): Danny opens it on his iPhone and
+     taps once, before any room loop (M1) or mic throw (M2) is built. It runs three ways of opening the mic one after another:
+       A  echo cancellation ON          (iOS's voice processing should remove the page's own sound from the mic; on iOS 26.2-27 playback
+                                          may crackle while it is open: WebKit bug 326286)
+       B  echo cancellation OFF         (the sound stays in the mic, but iOS may move playback to the earpiece, much quieter)
+       C  echo cancellation OFF + navigator.audioSession.type 'play-and-record'   (the session workaround, WebKit bug 218012)
+     In each: a little silence (the room's floor), a quiet tone for PHI^2 s (listen: loud speaker or quiet earpiece? crackle?), then a
+     short chirp whose round trip speaker -> room -> mic is measured by cross-correlating the mic against the same chirp taken digitally
+     (stereo capture: mic + the page's own chirp, so buffering cancels out). It shows getSupportedConstraints(), each track's
+     getSettings(), the context's sampleRate / baseLatency / outputLatency, the tone's coupling into the mic, a click count on the mic
+     (crackle) and lets Danny play back the few seconds the mic heard in each mode, so he can HEAR what echo cancellation removes.
+     Privacy (WA Surveillance Devices Act 1998 s5; spec s5): audio lives only in this tab's memory for the replay, never stored, never sent;
+     the mic is closed after each mode and audioSession goes back to 'playback' then 'auto'. Nothing is uploaded; 'copy results' only
+     puts the numbers (no audio) on the clipboard.
+     Timing on PHI rungs; levels as PHI ratios of full scale (test tones, not music). Colours: Dad's palette (black, #9DBCCE, #85A6BB,
+     #1F5478, #143A57, accent #0AF2FF). Portrait width.
+     cite: W3C Media Capture and Streams (getUserMedia constraints, getSettings); WebKit bugs 326286, 218012, 179411, 311451;
+     A4 = 440 Hz (ISO 16:1975) for the tone; the chirp spans the speech band 300 Hz - 3.4 kHz (ITU-T G.711 telephony band). -->
+<style>
+:root{color-scheme:dark;--bg:#000;--panel:#050B12;--line:#143A57;--line-hi:#1F5478;--text:#9DBCCE;--muted:#85A6BB;--head:#C9DCE7;--accent:#0AF2FF;--on:#04111B;--warn:#E8C26A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:34rem;margin:0 auto;padding:14px 14px 40px}
+h1{margin:4px 0 6px;font-size:18px;color:var(--head)}
+p{margin:6px 0}
+.small{font-size:12.5px;color:var(--muted)}
+button{font:inherit;color:var(--on);background:var(--accent);border:0;border-radius:10px;padding:12px 16px;min-height:44px;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line-hi);padding:8px 12px;min-height:40px}
+button:disabled{opacity:.45}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px 12px;margin:10px 0}
+.card h2{margin:0 0 4px;font-size:15px;color:var(--head)}
+.card.run{border-color:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px}
+.kv b{font-weight:600;color:var(--muted)}
+.kv span{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
+.meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:6px 0}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .146s linear}
+.ask{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ask button{padding:6px 10px;min-height:36px;font-size:13px}
+.ask button[aria-pressed="true"]{background:var(--accent);color:var(--on)}
+.verdict{color:var(--accent)}
+.warn{color:var(--warn)}
+pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--muted);margin:6px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mic check <span class="small">(test page)</span></h1>
+  <p class="small">For the room-loop idea: this checks what your iPhone does when a web page opens the microphone while it plays sound. One tap runs three short tests (about 15 s). Turn the volume to a normal level, take headphones out, and keep the phone on the table.</p>
+  <p class="small">Your browser will ask to use the microphone. The sound it hears stays in this tab only so you can replay it; nothing is saved or sent.</p>
+  <div class="row"><button id="go" type="button">Run the mic check</button><button id="copy" class="ghost" type="button" disabled>Copy results</button></div>
+  <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
+  <p id="status" class="small" aria-live="polite">Ready.</p>
+  <div id="cards"></div>
+  <div class="card"><h2>This phone</h2><div class="kv" id="dev"></div></div>
+  <p class="small">Test page only, not linked from any other page. Close the tab when done.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3;
+  var A4 = 440, BLO = 300, BHI = 3400;                                   // cite: A4 440 Hz (ISO 16); telephony band 300-3400 Hz (ITU-T G.711)
+  var MODES = [
+    { k: 'A', name: 'Echo cancellation ON', ec: true, sess: null, hint: 'iOS should remove the tone from what the mic hears. Listen for crackle in the tone.' },
+    { k: 'B', name: 'Echo cancellation OFF', ec: false, sess: null, hint: 'The mic hears the tone. Listen: does the tone come from the loud speaker or quietly from the earpiece?' },
+    { k: 'C', name: 'Echo cancellation OFF + play-and-record', ec: false, sess: 'play-and-record', hint: 'The audio-session workaround. Same questions: speaker or earpiece, any crackle?' }];
+  var $ = function (id) { return document.getElementById(id); }, ctx = null, results = { ua: navigator.userAgent, when: new Date().toISOString(), modes: [] };
+  function db(x) { return x > 0 ? 20 * Math.log10(x) : -Infinity; }
+  function fmt(x, d) { return isFinite(x) ? (+x).toFixed(d == null ? 1 : d) : String(x); }
+  function sleep(s) { return new Promise(function (r) { setTimeout(r, s * MS); }); }
+  function kv(el, rows) { el.innerHTML = ''; rows.forEach(function (r) { var b = document.createElement('b'), s = document.createElement('span'); b.textContent = r[0]; s.textContent = r[1]; el.appendChild(b); el.appendChild(s); }); }
+  function session(t) { try { if (navigator.audioSession) { navigator.audioSession.type = t; return navigator.audioSession.type; } } catch (e) {} return 'n/a'; }
+  function device() {
+    var sc = {}; try { sc = navigator.mediaDevices.getSupportedConstraints(); } catch (e) {}
+    var m = /OS (\d+)_(\d+)/.exec(navigator.userAgent), ios = m ? m[1] + '.' + m[2] : 'not iOS (or iPadOS desktop mode)';
+    results.ios = ios; results.supported = sc;
+    kv($('dev'), [['iOS', ios], ['audioSession', navigator.audioSession ? 'yes (' + navigator.audioSession.type + ')' : 'no'],
+      ['echoCancellation', String(!!sc.echoCancellation)], ['noiseSuppression', String(!!sc.noiseSuppression)], ['autoGainControl', String(!!sc.autoGainControl)],
+      ['context', ctx ? ctx.sampleRate + ' Hz, base ' + fmt((ctx.baseLatency || 0) * MS) + ' ms, output ' + (ctx.outputLatency != null ? fmt(ctx.outputLatency * MS) + ' ms' : 'n/a') : 'not started']]);
+  }
+  function chirp(c, t0, dur, out) {                                       // a log sweep BLO -> BHI with a raised-cosine edge
+    var o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(BLO, t0); o.frequency.exponentialRampToValueAtTime(BHI, t0 + dur);
+    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(Math.pow(PHI, -2), t0 + dur * Math.pow(PHI, -4)); g.gain.setValueAtTime(Math.pow(PHI, -2), t0 + dur * (1 - Math.pow(PHI, -4))); g.gain.linearRampToValueAtTime(0, t0 + dur);   // phi: level PHI^-2 of full scale, edges PHI^-4 of the sweep
+    o.connect(g); out.forEach(function (n) { g.connect(n); }); o.start(t0); o.stop(t0 + dur + IPH);
+  }
+  function tone(c, t0, dur, lvl, to) {
+    var o = c.createOscillator(), g = c.createGain(); o.frequency.value = A4; g.gain.setValueAtTime(0, t0); g.gain.setTargetAtTime(lvl, t0, Math.pow(PHI, -5)); g.gain.setTargetAtTime(0, t0 + dur, Math.pow(PHI, -5));
+    o.connect(g); g.connect(to); o.start(t0); o.stop(t0 + dur + IPH);
+  }
+  function goertzel(x, f, sr) { var w = 2 * Math.PI * f / sr, cw = 2 * Math.cos(w), s0 = 0, s1 = 0, s2 = 0; for (var i = 0; i < x.length; i++) { s0 = x[i] + cw * s1 - s2; s2 = s1; s1 = s0; } return Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - cw * s1 * s2)) * 2 / x.length; }   // amplitude of f in x
+  function rms(x) { var q = 0; for (var i = 0; i < x.length; i++) q += x[i] * x[i]; return Math.sqrt(q / Math.max(1, x.length)); }
+  function clicks(x, sr) {                                               // crackle: second-difference outliers above PHI^4 x their median, per second
+    if (x.length < 3) return 0; var d = new Float32Array(x.length - 2); for (var i = 2; i < x.length; i++) d[i - 2] = Math.abs(x[i] - 2 * x[i - 1] + x[i - 2]);
+    var s = Array.prototype.slice.call(d).sort(function (a, b) { return a - b; }), med = s[s.length >> 1] || 1e-9, th = med * Math.pow(PHI, 4), n = 0, last = -sr;
+    for (var j = 0; j < d.length; j++) if (d[j] > th && j - last > sr * Math.pow(PHI, -10)) { n++; last = j; }   // phi: one click per PHI^-10 s at most
+    return n / (x.length / sr);
+  }
+  function xcorr(mic, ref, sr) {                                          // round trip: lag of the mic's chirp behind the digital chirp
+    var maxLag = Math.round(sr * IPH), best = 0, bl = 0, rE = 0, mE = 0, i;   // phi: search up to PHI^-1 s
+    var r0 = 0; for (i = 0; i < ref.length; i++) if (Math.abs(ref[i]) > Math.pow(PHI, -6)) { r0 = i; break; }
+    var L = Math.min(ref.length - r0, Math.round(sr * Math.pow(PHI, -1)));
+    for (i = 0; i < L; i++) rE += ref[r0 + i] * ref[r0 + i];
+    for (var lag = 0; lag < maxLag && r0 + lag + L < mic.length; lag += 2) {  // every second sample: plenty for ms resolution
+      var s = 0; for (i = 0; i < L; i += 2) s += mic[r0 + lag + i] * ref[r0 + i]; if (Math.abs(s) > Math.abs(best)) { best = s; bl = lag; } }
+    for (i = 0; i < L; i++) mE += mic[r0 + bl + i] * mic[r0 + bl + i];
+    return { ms: bl / sr * MS, strength: Math.abs(best) * 2 / Math.sqrt(rE * mE + 1e-20) };
+  }
+  async function runMode(M, card) {
+    var c = ctx, sr = c.sampleRate, R = { mode: M.k, name: M.name }, rec = [[], []], meter = $('lvl');
+    if (M.sess) R.session = session(M.sess); else R.session = navigator.audioSession ? navigator.audioSession.type : 'n/a';
+    var stream = null;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: { ideal: M.ec }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } } }); }
+    catch (e) { R.error = e.name + ': ' + e.message; return R; }
+    try { if (c.state !== 'running') await c.resume(); } catch (e) {}
+    var tr = stream.getAudioTracks()[0]; R.settings = tr && tr.getSettings ? tr.getSettings() : {};
+    var src = c.createMediaStreamSource(stream), mg = c.createChannelMerger(2), sp = c.createScriptProcessor(4096, 2, 2), sink = c.createGain(), refTap = c.createGain();   // unit: 4096-frame capture blocks
+    sink.gain.value = 0; src.connect(mg, 0, 0); refTap.connect(mg, 0, 1); mg.connect(sp); sp.connect(sink); sink.connect(c.destination);
+    sp.onaudioprocess = function (e) { var a = e.inputBuffer.getChannelData(0), b = e.inputBuffer.getChannelData(1); rec[0].push(new Float32Array(a)); rec[1].push(new Float32Array(b)); meter.style.width = Math.min(100, Math.max(0, (db(rms(a)) + 60) / 60 * 100)).toFixed(0) + '%'; };   // unit: a 60 dB meter
+    var t0 = c.currentTime + Math.pow(PHI, -2), tq = t0 + IPH, tt = tq + PHI * PHI, tc = tt + IPH, cd = IPH, tEnd = tc + cd + PHI;   // phi: silence PHI^-1 s, tone PHI^2 s, chirp PHI^-1 s, tail PHI s
+    tone(c, tq, PHI * PHI, Math.pow(PHI, -4), c.destination);            // phi: a quiet tone, PHI^-4 of full scale
+    chirp(c, tc, cd, [c.destination, refTap]);
+    $('status').textContent = M.k + ': ' + M.hint;
+    await sleep(tEnd - c.currentTime + Math.pow(PHI, -2));
+    sp.onaudioprocess = null; try { sp.disconnect(); mg.disconnect(); src.disconnect(); } catch (e) {}
+    stream.getTracks().forEach(function (x) { x.stop(); }); meter.style.width = '0%';
+    var n = rec[0].reduce(function (a, b) { return a + b.length; }, 0), mic = new Float32Array(n), ref = new Float32Array(n), o = 0;
+    rec[0].forEach(function (b, i) { mic.set(b, o); ref.set(rec[1][i], o); o += b.length; });
+    // locate the segments by the digital reference: the chirp is the only thing on channel 2
+    var cs = 0; for (var i = 0; i < n; i++) if (Math.abs(ref[i]) > Math.pow(PHI, -6)) { cs = i; break; }
+    var toneEnd = Math.max(0, cs - Math.round(sr * IPH)), toneStart = Math.max(0, toneEnd - Math.round(sr * PHI * PHI)), quietEnd = Math.max(0, toneStart - Math.round(sr * Math.pow(PHI, -3))), quietStart = Math.max(0, quietEnd - Math.round(sr * Math.pow(PHI, -2)));
+    var quiet = mic.subarray(quietStart, quietEnd), tn = mic.subarray(toneStart + Math.round(sr * Math.pow(PHI, -3)), toneEnd - Math.round(sr * Math.pow(PHI, -3)));
+    R.floor_dBFS = +fmt(db(rms(quiet))); R.tone_in_mic_dBFS = +fmt(db(goertzel(tn, A4, sr) / Math.SQRT2)); R.coupling_dB = +fmt(db(goertzel(tn, A4, sr) / Math.pow(PHI, -4)));   // tone level in the mic vs what was played
+    R.clicks_per_s = +fmt(clicks(tn, sr)); R.clicks_quiet_per_s = +fmt(clicks(quiet, sr));
+    var x = xcorr(mic, ref, sr); R.round_trip_ms = +fmt(x.ms); R.chirp_match = +fmt(x.strength, 2);
+    R.after_session = session('playback'); session('auto');                  // give full-fidelity playback back (spec s5)
+    R._audio = mic; R._sr = sr;
+    return R;
+  }
+  function show(R, card) {
+    card.classList.remove('run'); var h = card.querySelector('h2'), k = card.querySelector('.kv'), s = R.settings || {};
+    if (R.error) { kv(k, [['error', R.error]]); return; }
+    kv(k, [['echoCancellation', String(s.echoCancellation)], ['noiseSuppression', String(s.noiseSuppression)], ['autoGainControl', String(s.autoGainControl)],
+      ['mic', (s.sampleRate || '?') + ' Hz, ' + (s.channelCount || '?') + ' ch' + (s.latency != null ? ', ' + fmt(s.latency * MS) + ' ms' : '')], ['session', R.session + ' -> ' + R.after_session],
+      ['room floor', fmt(R.floor_dBFS) + ' dBFS'], ['tone in the mic', fmt(R.tone_in_mic_dBFS) + ' dBFS (' + fmt(R.coupling_dB) + ' dB vs played)'],
+      ['clicks', fmt(R.clicks_per_s) + ' /s in the tone, ' + fmt(R.clicks_quiet_per_s) + ' /s in silence'], ['round trip', R.chirp_match > IPH * IPH ? fmt(R.round_trip_ms) + ' ms (match ' + fmt(R.chirp_match, 2) + ')' : 'chirp not heard (match ' + fmt(R.chirp_match, 2) + ')']]);
+    var row = document.createElement('div'); row.className = 'row';
+    var play = document.createElement('button'); play.className = 'ghost'; play.type = 'button'; play.textContent = '\u25B6 Hear what the mic heard';
+    play.addEventListener('click', function () { try { var b = ctx.createBuffer(1, R._audio.length, R._sr); b.getChannelData(0).set(R._audio); var s2 = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = PHI; s2.buffer = b; s2.connect(g); g.connect(ctx.destination); if (ctx.state !== 'running') ctx.resume(); s2.start(); } catch (e) {} });   // phi: a rung louder so a quiet capture is audible
+    row.appendChild(play); card.appendChild(row);
+    [['Where did the tone come from?', 'route', ['loud speaker', 'quiet earpiece', 'not sure']], ['Crackle in the tone?', 'crackle', ['yes', 'no', 'not sure']]].forEach(function (q) {
+      var p = document.createElement('p'); p.className = 'small'; p.textContent = q[0]; card.appendChild(p); var a = document.createElement('div'); a.className = 'ask'; card.appendChild(a);
+      q[2].forEach(function (v) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = v; b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', function () { R[q[1]] = v; Array.prototype.forEach.call(a.children, function (x) { x.setAttribute('aria-pressed', String(x === b)); }); }); a.appendChild(b); });
+    });
+  }
+  function verdict() {
+    var A = results.modes[0] || {}, B = results.modes[1] || {}, C = results.modes[2] || {}, v = [];
+    if (isFinite(A.coupling_dB) && isFinite(B.coupling_dB)) v.push('Echo cancellation removed ' + fmt(B.coupling_dB - A.coupling_dB) + ' dB of the tone (B vs A).');
+    if (isFinite(C.coupling_dB) && isFinite(B.coupling_dB)) v.push('play-and-record changed the tone in the mic by ' + fmt(C.coupling_dB - B.coupling_dB) + ' dB (C vs B).');
+    if (isFinite(A.clicks_per_s) && isFinite(B.clicks_per_s)) v.push('Clicks: ' + fmt(A.clicks_per_s) + '/s with EC on vs ' + fmt(B.clicks_per_s) + '/s off.');
+    var c = document.createElement('div'); c.className = 'card'; c.innerHTML = '<h2>Summary</h2>'; var p = document.createElement('p'); p.className = 'verdict'; p.textContent = v.join(' ') || 'No numbers (see errors above).'; c.appendChild(p);
+    var n = document.createElement('p'); n.className = 'small'; n.textContent = 'Answer the two questions under each test, then tap Copy results and paste them to the DJ chat.'; c.appendChild(n); $('cards').appendChild(c);
+  }
+  $('go').addEventListener('click', async function () {
+    var go = $('go'); go.disabled = true; $('cards').innerHTML = ''; results.modes = [];
+    try { var AC = window.AudioContext || window.webkitAudioContext; if (!ctx) ctx = new AC(); await ctx.resume(); } catch (e) { $('status').textContent = 'No Web Audio here.'; return; }
+    device(); session('playback');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('status').textContent = 'This browser has no microphone access for web pages.'; return; }
+    for (var i = 0; i < MODES.length; i++) {
+      var M = MODES[i], card = document.createElement('div'); card.className = 'card run'; card.innerHTML = '<h2></h2><p class="small"></p><div class="kv"></div>';
+      card.querySelector('h2').textContent = M.k + '. ' + M.name; card.querySelector('p').textContent = M.hint; $('cards').appendChild(card);
+      var R = await runMode(M, card); results.modes.push(R); show(R, card); await sleep(IPH);
+    }
+    session('auto'); device(); verdict(); $('status').textContent = 'Done. Mic closed.'; go.disabled = false; go.textContent = 'Run again'; $('copy').disabled = false;
+  });
+  $('copy').addEventListener('click', function () {
+    var o = JSON.parse(JSON.stringify(results, function (k, v) { return k.charAt(0) === '_' ? undefined : v; }));
+    var t = 'Mic check ' + o.when + '\n' + JSON.stringify(o, null, 1);
+    function done(ok) { $('status').textContent = ok ? 'Results copied (numbers only, no audio).' : 'Copy failed; select the text below.'; if (!ok) { var pr = document.createElement('pre'); pr.textContent = t; $('cards').appendChild(pr); } }
+    try { navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+  });
+  device();
+})();
+</script>
+</body>
+</html>
