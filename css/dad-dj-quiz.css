@@ -30,3 +30,10 @@
 .dad-dj .dj-grp input:focus-visible + span{outline:3px solid #F2A541;outline-offset:2px}
 @media(max-width:480px){.dad-head .dad-dj{padding:.3rem .4rem;font-size:.74rem}.dad-dj .dj-vol input{width:78px}.dad-dj .dj-read{flex:1 0 100%}}
 @media(prefers-reduced-motion:reduce){.dad-dj .dj-led.on,.dad-dj .dj-led.on2{background:#0F5C6E}}
+/* knobs open at their live value (Danny 13:51 AWST 26 Oct): the live chip carries an underline marker; the checked chip = live + nudge.
+   Changes glide (rule 6) over phi-step durations. */
+.dad-dj .dj-grp span{transition:background-color .618s ease,border-color .618s ease,color .618s ease,box-shadow .618s ease}
+.dad-dj .dj-grp label.is-live span{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.dad-dj .dj-play.is-resuming .dj-led{animation:djpResume 2.618s ease-in-out infinite}
+@keyframes djpResume{50%{opacity:.382}}
+@media(prefers-reduced-motion:reduce){.dad-dj .dj-grp span{transition:none}.dad-dj .dj-play.is-resuming .dj-led{animation:none}}

@@ -44,6 +44,7 @@
     return { d: d, j: j, o: o, e: e, y: y, op: op };
   });
   document.body.appendChild(L);
+  if (window.RhythmContinuity) RhythmContinuity.css('scene:space', L);   // continuity: orbit progress kept across reloads + time away
   // change a duration var but keep the animation's progress (no jump)
   function retime(el, name, prop, secs) {
     var a = el.getAnimations ? el.getAnimations().filter(function (x) { return x.animationName === name; })[0] : null, p = null;

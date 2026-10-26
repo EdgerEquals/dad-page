@@ -3,7 +3,7 @@
    A node with N pumps = N slow sine modes on golden steps: periods PHI^(k0 + j/2) s, j = 0..N-1, phases 2 pi frac((j+1+seed) x 0.618)
    (golden angle). Its output = parent output x (1 + depth x mean of its modes), so a parent's output is the INPUT-POWER SCALER of every
    child: scale the parent and the whole branch scales. Page: 13 modes PHI^4..PHI^10 (6.85 s .. 123 s), depth 0.146.
-   Cheap: no timers, no rAF, no storage; values are computed only when something reads them. Loaded at idle (tier 2). Only the Rebella logo
+   Cheap: no timers, no rAF, no storage of its own (its clock is kept by js/rhythm-continuity.js); values are computed only when something reads them. Loaded at idle (tier 2). Only the Rebella logo
    zoom's sound (js/logo-sound.js) reads it for now; nothing else on the page is wired to it yet.
    REGISTRY (Danny rule 10 'logo = microcosm of the site'): page entities are PROVIDED here once and logos SUBSCRIBE to them by name instead of
    keeping their own constants. Every provider is a cheap read-on-demand function returning a number in -1..1 (or 0..1 where noted), or
@@ -23,7 +23,8 @@
 (function(){
   'use strict';
   var PHI=1.6180339887,G=0.6180339887,T0=(window.performance&&performance.now)?performance.now():Date.now();
-  function now(){return ((window.performance&&performance.now)?performance.now():Date.now())/1000;}
+  var OFF=0;   // continuity offset (s): js/rhythm-continuity.js fast-forwards the whole tree to wall-clock now after a reload or time away
+  function now(){return ((window.performance&&performance.now)?performance.now():Date.now())/1000+OFF;}
   function node(name,n,k0,depth,parent,seed){var P=[],ph=[];seed=seed||0;
     for(var j=0;j<n;j++){P.push(Math.pow(PHI,k0+j/2));ph.push(2*Math.PI*(((j+1+seed)*G)%1));}
     function modes(t){if(t==null)t=now();var s=0;for(var j=0;j<n;j++)s+=Math.sin(2*Math.PI*t/P[j]+ph[j]);return s/n;}
@@ -50,5 +51,8 @@
   provide('ratio-pump',function(){var R=window.RatioPump;if(!R||!R.pump)return null;var p=+R.pump();return isFinite(p)?Math.max(-1,Math.min(1,2*(p-0.887)/(1-0.887)-1)):null;});
   provide('component:theme',function(){return document.documentElement.getAttribute('data-theme')==='light'?1:-1;});
   var logos={};function logo(id){return logos[id]||(logos[id]=node('logo:'+id,8,3,0.09,page,1));}   // one shared logo node per logo id (sound + visuals hang off it)
+  // continuity (Danny 13:48 AWST 26 Oct): the tree's time is saved and caught up analytically (every mode is a sine of t, so t = saved + away)
+  if(window.RhythmContinuity)RhythmContinuity.register('pumps',{save:function(){return {t:now()};},
+    catchUp:function(e,s,m){if(m!=='restart'&&s&&isFinite(s.t))OFF+=s.t+e-now();},reset:function(){OFF-=now();}});
   window.PhiPumps={node:node,now:now,PHI:PHI,page:page,logo:logo,provide:provide,subscribe:subscribe,names:function(){return Object.keys(reg);}};
 })();

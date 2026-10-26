@@ -98,6 +98,7 @@
   var t0 = performance.now(), TB = rung(SID, 8);                            // phi: big Earth turns once per rung-8 sidereal day (47..76 s)
   function spinBig(now) { var w = faceW(TAU * fr((now - t0) / MS / TB) - TAU / 2); big.f.forEach(function (e, j) { e.style.opacity = w[j]; }); }
 
+  if (root.RhythmContinuity) RhythmContinuity.phase('scene:ping', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   // orbiters: rAF, capped
   function orbit(now) {
     var t = (now - t0) / MS;

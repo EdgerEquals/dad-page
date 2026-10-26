@@ -73,6 +73,7 @@
   }
   function crossing() { var f = feeds(), m = f.moon != null ? f.moon : IP; return Math.pow(PHI, 6 - m * IP); }   // phi: rung 6, moon nudges faster
   var Tc = crossing(), t0 = performance.now(), last = 0, raf = 0, FRAME = MS * Math.pow(IP, 7);   // phi: frame cap PHI^-7 s
+  if (root.RhythmContinuity) RhythmContinuity.phase('scene:comet', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   function place(now) {
     var t = (now - t0) / MS, th = TAU * (t / Tc + ph0), ca = Math.cos(TILT), sa = Math.sin(TILT);
     var u = band.rx * Math.cos(th), v = band.ry * Math.sin(th), du = -band.rx * Math.sin(th), dv = band.ry * Math.cos(th);

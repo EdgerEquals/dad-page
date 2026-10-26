@@ -26,3 +26,7 @@
 .q-head .qh-djpop .dad-dj{max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);overflow:auto}
 @media(max-width:480px){.q-head .qh-right{gap:6px}.q-head .dj-pill{padding:0 .5rem 0 .4rem;font-size:.72rem}}
 @media(prefers-reduced-motion:reduce){.q-head .dj-pill .djp-car{transition:none}}
+/* continuity (Danny 13:47 AWST 26 Oct): on, waiting for one tap to bring the sound back; the light breathes on a phi period */
+.q-head .dj-pill.is-resuming .djp-led{animation:djpResume 2.618s ease-in-out infinite}
+@keyframes djpResume{50%{opacity:.382}}
+@media(prefers-reduced-motion:reduce){.q-head .dj-pill.is-resuming .djp-led{animation:none;opacity:.618}}

@@ -12,7 +12,19 @@
    Clock: boundaries fall on multiples of the current crossfade period; pumps are re-read only there, never mid-fade,
    and a new track starts at a boundary. Nothing plays before a tap; the page's sound switch is the master mute.
    The page never reads any message text (there is none here); the demo chips only stand in for Simmie's tags.
-   Storage: localStorage 'preview.dadDJ.vol' only. Test hooks: ?mood= ?urgency= ?hour=0-23 ; window.DadAutoDJ. */
+   Storage: localStorage 'preview.dadDJ.vol' (slider) + the DJ entry in 'dadRhythm.v1' (js/rhythm-continuity.js). Test hooks: ?mood= ?urgency= ?hour=0-23 ; window.DadAutoDJ.
+   CONTINUITY (Danny 13:47 / 13:51 AWST 26 Oct 2026):
+     save + restore  on/off, the knob nudges, the genre rotation, the boundary grid and the playing track (genre, BPM, seed, birth time).
+                     After a reload or iOS discard the pill shows 'on' at once; sound needs one tap (browser rule), anywhere on the page.
+     arrangement     a track's position is a function of wall-clock time since its birth (step = age x BPM x 4 / 60), so catching up is
+                     analytic: the seed rebuilds the same motif and progression, whole track lengths that passed while away advance the
+                     rotation, and the remainder sets the step.
+     keep alive      the mix is routed through a MediaStreamAudioDestinationNode into a hidden <audio> element (iOS treats that as media
+                     playback) with a Media Session (lock-screen play / pause / stop); while hidden the scheduler looks PHI^3 s ahead.
+                     On return (visibilitychange, pageshow) the context and element resume; if iOS still wants a gesture, one gentle
+                     'tap to resume', never a reset.
+     knobs           each pump chip opens at its live value; a hand change is a NUDGE in ladder steps on top of the live value, so the
+                     live value keeps moving under it; the nudge is saved with the DJ and reset by the daily restart. */
 (function () {
   'use strict';
   var PHI = 1.6180339887;
@@ -22,23 +34,35 @@
   var URG = { idle: 0, 'new': -0.5, urgent: -1.5 };
   var WX = { hot: -1, sun: -0.5, storm: 0, cloud: 0, rain: 0.5, fog: 1, night: 0, snow: 0 };
   var TIME = { day: 0, evening: 0.5, night: 1.5, deep: 2 };
-  var K_VOL = 'preview.dadDJ.vol';
+  var K_VOL = 'preview.dadDJ.vol', MS = 1e3, SPM = 60, SPB = 4;   // unit: ms per s, seconds per minute, sixteenths per beat
+  // knob ladders, ordered by their phi-step pump value (calm/slow at the high end); a hand change is a nudge along these
+  var LADDER = { mood: ['excited', 'playful', 'neutral', 'proud', 'warm', 'serious', 'calm'], urgency: ['urgent', 'new', 'idle'],
+                 sky: ['hot', 'sun', 'night', 'cloud', 'storm', 'rain', 'fog'], time: ['day', 'evening', 'night', 'deep'] };
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function qp(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function store(k, v) { try { if (v != null) localStorage.setItem(k, v); return localStorage.getItem(k); } catch (e) { return null; } }
   var RM = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
   // ---------- pumps ----------
-  var demo = { mood: MOOD.hasOwnProperty(qp('mood')) ? qp('mood') : 'neutral', urgency: URG.hasOwnProperty(qp('urgency')) ? qp('urgency') : 'idle',
-               sky: 'live', time: 'live' };
+  var nudge = { mood: 0, urgency: 0, sky: 0, time: 0 };
+  function liveOf(k) { return k === 'mood' ? 'neutral' : k === 'urgency' ? 'idle' : k === 'sky' ? liveSky() : liveTime(); }
+  function eff(k) {                                                       // live value + the hand nudge (clamped to the ladder)
+    var L = LADDER[k], lv = liveOf(k); if (lv == null && !nudge[k]) return null;
+    var i = L.indexOf(lv); if (i < 0) i = L.indexOf('cloud'); return L[clamp(i + nudge[k], 0, L.length - 1)];
+  }
+  function setTo(k, v) { var L = LADDER[k], i = L.indexOf(liveOf(k)); if (i < 0) i = L.indexOf('cloud'); nudge[k] = L.indexOf(v) < 0 ? 0 : L.indexOf(v) - i; }
+  if (MOOD.hasOwnProperty(qp('mood'))) setTo('mood', qp('mood'));
+  if (URG.hasOwnProperty(qp('urgency'))) setTo('urgency', qp('urgency'));
+  var demo = { get mood() { return eff('mood'); }, get urgency() { return eff('urgency'); } };
   var hourOverride = /^\d{1,2}$/.test(qp('hour') || '') ? (+qp('hour')) % 24 : null;
   function perthHour() {
     if (hourOverride != null) return hourOverride;
     try { return +new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', hourCycle: 'h23' }).format(new Date()) % 24; } catch (e) { return new Date().getHours(); }
   }
-  function sky() { if (demo.sky !== 'live') return demo.sky; var w = window.SIM_WX; return w && WX.hasOwnProperty(w.cond) ? w.cond : null; }
-  function timeSlot() {
-    if (demo.time !== 'live') return demo.time;
+  function liveSky() { var w = window.SIM_WX; return w && WX.hasOwnProperty(w.cond) ? (w.cond === 'snow' ? 'cloud' : w.cond) : null; }
+  function sky() { return eff('sky'); }
+  function timeSlot() { return eff('time'); }
+  function liveTime() {
     var h = perthHour(), k = sky();
     if (h < 5) return 'deep';
     if (h >= 21) return (k == null || k === 'night' || k === 'sun' || k === 'hot') ? 'night' : 'evening';
@@ -85,7 +109,31 @@
 
   // ---------- audio graph ----------
   var AC = window.AudioContext || window.webkitAudioContext;
-  var ctx = null, master = null, bus = null, revIn = null, noise = null, meter = null;
+  var ctx = null, master = null, bus = null, revIn = null, noise = null, meter = null, out = null;
+  // ---------- media bridge: WebAudio -> MediaStream -> hidden <audio>, so iOS treats the DJ as media playback ----------
+  var el = null, direct = true;
+  function bridge() {
+    if (!ctx.createMediaStreamDestination || !window.HTMLAudioElement) return;
+    try { var msd = ctx.createMediaStreamDestination(); out.connect(msd); el = document.createElement('audio'); el.setAttribute('playsinline', ''); el.srcObject = msd.stream;
+      el.addEventListener('pause', function () { if (!direct) { try { out.connect(ctx.destination); } catch (e) {} direct = true; } }); } catch (e) { el = null; }
+  }
+  function elPlay() {                                                     // once the element is really playing, it is the only path out
+    if (!el) return; var p; try { p = el.play(); } catch (e) { return; }
+    if (p && p.then) p.then(function () { if (direct && !el.paused && playing) { try { out.disconnect(ctx.destination); direct = false; } catch (e) {} } }, function () {});
+  }
+  function elStop() { if (el) try { el.pause(); } catch (e) {} }
+  var msWired = false;
+  function session(state) {
+    var m = navigator.mediaSession; if (!m) return;
+    try {
+      if (!msWired) { msWired = true;
+        m.setActionHandler('play', function () { if (stalled || pend) resumeTap(); else if (!playing) start(held); });
+        m.setActionHandler('pause', function () { if (playing) stop(); });
+        m.setActionHandler('stop', function () { if (playing) stop(); }); }
+      if (state === 'playing' && window.MediaMetadata) m.metadata = new MediaMetadata({ title: "Dad's DJ", artist: 'EdgerEquals', album: cur && cur.genre ? cur.genre : '' });
+      m.playbackState = state;
+    } catch (e) {}
+  }
   function ensure() {
     if (ctx || !AC) return ctx;
     try {
@@ -96,7 +144,7 @@
       var conv = ctx.createConvolver(), L = Math.floor(ctx.sampleRate * 2.2), ir = ctx.createBuffer(2, L, ctx.sampleRate);
       for (var c = 0; c < 2; c++) { var d = ir.getChannelData(c); for (var i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / L, 3); }
       conv.buffer = ir; revIn = ctx.createGain(); revIn.gain.value = 0.35; revIn.connect(conv); conv.connect(bus);
-      bus.connect(master); master.connect(comp); comp.connect(ctx.destination);
+      bus.connect(master); master.connect(comp); comp.connect(ctx.destination); out = comp; bridge();
       meter = ctx.createAnalyser(); meter.fftSize = 2048; comp.connect(meter);              // level check for tests only
       var n = ctx.sampleRate, b = ctx.createBuffer(1, n, n), nd = b.getChannelData(0); for (var j = 0; j < n; j++) nd[j] = Math.random() * 2 - 1; noise = b;
     } catch (e) { ctx = null; }
@@ -158,7 +206,7 @@
     var out = ctx.createGain(); out.gain.value = 0.0001; out.connect(bus);
     var wet = ctx.createGain(); wet.gain.value = 0.0001; wet.connect(revIn);                    // reverb send, faded with the track
     var rv = ctx.createGain(); rv.gain.value = g.rev; rv.connect(wet);
-    return { genre: genre, bpm: bpm, g: g, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, step: 0, next: ctx.currentTime + 0.06, born: Date.now() };
+    return { genre: genre, bpm: bpm, seed: seed, g: g, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
   }
   function playStep(tr, t) {
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
@@ -191,7 +239,7 @@
   var tracks = [], sched = 0;
   function tick() {
     if (!ctx) return;
-    var horizon = ctx.currentTime + 0.15;
+    var horizon = ctx.currentTime + Math.pow(PHI, document.hidden ? 3 : -4);   // phi: look PHI^-4 s ahead, PHI^3 s while hidden (throttled timers)
     tracks.forEach(function (tr) {
       if (tr.next < ctx.currentTime - 0.5) tr.next = ctx.currentTime + 0.02;   // resumed after being hidden
       while (tr.next < horizon && !tr.dead) { playStep(tr, tr.next); tr.next += stepLen(tr); tr.step++; }
@@ -203,8 +251,10 @@
   function fadeTrack(tr, up, t, len) { fadeGain(tr.out, up, t, len); fadeGain(tr.wet, up, t, len); }
   // ---------- the DJ ----------
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
-  function startTrack(c, fade) {
-    var gs = c.genres, genre = gs[(genreFlip++) % gs.length], tr = makeTrack(genre, c.bpm, (Math.random() * 1e9) | 0), t = ctx.currentTime + 0.05;
+  function startTrack(c, fade, sp) {
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = ctx.currentTime + Math.pow(PHI, -6);   // phi: fade starts PHI^-6 s out
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0);
+    if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
     fadeTrack(tr, true, t, len);
     old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); setTimeout(function () { kill(o); }, len * 1000 + 300); });
@@ -228,20 +278,72 @@
   function schedule(period) { clearTimeout(clock); var P = period * 1000, now = Date.now(); clock = setTimeout(boundary, P - ((now - T0) % P) + 5); }
   function nextIn() { var c = compute(), P = c.fade * 1000; return (P - ((Date.now() - T0) % P)) / 1000; }
 
-  function start() {
+  // ---------- continuity: arrangement position from wall-clock time ----------
+  var pend = null, stalled = false, held = null, GA = 0x9E3779B9, SEEDS = 4294967296;   // phi: golden-ratio hash (2^32 / PHI) steps the seed per skipped track; unit: 2^32 seeds
+  function stepsIn(sec, bpm) { return Math.max(0, Math.floor(sec * bpm / SPM * SPB)); }
+  function spec() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
+    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen } : (pend || held); }
+  function advance(sp, c) {                                               // whole track lengths that passed while away, then the remainder
+    if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
+    var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
+    var k = Math.floor(age / sp.len), gs = c.genres; genreFlip += k;
+    return { genre: gs[(genreFlip - 1) % gs.length], bpm: c.bpm, seed: (sp.seed + Math.imul(k, GA)) | 0, born: sp.born + k * sp.len * MS, len: c.trackLen };
+  }
+  function start(sp) {
     if (!ensure()) { paint(compute()); return; }
     try { ctx.resume && ctx.resume(); } catch (e) {}
-    playing = true; var c = compute(); bus.gain.cancelScheduledValues(ctx.currentTime); bus.gain.setValueAtTime(c.vol, ctx.currentTime);
-    var tr = startTrack(c, PHI); tr.trackLen = c.trackLen; cur = c; cur.genre = tr.genre;   // first tap: a quick PHI^1 s fade-in (crossfades use PHI^(3.5+s))
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    playing = true; pend = null; stalled = false; var c = compute(); bus.gain.cancelScheduledValues(ctx.currentTime); bus.gain.setValueAtTime(c.vol, ctx.currentTime);
+    sp = sp && sp.genre ? advance(sp, c) : null;
+    var tr = startTrack(c, PHI, sp); tr.trackLen = sp && sp.len > 0 ? sp.len : c.trackLen; cur = c; cur.genre = tr.genre;   // first tap: a quick PHI^1 s fade-in (crossfades use PHI^(3.5+s))
+    elPlay(); session('playing'); save();
     if (!sched) sched = setInterval(tick, 25); tick();
     if (!document.documentElement.hasAttribute('data-bm')) { document.documentElement.setAttribute('data-bm', 'playing'); setBm = true; }  // the generated cue layer ducks to 30% under the music
     paint(c); schedule(c.fade);
   }
   function stop() {
-    playing = false;
+    held = spec(); playing = false; pend = null; stalled = false; disarm();
+    setTimeout(function () { if (!playing) elStop(); }, PHI * MS); session('paused');
     if (ctx) { var t = ctx.currentTime; tracks.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, 1); setTimeout(function () { kill(o); }, 1300); }); }
     if (setBm) { document.documentElement.removeAttribute('data-bm'); setBm = false; }
-    fadingUntil = 0; paint(compute());
+    fadingUntil = 0; paint(compute()); save();
+  }
+  function jump() {                                                       // live return: if the music was frozen while away, skip ahead to now
+    tracks.forEach(function (tr) { if (tr.dead || tr.leaving) return; var want = stepsIn((Date.now() - tr.born) / MS, tr.bpm);
+      if ((want - tr.step) * SPM / tr.bpm / SPB > PHI) { tr.step = want; tr.next = ctx.currentTime + Math.pow(PHI, -4); } });   // phi: only past a PHI s gap
+  }
+  function wake() {                                                       // visibilitychange / pageshow: resume what was playing
+    if (!playing || !ctx) return;
+    var p = null; try { p = ctx.resume && ctx.resume(); } catch (e) {}
+    elPlay(); jump(); tick();
+    var check = function () { if (playing && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
+    if (p && p.then) p.then(check, check); else check();
+  }
+  function resumeTap() {
+    disarm(); if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }
+    if (stalled && playing && ctx) { stalled = false; try { ctx.resume(); } catch (e) {} elPlay(); jump(); tick(); session('playing'); paint(compute()); return; }
+    if (pend) start(pend);
+  }
+  var armed = false, GEST = ['touchend', 'click', 'keydown'];
+  function onGesture(e) { if (btn && btn.contains(e.target)) return; if (pend || stalled) resumeTap(); else disarm(); }
+  function arm() { if (armed) return; armed = true; GEST.forEach(function (n) { document.addEventListener(n, onGesture, true); }); }
+  function disarm() { if (!armed) return; armed = false; GEST.forEach(function (n) { document.removeEventListener(n, onGesture, true); }); }
+  // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
+  var RC = null;
+  function save() { if (RC) RC.save(); }
+  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec() }; }
+  function catchUp(e, s, mode) {
+    if (mode === 'return') { wake(); return; }
+    if (!s) return;
+    if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
+    if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
+    if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = s.T0;
+    if (s.on && AC) { pend = s.tr || {}; arm(); }
+  }
+  function reset() {                                                      // daily restart at local solar midnight: knobs back to live, fresh rotation
+    Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); genreFlip = 0; T0 = Date.now(); held = null;
+    if (pend) pend = {}; tracks.forEach(function (tr) { tr.born = 0; });  // the next boundary starts a fresh track
+    cur = compute(); paint(cur); schedule(cur.fade);
   }
 
   // ---------- UI (Dad header) ----------
@@ -253,11 +355,13 @@
     if (!read) return;
     var shown = playing && cur ? cur : c, g = playing && cur && cur.genre ? cur.genre : c.genres.join(' / ');
     read.textContent = g + ' \u00B7 ' + Math.round(shown.bpm) + ' BPM \u00B7 fade ' + shown.fade.toFixed(1) + ' s \u00B7 vol ' + Math.round(shown.vol * 100) + '%';
-    var p = c.p, pend = playing && cur && (Math.abs(cur.s - c.s) > 1e-9 || cur.p.mood !== c.p.mood);
+    var p = c.p, pendN = playing && cur && (Math.abs(cur.s - c.s) > Number.EPSILON || cur.p.mood !== c.p.mood);
     readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) +
-      (pend ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '');
-    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
-    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : playing ? 'Dad\u2019s DJ on' : 'Dad\u2019s DJ';
+      (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
+    var on = playing || !!pend || stalled, wait = !!pend || stalled;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
+    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? 'Dad\u2019s DJ \u00B7 tap to resume' : playing ? 'Dad\u2019s DJ on' : 'Dad\u2019s DJ';
+    syncChips();
     btn.disabled = !AC;
   }
   var beatT = [];
@@ -269,21 +373,33 @@
   }
   function soundSwitch() { return document.querySelector('#vol-sound .bs-toggle'); }
   function masterOn() { var b = window.BonnieSound; return !b || b.on; }
-  var GROUPS = [['mood', 'Mood (Simmie\u2019s tag)', ['neutral', 'calm', 'warm', 'proud', 'playful', 'excited', 'serious']],
-                ['urgency', 'Urgency', ['idle', 'new', 'urgent']],
-                ['sky', 'Sky', ['live', 'sun', 'hot', 'cloud', 'rain', 'fog', 'storm']],
-                ['time', 'Time', ['live', 'day', 'evening', 'night', 'deep']]];
+  // knobs: each group is its ladder; the checked chip is the live value + the hand nudge, the live value's chip carries a marker
+  // (.is-live), and both move on their own as the sky, time and weather move (CSS glides the change). Tapping the live chip clears the nudge.
+  var GROUPS = [['mood', 'Mood (Simmie\u2019s tag)'], ['urgency', 'Urgency'], ['sky', 'Sky'], ['time', 'Time']], chipEls = {};
   function buildChips() {
     GROUPS.forEach(function (gp) {
-      var fs = document.createElement('fieldset'), lg = document.createElement('legend'); fs.className = 'dj-grp'; lg.textContent = gp[1]; fs.appendChild(lg);
-      gp[2].forEach(function (v) {
+      var k = gp[0], fs = document.createElement('fieldset'), lg = document.createElement('legend'); fs.className = 'dj-grp'; lg.textContent = gp[1]; fs.appendChild(lg);
+      chipEls[k] = [];
+      LADDER[k].forEach(function (v) {
         var l = document.createElement('label'), i = document.createElement('input'), s = document.createElement('span');
-        i.type = 'radio'; i.name = 'dj-' + gp[0]; i.value = v; i.checked = demo[gp[0]] === v; s.textContent = v === 'deep' ? 'deep night' : v;
-        i.addEventListener('change', function () { if (!i.checked) return; demo[gp[0]] = v; var c = compute(); if (!playing) cur = c; paint(c); });
-        l.appendChild(i); l.appendChild(s); fs.appendChild(l);
+        i.type = 'radio'; i.name = 'dj-' + k; i.value = v; s.textContent = v === 'deep' ? 'deep night' : v === 'night' && k === 'sky' ? 'clear night' : v;
+        i.addEventListener('change', function () { if (!i.checked) return; setTo(k, v); var c = compute(); if (!playing) cur = c; paint(c); save(); });
+        l.appendChild(i); l.appendChild(s); fs.appendChild(l); chipEls[k].push([v, i, l]);
       });
       chips.appendChild(fs);
     });
+    syncChips();
+  }
+  function syncChips() {
+    GROUPS.forEach(function (gp) { var k = gp[0], e = eff(k), lv = liveOf(k); (chipEls[k] || []).forEach(function (x) {
+      if (x[1].checked !== (x[0] === e)) x[1].checked = x[0] === e; x[2].classList.toggle('is-live', x[0] === lv);
+      x[2].title = x[0] === lv ? 'live now' + (nudge[k] ? '' : ' (no nudge)') : ''; }); });
+  }
+  function liveLine() {                                                   // the live sky the knobs sit on (js/rhythm-continuity.js sky clocks)
+    var R = window.RhythmContinuity, P = window.PhiPumps; if (!R) return '';
+    var z = R.sun(), pct = 100, deg = 360;                                // unit: percent; degrees per turn
+    return ' \u00B7 live: sun ' + Math.round(z.elev) + '\u00B0, moon ' + Math.round(z.moonLit * pct) + '% lit, season ' + Math.round(z.season * deg) + '\u00B0' +
+      (P && P.page ? ', rhythm \u00D7' + P.page.out().toFixed(2) : '');
   }
   function boot() {
     btn = $('dj-play'); vol = $('dj-vol'); read = $('dj-read'); readP = $('dj-pumps'); chips = $('dj-chips'); led = btn && btn.querySelector('.dj-led');
@@ -291,6 +407,7 @@
     vol.value = Math.round(sliderVol() * 100);
     vol.addEventListener('input', function () { store(K_VOL, vol.value); if (master) master.gain.setTargetAtTime(sliderVol(), ctx.currentTime, 0.03); });
     btn.addEventListener('click', function () {
+      if (pend || stalled) { resumeTap(); return; }
       if (playing) { stop(); return; }
       if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }        // the page's sound switch is the master: Dad's DJ turns it on
       start();
@@ -298,12 +415,18 @@
     // the sound switch off = everything off (mute respected)
     var slot = $('vol-sound');
     if (slot) new MutationObserver(function () { if (playing && !masterOn()) stop(); }).observe(slot, { attributes: true, subtree: true, attributeFilter: ['aria-pressed'] });
-    document.addEventListener('visibilitychange', function () { if (!ctx) return; try { if (document.hidden) ctx.suspend(); else if (playing) ctx.resume(); } catch (e) {} });
+    // hidden: keep playing if the DJ is on (Media Session + <audio> bridge keep it alive), otherwise rest the context
+    document.addEventListener('visibilitychange', function () { if (!ctx) return; if (document.hidden) { if (!playing) try { ctx.suspend(); } catch (e) {} } else wake(); });
+    window.addEventListener('pageshow', function () { wake(); });
     document.addEventListener('simwx', function () { if (!playing) { cur = compute(); paint(cur); } });
+    if (window.RhythmContinuity) RC = RhythmContinuity.register('dj', { save: snapshot, catchUp: catchUp, reset: reset });
     buildChips(); cur = compute(); paint(cur); schedule(cur.fade);
     setInterval(function () { if (!document.hidden) paint(compute()); }, 1000);
   }
-  window.DadAutoDJ = { compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { demo[k] = v; paint(compute()); },
+  window.DadAutoDJ = { compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
+    get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
+    get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step } : null; },
+    get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
     level: function () { if (!meter) return 0; var a = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); },
     get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; } };

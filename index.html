@@ -143,7 +143,7 @@
 })(typeof window !== "undefined" ? window : this);
 </script>
 <script src="js/load-tiers.js?v=4"></script><script>LoadTiers.script("js/phi-adapt.js?v=1",2,{first:true,id:"phi-adapt"})</script><!-- page pump root + entity registry (tiny, idle; only the Rebella zoom sound reads it for now) --><style>.lt-wait *,.lt-wait *::before,.lt-wait *::after{animation-play-state:paused!important}</style><!-- load tiers 0-3 (Danny t715u 25 Oct): see the comment at the top of js/load-tiers.js -->
-<script src="js/ratio-pump.js?v=2" data-site="dad" data-freq="0.75" data-lite="1"></script><!-- ratio pump + Dad's palette frequency dial 0.75 (all motion 25% slower; Danny 12:15 AWST 24 Oct) -->
+<script src="js/ratio-pump.js?v=2" data-site="dad" data-freq="0.75" data-lite="1"></script><script src="js/rhythm-continuity.js?v=1"></script><!-- rhythm continuity: every rhythm saves on the device, restores after a reload or iOS discard, catches up on return, restarts together at local solar midnight (Danny 13:47-13:51 AWST 26 Oct) --><!-- ratio pump + Dad's palette frequency dial 0.75 (all motion 25% slower; Danny 12:15 AWST 24 Oct) -->
 <script>
 /* ALL wording for this page lives here. Curated for a reader aged 13 (age dial ~/.config/rebella-age-dial.json, field "age").
    To regenerate older/younger, rewrite these strings only. {n} {total} {a} {b} {x} are filled in by the page. */
@@ -486,15 +486,15 @@ body.paused .home-code::before{animation-play-state:paused}
 </style>
 <link rel="stylesheet" href="css/command-centre.css?v=7d03a9b6">
 <link rel="stylesheet" href="css/command-centre-quiz.css?v=31523da4">
-<link rel="stylesheet" href="css/dad-dj-quiz.css?v=ef59eefe">
+<link rel="stylesheet" href="css/dad-dj-quiz.css?v=djpersist1">
 <link rel="stylesheet" href="css/quiz-dad-head.css?v=livered1"><!-- Dad's palette (Danny 24 Oct 08:38 AWST: the questionnaire is from Dad, so it always uses his palette) -->
 <link rel="stylesheet" href="css/quiz-qcard-compact.css?v=markbar"><!-- Questions for Bonnie row at half height (Danny 13:00 AWST 24 Oct, t623u) -->
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=e892ad8e",2,{id:"dj",w:26.2})</script>
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djpersist1",2,{id:"dj",w:26.2})</script>
 <link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
-<link rel="stylesheet" href="css/quiz-dj-pill.css?v=c0c7afb8"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
+<link rel="stylesheet" href="css/quiz-dj-pill.css?v=djpersist1"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-space-sweep.css?v=fceab935" media="print" onload="this.media='all'"><!-- slow space orbit layer, middle band (Danny 13:01-13:03 AWST 24 Oct, t626u/t628u/t629u) -->
 <link rel="stylesheet" href="css/quiz-term-status.css?v=pillfit4"><!-- terminal status pill + matrix terminal colours + footer simmie$ light (Danny 13:18 AWST 24 Oct, t637u-t639u) -->
 <link rel="stylesheet" href="css/quiz-head-row.css?v=1"><!-- header row: weather right in portrait, ticker in the middle in landscape (Danny 13:26 AWST 24 Oct, t646u) -->
@@ -1050,12 +1050,12 @@ body.paused .home-code::before{animation-play-state:paused}
   reset();if(!document.getElementById('home-main'))theme('teen');SIM_LIGHTS();readout();   // home: the middle layer is js/emoji-scene.js now (no rainbows; Danny 12:06 / 12:17 AWST 26 Oct)
 })();
 </script>
-<script src="js/quiz-dj-pill.js?v=788205e5" defer></script>
+<script src="js/quiz-dj-pill.js?v=djpersist1" defer></script>
 <script>/* pinned header: compacts once the page scrolls (dashboard sticky-head.js thresholds 72 / 8 px) */
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
-<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=0da0a806",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=2",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=2",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=djpersist1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=djpersist1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=djpersist1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=djpersist1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
@@ -1069,7 +1069,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 (function(){var b=document.querySelector(".q-head .dad-zoom"),i=b&&b.querySelector(".dad-mark");if(!b||!i)return;var st=0,q=[];
 function js(u,cb){var s=document.createElement("script");s.src=u;s.async=false;s.onload=s.onerror=cb;document.head.appendChild(s);}
 function heavy(cb){if(cb)q.push(cb);if(window.LogoZoom){q.splice(0).forEach(function(f){f();});return;}if(st)return;st=1;
-  js("js/phi-pumps.js?v=1",function(){js("js/dad-mark-zoom.js?v=13",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
+  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=13",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
 function anim(){var h=i.getAttribute("data-head-src");if(h&&i.src.indexOf(h)<0){var im=new Image();im.onload=function(){i.src=h;};im.src=h;}}
 b.addEventListener("click",function(e){if(window.LogoZoom)return;e.preventDefault();e.stopPropagation();heavy(function(){LogoZoom.open("dad");});});
 if(window.LoadTiers){LoadTiers.add(3,function(){anim();heavy();LoadTiers.prefetch(i.getAttribute("data-zoom-src"),{id:"dad-mark"});if(i.getAttribute("data-zoom-stage"))LoadTiers.prefetch(i.getAttribute("data-zoom-stage"),{id:"dad-mark"});LoadTiers.script("js/eq-physics.js?v=2",3,{id:"dad-mark"});},"dad mark heavy",{id:"dad-mark",last:true});}

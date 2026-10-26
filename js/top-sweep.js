@@ -63,6 +63,7 @@
     L.style.zIndex = zTop();
   }
   var vid = doc.getElementById('bgloop'), t0 = performance.now(), raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);   // phi: frame cap PHI^-7 s
+  if (root.RhythmContinuity) RhythmContinuity.phase('scene:topsweep', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   function clock(now) {
     var t = (now - t0) / MS;
     if (vid && !vid.paused && vid.readyState > 1) {                      // soft lock onto the video loop (rule 13: one timeline)
