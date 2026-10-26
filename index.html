@@ -477,7 +477,7 @@ body.paused .home-code::before{animation-play-state:paused}
 /* ---- Space loop background (trial, preview only): fixed full-page video at 30% behind all content; poster only for reduced motion ---- */
 .bgloop,.bgloop-still{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:.3}
 .bgloop{object-fit:cover}
-.bgloop-still{display:none;background:url("media/space-loop-poster.webp") center/cover no-repeat}
+.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=2") center/cover no-repeat}
 @media(prefers-reduced-motion:reduce){.bgloop{display:none}.bgloop-still{display:block}}
 </style>
 <link rel="stylesheet" href="css/command-centre.css?v=7d03a9b6">
@@ -505,8 +505,8 @@ body.paused .home-code::before{animation-play-state:paused}
 <noscript><link rel="stylesheet" href="css/quiz-popups.css?v=1"><link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"></noscript>
 </head>
 <body>
-<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp" data-src-webm="media/space-loop.webm" data-src-mp4="media/space-loop.mp4"></video><div class="bgloop-still" aria-hidden="true"></div>
-<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:135.6});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
+<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture poster="media/space-loop-poster.webp?v=2" data-src-webm="media/space-loop.webm?v=2" data-src-mp4="media/space-loop.mp4?v=2"></video><div class="bgloop-still" aria-hidden="true"></div>
+<script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]);s.type=t[1];v.appendChild(s);});v.preload='auto';v.load();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:137.4});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="fx" id="fxA" aria-hidden="true"></div><div class="fx" id="fxB" aria-hidden="true"></div>
 <!-- Questionnaire header (Danny 24 Oct 2026 02:50 AWST): the live Bonnie's Dashboard header STRUCTURE (rebella 517e809 moderation/:
