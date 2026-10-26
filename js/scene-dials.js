@@ -7,7 +7,8 @@
   var KEY = 'dadSceneDials.v1';
   var PCT = 100;                                                         // unit: percent
   var SPEC = { clouds: { def: 10, lo: 7, hi: 13, fmt: 'every' },          // phi: rungs; default 10 = one cloud per 123 s (rarer), range 29 s .. 521 s
-    topsweep: { def: 3, lo: 2, hi: 6, fmt: 'faint' } };                  // phi: top-sweep planet opacity PHI^-r, default 0.236
+    topsweep: { def: 3, lo: 2, hi: 6, fmt: 'faint' },                    // phi: top-sweep planet opacity PHI^-r, default 0.236
+    pings: { def: 6, lo: 4, hi: 9, fmt: 'every' } };                     // phi: ping chain every PHI^r s, default 17.9 s
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
   Array.prototype.forEach.call(document.querySelectorAll('[data-scene-dial]'), function (t) {
