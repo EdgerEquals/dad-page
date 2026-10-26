@@ -31,17 +31,23 @@
       'padding:0 max(env(safe-area-inset-right,0px),calc((100% - min(100%,860px)) / 2 + 18px)) ' + u(-4) + ' max(env(safe-area-inset-left,0px),calc((100% - min(100%,860px)) / 2 + 18px));' +
       'overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;touch-action:pan-y}' +
     '#home-main::-webkit-scrollbar{display:none}' +
-    '.hw{position:relative;z-index:1;display:grid;gap:' + G + ';margin:' + u(-5) + ' auto 0;max-width:calc(' + U + ' * ' + r(2) + ');' +
-      'grid-template-columns:repeat(auto-fill,minmax(max(' + u(-2) + ',calc((100% - ' + G + ' * 2) / 3)),1fr));pointer-events:none}' +
+    // FIT (Danny 16:25 AWST 26 Oct: on his iPhone in portrait the windows spilled off both edges): every box is border-box and never
+    // wider than its container; a track can never ask for more than 100% of the row; portrait is two equal columns of the measured
+    // content width, one column when that is under PHI^6 rem (big text / page zoom). Nothing is hidden: html/body overflow is unchanged.
+    '.hw,.hw-w,.fc,.fc-card{box-sizing:border-box;max-width:100%}' +
+    '.hw{position:relative;z-index:1;display:grid;gap:' + G + ';margin:' + u(-5) + ' auto 0;width:100%;max-width:min(100%,calc(' + U + ' * ' + r(2) + '));' +
+      'grid-template-columns:repeat(auto-fill,minmax(min(100%,max(' + u(-2) + ',calc((100% - ' + G + ' * 2) / 3))),1fr));pointer-events:none}' +
+    '@media (orientation:portrait){.hw{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
+    '@media (orientation:portrait) and (max-width:' + r(6) + 'rem){.hw{grid-template-columns:minmax(0,1fr)}}' +
     '.hw-w{pointer-events:auto;-webkit-appearance:none;appearance:none;position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:' + u(-8) + ';' +
-      'min-width:0;margin:0;padding:' + u(-6) + ';background:transparent;border:1px solid rgba(31,84,120,' + r(-1) + ');border-radius:' + u(-6) + ';' +
+      'width:100%;min-width:0;margin:0;padding:' + u(-6) + ';background:transparent;border:1px solid rgba(31,84,120,' + r(-1) + ');border-radius:' + u(-6) + ';' +
       'color:#9DBCCE;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;overflow:hidden;' +
       'transition:border-color ' + r(-2) + 's ease,box-shadow ' + r(-2) + 's ease,transform ' + r(-5) + 's ease}' +
     '@media (hover:hover){.hw-w:hover{border-color:#0AF2FF;box-shadow:0 0 ' + u(-6) + ' rgba(10,242,255,' + r(-2) + ')}}' +
     '.hw-w:active{transform:scale(' + (1 - r(-6)).toFixed(4) + ')}.hw-w:focus{outline:none}.hw-w:focus-visible{border-color:#0AF2FF;box-shadow:0 0 0 1px #0AF2FF}' +
     '.hw-p{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:' + u(-3) + ';overflow:hidden;' +
       'font-size:calc(' + U + ' * ' + r(-5) + ');line-height:1}' +
-    '.hw-t{display:block;font-size:1rem;letter-spacing:calc(1em * ' + r(-7) + ');color:#9DBCCE;white-space:nowrap}' +
+    '.hw-t{display:block;max-width:100%;font-size:1rem;letter-spacing:calc(1em * ' + r(-7) + ');color:#9DBCCE;white-space:normal;overflow-wrap:anywhere}' +
     '.hw-s{display:block;width:100%;font:calc(1rem * ' + r(-1 / 2) + ')/' + r(1) + ' ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#85A6BB;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:calc(1em * ' + r(1) + ')}' +
     // DJ: five bars on the DJ's own beat (--djb-beat), golden-angle offsets
@@ -119,7 +125,8 @@
   function fit() {
     fq = 0;
     var top = hd ? Math.max(0, hd.getBoundingClientRect().bottom) : 0, bot = ft ? ft.getBoundingClientRect().top : innerHeight;
-    var w = de.clientWidth, h = Math.max(0, bot - top), uu = w > innerHeight ? Math.max(h / PHI, w * Math.pow(PHI, -2)) : Math.min(w, h);   // orientation from the viewport, size from the box
+    var cs = getComputedStyle(main), w = Math.max(0, main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) || de.clientWidth;   // the measured CONTENT width
+    var h = Math.max(0, bot - top), uu = de.clientWidth > innerHeight ? Math.max(h / PHI, w * Math.pow(PHI, -2)) : Math.min(w, h);   // orientation from the viewport, size from the box
     de.style.setProperty('--hm-top', top + 'px'); de.style.setProperty('--hm-h', h + 'px'); de.style.setProperty('--hw-u', uu + 'px');
     var card = doc.querySelector('.fc-card'); if (!card) return;
     var room = h * (1 - Math.pow(PHI, -3)), cu = uu, n;                                     // phi: keep PHI^-3 of the box free
