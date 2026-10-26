@@ -242,8 +242,21 @@
                                        voice(tr, tr.g.bwave, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * 0.8, rel: 0.08, cut: tr.g.cut * IPH }); }
   };
   // ---------- a track: one generated piece (genre + BPM + seed) ----------
-  function makeTrack(genre, bpm, seed) {
+  // KEY TRAVEL (MIDI Bot transitions design #2; Danny 16:30 AWST 26 Oct: 'a gradient really ... on a dial', 'top of the dial can jump
+  // further'): the incoming key is drawn from all twelve roots around the genre's own, weighted by its circle-of-fifths distance d from the
+  // outgoing key signature, w = PHI^(-PHI^2 d / D), D = PHI^(PHI^2 s) with s the outgoing track's sophistication: plain tracks stay in the
+  // same or a neighbouring key signature, sophisticated ones travel further. The seed picks within the weights.
+  // cite: circle of fifths, closely related keys, harmonic mixing (en.wikipedia.org/wiki/Circle_of_fifths, /Closely_related_key, /Harmonic_mixing)
+  function keySig(sc, root) { var best = 0, bn = -1; for (var t = 0; t < 12; t++) { var n = 0; sc.forEach(function (x) { if (SCALES.major.indexOf((((root + x - t) % 12) + 12) % 12) >= 0) n++; }); if (n > bn) { bn = n; best = t; } } return best; }   // unit: 12 pitch classes; the major scale sharing most notes
+  function fifths(a, b) { var d = ((((a - b) * 7) % 12) + 12) % 12; return Math.min(d, 12 - d); }   // unit: 7 semitones per fifth, 12 keys round the circle
+  function travel(sc, base, prev, pick) {
+    var D = Math.pow(PHI, PHI * PHI * clamp(prev.s == null ? IPH : prev.s, 0, 1)), ks = keySig(prev.sc, prev.root), opt = [], sum = 0;
+    for (var o = -6; o < 6; o++) { var w = Math.pow(PHI, -PHI * PHI * fifths(keySig(sc, base + o), ks) / D); opt.push([o, w]); sum += w; }   // unit: the twelve roots around the genre's own
+    var x = pick * sum; for (var i = 0; i < opt.length; i++) { x -= opt[i][1]; if (x <= 0) return base + opt[i][0]; } return base;
+  }
+  function makeTrack(genre, bpm, seed, prev, root0) {
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
+    if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
       var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density);   // mix: density rung
@@ -368,7 +381,8 @@
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
   function startTrack(c, fade, sp, ox) {
     var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
-    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0);
+    var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0, prev, sp && sp.root);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
@@ -421,7 +435,7 @@
   var pend = null, stalled = false, held = null, GA = 0x9E3779B9, SEEDS = 4294967296;   // phi: golden-ratio hash (2^32 / PHI) steps the seed per skipped track; unit: 2^32 seeds
   function stepsIn(sec, bpm) { return Math.max(0, Math.floor(sec * bpm / SPM * SPB)); }
   function spec() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
-    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen } : (pend || held); }
+    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root } : (pend || held); }
   function advance(sp, c) {                                               // whole track lengths that passed while away, then the remainder
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
