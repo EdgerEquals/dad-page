@@ -52,7 +52,12 @@
   function script(url,n,o){add(n||2,function(done){var s=document.createElement('script');s.src=url;s.async=true;s.onload=s.onerror=done;document.head.appendChild(s);},url.split('/').pop().split('?')[0],o);}
   function prefetch(url,o){add(3,function(){if(slow())return;var i=new Image();try{i.fetchPriority='low';}catch(e){}i.decoding='async';i.src=url;LoadTiers._keep.push(i);},'prefetch '+url.split('/').pop().split('?')[0],o);}
   function start(){
-    requestAnimationFrame(function(){setTimeout(function(){run(1);},0);});
+    // whiteflash (26 Oct): a page that paints black before its layout CSS (index.html sets data-css="wait", then "in" once the CSS is in)
+    // keeps tier 1 for the first frame after that CSS, as before; pages without the attribute are unchanged
+    function t1(){requestAnimationFrame(function(){setTimeout(function(){run(1);},0);});}
+    if(de.getAttribute('data-css')!=='wait'||!window.MutationObserver)t1();
+    else{var mo=new MutationObserver(function(){if(de.getAttribute('data-css')!=='wait'){mo.disconnect();t1();}});mo.observe(de,{attributes:true,attributeFilter:['data-css']});
+      document.addEventListener('DOMContentLoaded',function(){if(!done[1]&&de.getAttribute('data-css')==='wait'){mo.disconnect();t1();}});}
     function afterLoad(){setTimeout(animOn,3000);
       ric(function(){animOn();done[2]=1;onDrain[2].push(function(){setTimeout(function(){done[3]=1;drain(3);},1618);});drain(2);},{timeout:3000});}
     if(document.readyState==='complete')afterLoad();else addEventListener('load',afterLoad);
