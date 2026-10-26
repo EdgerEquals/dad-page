@@ -13,7 +13,6 @@
   //        emoji                ring  offset  rotation keyframes + ease           rotation exponent  cx    cy
   var SET = [['\uD83E\uDE90',      0,   -0.30, 'qsSpin', 'linear',      7.125,             0.75, 0.27],    // ringed planet: spins 360
              ['\uD83D\uDEF0\uFE0F', 1,   0.28, 'qsFlip', 'ease-in-out', 7.375,             0.77, 0.29],    // satellite: flips (rotateY 0 -> 180 -> 360)
-             ['\u2604\uFE0F',       0,   0.32, 'qsHalf', 'ease-in-out', 7.625,             0.73, 0.26],    // comet: 180 and back
              ['\uD83C\uDF19',       1,  -0.26, 'qsRock', 'ease-in-out', 7.875,             0.76, 0.30]];   // moon: gentle rock +-20deg
   // Home (Danny 12:02 AWST 26 Oct): the comet moved to js/emoji-scene.js (fast crossing, heading = velocity); pages that set
   // html[data-scene-comet] drop it here so it is not drawn twice. The other three suite emojis are unchanged.

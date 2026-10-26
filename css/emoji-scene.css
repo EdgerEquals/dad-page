@@ -6,7 +6,15 @@
 .es-sp{display:block;animation:esSpin var(--tsp) linear var(--dsp) infinite}
 @keyframes esSweep{from{transform:translate3d(0,0,0) scale(var(--s0));opacity:var(--o0)}to{transform:translate3d(var(--vx),var(--vy),0) scale(1);opacity:var(--o1)}}
 @keyframes esSpin{from{transform:rotate3d(var(--ax),var(--ay),var(--az),0turn)}to{transform:rotate3d(var(--ax),var(--ay),var(--az),1turn)}}
-.es-comet{position:absolute;left:0;top:0;line-height:1;opacity:0;will-change:transform,opacity;margin:calc(-1em / 2) 0 0 calc(-1em / 2)}   /* centred on its path point: half its own size */
+/* comet streak (Danny 15:54, no emoji): box along +x = velocity; head (right end) on the path point, tail fades back along the path.
+   phi: tail PHI^3 head widths (--tl from the JS), core PHI^-2 of the head, glow stops at PHI^-1 / PHI^-2; unit: half = centring */
+.es-comet{position:absolute;left:0;top:0;width:calc(1em * var(--tl,4));height:1em;opacity:0;will-change:transform,opacity;
+  margin:calc(-1em / 2) 0 0 calc(-1em * var(--tl,4));transform-origin:100% 50%;pointer-events:none}
+.es-comet::before{content:"";position:absolute;right:calc(1em / 2);top:calc(50% - 1em / 2 / 2.618);height:calc(1em / 1.309);width:calc(100% - 1em / 2);
+  border-radius:1em;background:linear-gradient(to right,transparent,rgba(159,240,216,.382) 61.8%,rgba(255,255,255,.618));animation:esTail 1.618s ease-in-out infinite alternate}
+.es-comet::after{content:"";position:absolute;right:0;top:0;width:1em;height:1em;border-radius:50%;
+  background:radial-gradient(circle closest-side,#fff,#fff 38.2%,rgba(159,240,216,.618) 61.8%,transparent);box-shadow:0 0 calc(1em / 1.618) rgba(159,240,216,.618)}
+@keyframes esTail{from{opacity:.618}to{opacity:1}}
 /* clouds: ONE linear animation drives size and opacity together, so opacity is a function of size (full small, zero at the end size) */
 .es-cloud{position:absolute;left:var(--x);top:var(--y);font-size:var(--end);line-height:1;transform:translate(calc(-100% / 2),calc(-100% / 2)) scale(var(--s0));opacity:0;
   animation:esGrow var(--life) linear forwards}

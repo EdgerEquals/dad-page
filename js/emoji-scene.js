@@ -9,7 +9,7 @@
      CLOUDS  thought bubbles appear rarely: one every PHI^r s, r = the sandbox dial 'clouds' (dials.html, default rung 10 = 123 s).
              Each grows from small to an end size of min(viewport) x PHI^-3 (0.236, about a quarter); opacity is the SAME linear
              function of its size (full when small, zero at the end size), with a gentle breathe on a phi period on top.
-     COMET   moved off the CSS ellipse onto one small rAF loop: crossing period PHI^(6 - moon/PHI) s (several rungs faster than
+     COMET   (15:54: a drawn streak, no emoji) moved off the CSS ellipse onto one small rAF loop: crossing period PHI^(6 - moon/PHI) s (several rungs faster than
              the old PHI^(10 - moon/2) ring), opacity modulating on crossing x PHI and kept low (PHI^-5 .. PHI^-3), heading taken
              from the path's own velocity vector (atan2 of the derivative), so rotation and direction of travel are one parameter
              and the tail always trails. No half-turn any more.
@@ -58,9 +58,11 @@
   }
 
   // ---------- comet (rAF, heading = velocity) ----------
-  var comet = doc.createElement('span'); comet.className = 'es-comet'; comet.textContent = '\u2604\uFE0F'; L.appendChild(comet);
-  comet.style.fontSize = Math.pow(PHI, IP * IP) + 'rem';
-  var GLYPH = TAU * 3 / 8;                                                 // anchor: glyph geometry, head toward screen down-left (3/8 turn, y down)
+  // Danny 15:54: no comet emoji; a drawn streak instead (css/emoji-scene.css .es-comet): glowing head at the path point, tail fading
+  // back along the path, so the box's +x axis IS the velocity and the nose leads.
+  var comet = doc.createElement('span'); comet.className = 'es-comet'; L.appendChild(comet);
+  comet.style.fontSize = Math.pow(PHI, IP * IP) + 'rem'; comet.style.setProperty('--tl', Math.pow(PHI, 3));   // phi: tail PHI^3 head widths
+  var GLYPH = 0;                                                           // unit: the drawn streak points along +x
   var TILT = -TAU * Math.pow(IP, 6);                                     // phi: path tilt PHI^-6 turn (-20.2 deg, the old ring's -20 deg)
   var ph0 = fr(3 * IP);                                                  // phi: golden-sequence start phase (suite item 3)
   var band = { cx: 0, cy: 0, rx: 0, ry: 0 };

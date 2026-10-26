@@ -225,7 +225,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;ba
 .m-float{animation:floaty var(--d,9s) ease-in-out var(--del,0s) infinite}
 .m-drift{animation:drift var(--d,28s) linear var(--del,0s) infinite}
 .m-twinkle{animation:twinkle var(--d,4s) ease-in-out var(--del,0s) infinite}
-.m-cross{animation:cross var(--d,14s) linear var(--del,0s) infinite}
+.m-cross{animation:cross var(--d,14s) linear var(--del,0s) infinite}.m-ufo{animation:ufoP var(--d,14s) ease-in-out var(--del,0s) infinite,ufoW calc(1s*(1/2 + sqrt(5)/2)) ease-in-out infinite alternate}@keyframes ufoP{0%{translate:-25vw 60vh;opacity:0}8%{opacity:var(--o,.6)}25%{translate:12vw 44vh}50%{translate:50vw 30vh}60%{opacity:var(--o,.6)}75%,100%{translate:120vw 8vh;opacity:0}}@keyframes ufoW{from{rotate:calc(-1turn/55)}to{rotate:calc(1turn/55)}}/* UFO (Danny 15:55): replaces the drifting comet; same diagonal as .m-cross, bowed through the 25/50% points; wobble 1/55 turn (Fibonacci) every PHI s */
 .m-spin{animation:spin var(--d,30s) linear infinite}
 .m-bob{animation:bob var(--d,3s) ease-in-out var(--del,0s) infinite}
 .maplines{position:absolute;inset:0;width:100%;height:100%;animation:pulse var(--phi-bg-pulse) ease-in-out var(--phi-bg-pulse-d) infinite}
@@ -620,7 +620,7 @@ body.paused .home-code::before{animation-play-state:paused}
       for(i=0;i<4;i++)a.push({h:scrap(c[(i+2)%5]),m:'fall',s:40});
       a.push({h:'\uD83E\uDDF6',m:'float',s:44},{h:'\uD83E\uDDF6',m:'float',s:36},{h:'\u2702\uFE0F',m:'float',s:40},{h:'\uD83E\uDEA1',m:'float',s:32});return a;},
     cosmos:function(){var a=[];for(var i=0;i<9;i++)a.push({h:star(),m:"twinkle",s:16+(i%3)*8,o:.9});
-      a.push({h:'\u2728',m:'drift',s:24},{h:'\uD83E\uDE90',m:'drift',s:40,d:46},{h:'\u2604\uFE0F',m:'cross',s:34,d:21,del:-9});return a;},
+      a.push({h:'\u2728',m:'drift',s:24},{h:'\uD83E\uDE90',m:'drift',s:40,d:46},{h:'\uD83D\uDEF8',m:'ufo',s:34,d:21,del:-9});return a;},
     history:function(){var a=[{map:1}];for(var i=0;i<6;i++)a.push({h:parch(),m:'drift',s:56,d:34});
       a.push({h:'\uD83E\uDDED',m:'spin',s:54,d:40},{h:'\uD83C\uDFDB\uFE0F',m:'float',s:34},{h:'\u23F3',m:'float',s:30});return a;},
     daily:function(){var a=[{h:clock(),m:'spin',s:70,d:60}];
@@ -969,7 +969,7 @@ body.paused .home-code::before{animation-play-state:paused}
         var an=s.animate(fr,{duration:window.PhiTiming.ms('space-ring'),iterations:2});an.onfinish=function(){s.remove();p.animate([{opacity:1},{opacity:0}],{duration:500}).onfinish=function(){p.remove();if(lane===lanes.footer&&!lane.children.length)row1.classList.remove('swap');};};
         MLOG.log('\uD83D\uDEF0\uFE0F sat orbit '+satN+'/\u221E ('+band+')');}
       else if(k==='rocket'){var r=el(lane,'\uD83D\uDE80');run(lane,r,[{transform:'translate(-20px,2px) rotate(45deg)'},{transform:'translate('+w/2+'px,-3px) rotate(60deg)'},{transform:'translate('+(w+20)+'px,2px) rotate(80deg)'}],window.PhiTiming.ms('space-cross'));MLOG.log('\uD83D\uDE80 rocket arcing over '+band);}
-      else if(k==='comet'){var c=el(lane,'\u2604\uFE0F<span style="opacity:.6;font-size:9px">\u2728</span>');run(lane,c,[{transform:'translateX('+(w+10)+'px) scaleX(1)',opacity:0},{transform:'translateX('+w*.8+'px)',opacity:1,offset:.1},{transform:'translateX(-40px)',opacity:.9}],window.PhiTiming.ms('space-cross'));MLOG.log('\u2604\uFE0F comet through '+band);}
+      else if(k==='comet'){var P=(1+Math.sqrt(5))/2,c=el(lane,'<span class="g" style="display:inline-block">\uD83D\uDEF8</span>'),hb=Math.max(1,lane.clientHeight/(P*P*P));run(lane,c,[{transform:'translate('+(w+10)+'px,0)',opacity:0},{transform:'translate('+w/P+'px,'+(-hb)+'px)',opacity:1,offset:1/(P*P*P*P)},{transform:'translate('+w/(P*P)+'px,'+(-hb*P)+'px)',offset:1/2},{transform:'translate(-40px,0)',opacity:.9}],window.PhiTiming.ms('space-cross'));c.firstChild.animate([{transform:'rotate(-'+1/55+'turn)'},{transform:'rotate('+1/55+'turn)'}],{duration:1000*P,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});MLOG.log('\uD83D\uDEF8 ufo drifting through '+band);}
       else if(k==='moon'){var x2=Math.round(w*(.3+Math.random()*.4));var e=el(lane,'\uD83C\uDF0D');e.style.transform='translateX('+x2+'px)';var mo=el(lane,'\uD83C\uDF19');mo.style.fontSize='9px';var fr2=[];for(var j=0;j<=12;j++){var b2=j/12*2*Math.PI;fr2.push({transform:'translate('+(x2+3+Math.cos(b2)*15)+'px,'+(-3+Math.sin(b2)*4)+'px)'});}
         var am=mo.animate(fr2,{duration:window.PhiTiming.ms('space-ring-slow'),iterations:2});am.onfinish=function(){mo.remove();e.animate([{opacity:1},{opacity:0}],{duration:500}).onfinish=function(){e.remove();if(lane===lanes.footer&&!lane.children.length)row1.classList.remove('swap');};};
         MLOG.log('\uD83C\uDF19 moon circling earth ('+band+')');}
@@ -1058,7 +1058,7 @@ body.paused .home-code::before{animation-play-state:paused}
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
 <script>LoadTiers.script("js/rocket-launch.js?v=1",2,{id:"rocket"});</script><!-- rocketfirst: adopts the inline #rk1 launcher for later launches -->
-<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=orbitvis1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=djpersist1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=sceneanchors1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=sceneanchors1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
+<script>document.documentElement.setAttribute("data-scene-comet","1");LoadTiers.script("js/quiz-space-sweep.js?v=nocomet1",2,{id:"space",w:7.4});LoadTiers.script("js/emoji-scene.js?v=nocomet1",2,{id:"scene",w:6.5});LoadTiers.script("js/top-sweep.js?v=sceneanchors1",2,{id:"topsweep",w:8.4});LoadTiers.script("js/ping-layer.js?v=sceneanchors1",2,{id:"ping",w:13.1})</script><link rel="stylesheet" href="css/emoji-scene.css?v=nocomet1" media="print" onload="this.media='all'"><!-- home emoji scene: stars, rare clouds, fast comet (Danny 11:59-12:17 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
