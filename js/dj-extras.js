@@ -31,6 +31,32 @@
   // ---------- drums ----------
   var nb = null;
   function noise() { if (nb) return nb; var c = C(), n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0); for (var j = 0; j < n; j++) d[j] = Math.random() * 2 - 1; return (nb = b); }
+  // NOISE LAYER (Danny 15:44-15:45 AWST 26 Oct): the hat + shaker noise goes through its own bus per track. The snare keeps its own level.
+  // - IN/OUT: a faster pump pair (PHI^PHI.. and PHI^PHI^2.. s rungs) layered on the track's energy arc, so it comes and goes less predictably.
+  // - SOUND: cutoff, Q, high-shelf tilt and stereo width each come from 2 pumps, so it keeps evolving.
+  // - CEILING: centred on PHI^-3 of the old maximum and moved by 2 pumps over PHI^-4..PHI^-2, never above PHI^-2 x old (rule 8; the
+  //   envelope moves underneath it). All nodes hang off the page pump tree (rule 9).
+  var nzP = null, nzN = 0, DB = 20;                                       // unit: dB = 20 log10 of an amplitude ratio
+  function nzPumps() {
+    if (nzP) return nzP; var P = window.PhiPumps, root = P && P.page, mk = function (nm, n, k0, d, sd) { return P && P.node ? P.node(nm, n, k0, d, root, sd)
+      : { modes: function (t) { var s = 0; for (var j = 0; j < n; j++) s += Math.sin(2 * Math.PI * t / Math.pow(PHI, k0 + j / 2) + 2 * Math.PI * (((j + 1 + sd) * IPH) % 1)); return s / n; } }; };
+    return (nzP = { a: mk('djnoise:a', 3, PHI, IPH, 1), b: mk('djnoise:b', 3, PHI * PHI, IPH, 2), c: mk('djnoise:c', 2, PHI * PHI * PHI, IPH * IPH, 3) });   // phi: rungs PHI^PHI, PHI^PHI^2, PHI^PHI^3 s
+  }
+  function nzBus(tr, t) {
+    var c = C(), z = tr.nz, P = nzPumps(), now = (window.PhiPumps && PhiPumps.now) ? PhiPumps.now() : c.currentTime;
+    if (!z) { z = tr.nz = { in: c.createGain(), sh: c.createBiquadFilter(), g: c.createGain() };
+      z.sh.type = 'highshelf'; z.sh.frequency.value = FHI * Math.pow(PHI, -3); z.g.gain.value = 0; z.in.connect(z.sh); z.sh.connect(z.g); z.g.connect(tr.out); }   // phi: shelf PHI^-3 under the top
+    var a = P.a.modes(now), b = P.b.modes(now), m = P.c.modes(now), sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    var io = Math.pow(PHI, -3) + (1 - Math.pow(PHI, -3)) * sm((1 + (a + IPH * b) / (1 + IPH)) / 2);       // in/out: two fast pumps, floor PHI^-3
+    var ceil = Math.pow(PHI, -3 + (m + IPH * a) / (1 + IPH));                                              // ceiling: centre PHI^-3, range PHI^-4..PHI^-2
+    z.lvl = ceil * io; z.ceil = ceil; z.io = io;
+    z.cf = Math.pow(PHI, (IPH * a + IPH * IPH * m) * PHI);                                                  // cutoff: about +-1 rung, 2 pumps
+    z.q = Math.pow(PHI, IPH * b + IPH * IPH * a);                                                           // Q: about PHI^-1..PHI, 2 pumps
+    z.tilt = DB * Math.log10(PHI) * (a - b) * PHI;                                                          // tilt: +-PHI rungs of shelf gain, 2 pumps
+    z.w = IPH * (1 + (m * IPH + b * IPH * IPH) / (IPH + IPH * IPH)) / 2;                                    // width: 0..PHI^-1, 2 pumps
+K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.gain.setTargetAtTime(z.tilt, t, Math.pow(PHI, -2));   // phi: glide PHI^-2 s
+    return z;
+  }
   function hit(tr, kind, t, v) {
     var g = C().createGain(); g.connect(tr.out);
     if (kind === 'kick' || kind === 'tom') {
@@ -39,9 +65,12 @@
       g.gain.setValueAtTime(v * (kind === 'kick' ? 0.55 : 0.4), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dec * 2.5); o.start(t); o.stop(t + dec * 3);
       return;
     }
-    var src = C().createBufferSource(), f = C().createBiquadFilter(); src.buffer = noise(); src.connect(f); f.connect(g);
+    var src = C().createBufferSource(), f = C().createBiquadFilter(), z = kind === 'snare' ? null : nzBus(tr, t); src.buffer = noise(); src.connect(f);
+    if (z) { g.disconnect(); var pn = C().createStereoPanner ? C().createStereoPanner() : null; if (pn) { pn.pan.value = (nzN++ % 2 ? 1 : -1) * z.w; g.connect(pn); pn.connect(z.in); } else g.connect(z.in); }
+    f.connect(g);
     var len = kind === 'snare' ? 0.16 : kind === 'shaker' ? 0.06 : 0.035;
-    f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = FHI * Math.pow(PHI, kind === 'snare' ? -5 : kind === 'shaker' ? -3 : -2);   // phi: bands PHI^-n under the top of hearing
+    f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = FHI * Math.pow(PHI, kind === 'snare' ? -5 : kind === 'shaker' ? -3 : -2) * (z ? z.cf : 1);   // phi: bands PHI^-n under the top of hearing (x the bus cutoff pump)
+    if (z) f.Q.value = z.q;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * (kind === 'snare' ? 0.22 : kind === 'shaker' ? 0.05 : 0.06), t + len * Math.pow(PHI, -5)); g.gain.exponentialRampToValueAtTime(0.0001, t + len);   // phi: a PHI^-5 attack, no onset click (MIDI Bot review)
     src.start(t, Math.random() * 0.5); src.stop(t + len + 0.02);
   }
