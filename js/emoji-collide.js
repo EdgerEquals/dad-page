@@ -20,7 +20,7 @@
    ROCKETHIT (Danny 19:42 / 19:44 AWST 26 Oct): hit circles are one rung tighter (PHI^-1.5 of the half-box; fewer hits). Every hit
    scatters energy: each emoji carries E (1 at rest); its effect and the emoji itself, knocked off along the debris line, both
    play at E and die away on a ringing envelope E e^(-PHI u)(1 - u)(1 + PHI^-1 cos 2 pi f t) / (1 + PHI^-1), size AND opacity,
-   the emoji at f = 1 Hz, its effect at f PHI, so the two beat as they fade. The knocked-off emoji stays live with E PHI^-1 and
+   the emoji ringing PHI^2 times over its own (pumped) life, its effect PHI times as fast, so the two beat as they fade (no Hz, no key count: one key per tick). The knocked-off emoji stays live with E PHI^-1 and
    can hit something else (that one takes over its energy), a chain that dies by PHI^-1 per generation: it stops once E falls
    below PHI^-2, so at most three hits in a row. Burn-up is the end of the line (Danny 19:57): only spin-out, burst and smoke
    knock the emoji off live; flames and vaporise burn it up, its energy goes into the debris and fades, nothing follows.
@@ -206,12 +206,13 @@
     var gp = cur; setTimeout(function () { var o = cur; cur = gp && gp.isConnected ? gp : null; puffs(x, base - H * IP, S, dx, kk); cur = o; }, life * (1 - Math.pow(IP, 3)));   // phi: collapses into the smoke as the last PHI^-3 of the burn dies
   }
   // ---------- energy, ringing, chains, the rocket on fire (rockethit, Danny 19:42 / 19:44 AWST 26 Oct) ----------
-  var cur = null, DB = [], pairs = 0, gens = {}, RD = IP, RF = 1, NR = 34;   // phi: ring depth PHI^-1; the emoji rings at PHI^0 Hz, its effect at PHI x; 34 keys (Fibonacci)
+  var cur = null, DB = [], pairs = 0, gens = {}, RD = IP, RC = PHI * PHI, NR = 0;   // phi: ring depth PHI^-1; the knocked-off emoji rings PHI^2 times over its PHI^2 s life, its effect PHI x as fast (they beat); keys: one per tick
   function done(e) { var p = e.parentNode; e.remove(); if (p && p !== L && !p.firstChild && p._end) p.remove(); }
-  function ring(E, u, ms, f) { return E * Math.exp(-PHI * u) * (1 - u) * (1 + RD * Math.cos(TAU * f * u * ms / MS)) / (1 + RD); }   // phi: damped, ringing; 1 at the hit for E = 1
+  function ring(E, u, c) { return E * Math.exp(-PHI * u) * (1 - u) * (1 + RD * Math.cos(TAU * c * u)) / (1 + RD); }   // phi: damped, ringing c times over its life; 1 at the hit for E = 1
+  function keys(ms) { return Math.max(1, Math.ceil(ms / TICK)); }          // unit: one key per collide tick (PHI^-6 s) of the animation
   function group(x, y, E, ms) {                                            // the effect's pieces share one ringing envelope (size about the impact point + opacity)
     var g = doc.createElement('div'), f = [], i; g.className = 'ec-g'; L.appendChild(g);
-    for (i = 0; i <= NR; i++) { var u = i / NR, a = ring(E, u, ms, RF * PHI); f.push({ offset: u, transform: 'translate(' + x + 'px,' + y + 'px) scale(' + a + ') translate(' + -x + 'px,' + -y + 'px)', opacity: Math.min(1, a) }); }
+    for (i = 0, NR = keys(ms); i <= NR; i++) { var u = i / NR, a = ring(E, u, RC * PHI * PHI); f.push({ offset: u, transform: 'translate(' + x + 'px,' + y + 'px) scale(' + a + ') translate(' + -x + 'px,' + -y + 'px)', opacity: Math.min(1, a) }); }
     g.animate(f, { duration: ms, easing: 'linear', fill: 'forwards' }).onfinish = function () { g._end = true; if (!g.firstChild) g.remove(); };
     return g;
   }
@@ -222,7 +223,7 @@
   // the emoji knocked off: a drawn copy on the spin-out (or deflection) path, size + opacity on the ringing envelope at f; it stays live with E PHI^-1
   function knock(b, dx, dy, w, E, gen, pair, spin, live) {
     var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), P = (spin ? spinPath : slidePath)(b.x, b.y, dx, dy, S, w), sp = (dx >= 0 ? 1 : -1) * TAU * (spin ? PHI * PHI * (1 + w) : IP), e = bit('', glyphOf(b), 0, 0, S), f = [], i;   // phi: spin-out PHI^2 turns, a deflection PHI^-1 turn
-    for (i = 0; i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, ms, RF); f.push({ offset: v, transform: T(p[0], p[1], 0, sp * v * v, a), opacity: Math.min(1, a) }); }
+    for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: T(p[0], p[1], 0, sp * v * v, a), opacity: Math.min(1, a) }); }
     var an = fly(e, f, ms, 'linear');
     if (live && E * IP >= IP * IP) DB.push({ virt: true, el: e, hide: e, an: an, E: E * IP, gen: gen, pair: pair, kd: '', x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: performance.now() + MS * Math.pow(IP, 3) });   // phi: live after PHI^-3 s, while E PHI^-1 >= PHI^-2
     return P;
@@ -231,19 +232,21 @@
     var S = Math.max(b.fs, 1), ms = MS * PHI * PHI * k(), x = b.x, y = b.y, P = knock(b, dx, dy, w, E, gen, pair, true, false), i, j, e, f;   // a burning rocket is burnt up: it spins out but causes no further hits
     if (RM) return;
     e = doc.createElement('i'); e.className = 'ec-th'; e.style.width = S * IP + 'px'; e.style.height = S * PHI + 'px'; L.appendChild(e); f = [];   // phi: a flame rides it
-    for (i = 0; i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, ms, RF); f.push({ offset: v, transform: 'translate(' + p[0] + 'px,' + (p[1] + S * IP * IP) + 'px) translate(-50%,-100%) rotate(' + jit(i, 1) * TAU / 34 + 'rad) scale(' + a * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) + ')', opacity: Math.min(1, a) }); }   // phi: 1/34 turn flicker, PHI^-3 lick
+    for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: 'translate(' + p[0] + 'px,' + (p[1] + S * IP * IP) + 'px) translate(-50%,-100%) rotate(' + jit(i, 1) * TAU / 34 + 'rad) scale(' + a * (1 - Math.pow(IP, 3) * (1 + jit(i, 2)) / 2) + ')', opacity: Math.min(1, a) }); }   // phi: 1/34 turn flicker, PHI^-3 lick
     burn(e, f, ms);
-    for (j = 0; j < 5; j++) {                                              // drawn smoke follows over it at PHI^-1 of its path, each puff later and bigger
+    var np = Math.round(PHI * PHI * (1 + E));                               // phi: puffs from the energy (5 at E = 1)
+    for (j = 0; j < np; j++) {                                             // drawn smoke follows over it at PHI^-1 of its path, each puff later and bigger
       e = bit('ec-puff', '', 0, 0, S * IP); f = []; var dl = ms * Math.pow(IP, 3) * j;   // phi: a puff every PHI^-3 of the flight
-      for (i = 0; i <= NR; i++) { var u = i / NR, tt = Math.min(1, (dl + u * ms) / ms), q = P(tt), a2 = ring(E, u, ms, RF * PHI);
+      for (i = 0, NR = keys(ms); i <= NR; i++) { var u = i / NR, tt = Math.min(1, (dl + u * ms) / ms), q = P(tt), a2 = ring(E, u, RC * PHI);
         f.push({ offset: u, transform: T(x + (q[0] - x) * IP, y + (q[1] - y) * IP - S * IP * u, 0, 0, (IP + PHI * u) * a2), opacity: Math.min(1, a2) * (1 - Math.pow(IP, 3)) }); }   // phi: swells PHI^-1 -> PHI, rises PHI^-1 sizes, rings at f PHI
       burn(e, f, ms, dl);
     }
     e = bit('ec-fg', '', 0, 0, S * PHI); f = [];                            // the fireball blooms at the impact and trails at PHI^-3
-    for (i = 0; i <= NR; i++) { var uu = i / NR, r = P(uu), a3 = ring(E, uu, ms, RF * PHI), bl = uu < Math.pow(IP, 4) ? uu / Math.pow(IP, 4) : 1;   // phi: blooms over PHI^-4 of its life
+    for (i = 0, NR = keys(ms); i <= NR; i++) { var uu = i / NR, r = P(uu), a3 = ring(E, uu, RC * PHI), bl = uu < Math.pow(IP, 4) ? uu / Math.pow(IP, 4) : 1;   // phi: blooms over PHI^-4 of its life
       f.push({ offset: uu, transform: T(x + (r[0] - x) * Math.pow(IP, 3), y + (r[1] - y) * Math.pow(IP, 3), 0, 0, (IP * IP + (PHI - IP * IP) * bl) * a3), opacity: Math.min(1, a3 * PHI) }); }   // phi: PHI^-2 -> PHI of its size
     burn(e, f, ms);
-    for (j = 0; j < 3; j++) { var an2 = TAU * (j / 3 + IP), dd = S * PHI * (1 + w); e = bit('ec-dot', '', 0, 0, S * IP * IP);   // phi: 3 sparks off the fireball
+    var ns = Math.round(PHI * (1 + E));                                     // phi: sparks from the energy (3 at E = 1)
+    for (j = 0; j < ns; j++) { var an2 = TAU * (j / ns + IP), dd = S * PHI * (1 + w); e = bit('ec-dot', '', 0, 0, S * IP * IP);   // phi: 3 sparks off the fireball
       fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(an2) * dd, y + Math.sin(an2) * dd, 0, 0, IP), opacity: 0 }], MS * k(), 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
   }
   function play(fx, b, dx, dy, w) {
@@ -267,7 +270,7 @@
     } else if (fx === 'smoke') {
       puffs(x, y, S, dx, kk);
     } else {                                                               // spin-out: the emoji tumbles away (knock(), spin path) - here only a glancing scrape
-      for (i = 0, n = 3; i < n; i++) { a = Math.atan2(dy, dx) + Math.PI + (i - 1) * TAU / 13; d = S * (1 + i * IP);   // phi: 3 scrape sparks thrown back, 1/13 turn apart
+      for (i = 0, n = Math.round(PHI * (1 + w)); i < n; i++) { a = Math.atan2(dy, dx) + Math.PI + (i - (n - 1) / 2) * TAU * Math.pow(IP, 5); d = S * (1 + i * IP);   // phi: 3 scrape sparks thrown back, 1/13 turn apart
         e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3)); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, 0, IP), opacity: 0 }], MS * IP * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
     }
   }
