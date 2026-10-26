@@ -30,3 +30,11 @@
 .q-head .dj-pill.is-resuming .djp-led{animation:djpResume 2.618s ease-in-out infinite}
 @keyframes djpResume{50%{opacity:.382}}
 @media(prefers-reduced-motion:reduce){.q-head .dj-pill.is-resuming .djp-led{animation:none;opacity:.618}}
+/* mix button beside the DJ pill (Danny 14:10 AWST 26 Oct): small, same palette; a quick phi-timed spin on each new mix */
+.q-head .dj-mix{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;border-radius:50%;cursor:pointer;margin-left:-2px;
+  border:1px solid var(--dpc-border-hi,#1F5478);background:var(--dpc-panel,#040E19);font:400 .7rem/1 system-ui,sans-serif;-webkit-touch-callout:none;user-select:none;touch-action:manipulation}
+.q-head .dj-mix:focus-visible{outline:2px solid var(--dpc-accent,#0AF2FF);outline-offset:2px}
+.q-head .dj-mix.is-mixing span{display:inline-block;animation:djMix .618s ease-out}
+@keyframes djMix{0%{transform:rotate(0) scale(1)}38.2%{transform:rotate(.382turn) scale(1.272)}100%{transform:rotate(1turn) scale(1)}}
+@media(max-width:480px){.q-head .dj-mix{width:22px;height:22px}}
+@media(prefers-reduced-motion:reduce){.q-head .dj-mix.is-mixing span{animation:none}}

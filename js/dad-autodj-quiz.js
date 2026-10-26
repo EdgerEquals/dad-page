@@ -73,13 +73,34 @@
     var t = timeSlot(), k = sky();
     return { time: t, tp: TIME[t], sky: k || 'none', wp: k ? WX[k] : 0, urgency: demo.urgency, up: URG[demo.urgency], mood: demo.mood, mp: MOOD[demo.mood] };
   }
+  // ---------- MIX GENOME (Danny 14:10 AWST 26 Oct: 'if I don't like the music I can just hit it') ----------
+  // The real inputs (time, sky, urgency, mood) are never touched; a mix only changes HOW they feed the music: the pump -> parameter
+  // coupling weights (PHI^-1..PHI^1 per pump per parameter), the pump-tree node that drives the live dynamics (rule 9), and half-rung phi
+  // offsets for tempo, density and cascade, a drum-pattern donor and an even-step pattern shift. Genes come from the golden-angle (Weyl)
+  // sequence frac((seed x genes + j) / PHI), so no decimals and successive mixes land far apart. seed null = the default mix.
+  var PAR = ['fade', 'bpm', 'vol', 'len'], PK = ['tp', 'wp', 'up', 'mp'], GX = ['tempo', 'density', 'cascade', 'donor', 'shift', 'route', 'flip'];
+  var NG = PAR.length * PK.length + GX.length, IPH = 1 / PHI, mixSeed = null, M = null;
+  function frac(x) { return x - Math.floor(x); }
+  function half(u) { return Math.round((2 * u - 1) * 2) / 2; }                 // phi: a rung offset in half rungs, -1 .. +1
+  function genome(seed) {
+    var W = PAR.map(function () { return PK.map(function () { return 1; }); });
+    if (seed == null) return { seed: null, W: W, tempo: 0, density: 0, cascade: 0, donor: null, shift: 0, route: 0, flip: 0 };
+    var j = 0, u = function () { return frac((seed * NG + (j++)) * IPH); };
+    W = PAR.map(function () { return PK.map(function () { return Math.pow(PHI, 2 * u() - 1); }); });
+    var drums = Object.keys(GEN).filter(function (k) { return GEN[k].kick || GEN[k].hat || GEN[k].tom || GEN[k].shaker; });
+    var g = { seed: seed, W: W, tempo: half(u()), density: half(u()), cascade: half(u()) }, d = Math.floor(u() * (drums.length + 1));
+    g.donor = d < drums.length ? drums[d] : null; g.shift = 2 * Math.floor(u() * SPB); g.route = Math.floor(u() * (2 + 1)); g.flip = u();   // unit: even steps; three routes
+    return g;
+  }
+  M = genome(null);
+  function sOf(p, i) { var w = M.W[i]; return w[0] * p.tp + w[1] * p.wp + w[2] * p.up + w[3] * p.mp; }
   function compute(p) {
     p = p || pumps();
-    var s = p.tp + p.wp + p.up + p.mp;
-    var vol = clamp(0.55 * Math.pow(PHI, -s / 4), 0.25, 0.8);
+    var s = p.tp + p.wp + p.up + p.mp, S = PAR.map(function (x, i) { return sOf(p, i); }), sf = S[0] + M.cascade, sb = S[1], sv = S[2], sl = S[3];   // mix: per-parameter coupling
+    var vol = clamp(0.55 * Math.pow(PHI, -sv / 4), 0.25, 0.8);
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
-    return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + s), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + s / 2), 62, 157),
-             vol: vol, trackLen: Math.pow(PHI, 7.5 + s), genres: GENRES[p.mood] || GENRES.neutral };
+    return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(60 / Math.pow(PHI, -1 + sb / 2) * Math.pow(PHI, M.tempo), 62, 157),
+             vol: vol, trackLen: Math.pow(PHI, 7.5 + sl), genres: GENRES[p.mood] || GENRES.neutral, mix: M.seed };
   }
 
   // ---------- music theory + genre table ----------
@@ -200,13 +221,14 @@
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
     var prog = g.progs[Math.floor(r() * g.progs.length)], mel = [], deg = 7 + Math.floor(r() * 3);
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
-      var strong = i % 4 === 0, p = strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel);
+      var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density);   // mix: density rung
       if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13); mel.push(deg); } else mel.push(null);
     }
     var out = ctx.createGain(); out.gain.value = 0.0001; out.connect(bus);
     var wet = ctx.createGain(); wet.gain.value = 0.0001; wet.connect(revIn);                    // reverb send, faded with the track
     var rv = ctx.createGain(); rv.gain.value = g.rev; rv.connect(wet);
-    return { genre: genre, bpm: bpm, seed: seed, g: g, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
+    var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
+    return { dr: M.donor ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: g, sc: sc, root: root, prog: prog, mel: mel, r: r, out: out, wet: wet, rev: rv, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() };   // phi: first step PHI^-6 s out
   }
   function playStep(tr, t) {
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v;
@@ -230,7 +252,8 @@
     var md = tr.mel[st % 32];
     if (md != null) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; INST[g.lead](tr, mtof(tr.root + tr.sc[md % 7] + 12 * Math.floor(md / 7) + 12), t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
-    ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = g[k]; if (pat && (v = pat[s16]) !== '.') hit(tr, k, t, v === 'x' ? 1 : 0.55); });
+    var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
+    ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') hit(tr, k, t, (v === 'x' ? 1 : 0.55) * dyn); });
     if (s16 % 4 === 0) beat(t, s16 === 0);
   }
   function stepLen(tr) { var d = 60 / tr.bpm / 4, sw = tr.g.swing || 0; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }
@@ -319,6 +342,26 @@
     var check = function () { if (playing && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
     if (p && p.then) p.then(check, check); else check();
   }
+  function remix(seed) {                                                  // a new mix glides in over a PHI^3 s crossfade (rule 6), never a cut
+    mixSeed = seed; M = genome(seed); if (seed != null) genreFlip += Math.floor(M.flip * SPB);
+    var c = compute();
+    if (playing && ctx) { var tr = startTrack(c, Math.pow(PHI, 3)); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
+    else cur = c;
+    paint(c); save();
+    if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing');
+      mixBtn.setAttribute('aria-label', 'New DJ mix (now ' + mixName() + '; hold for the default mix)'); }
+  }
+  function mixName() { return mixSeed == null ? 'default mix' : 'mix ' + mixSeed.toString(36).toUpperCase(); }   // unit: base-36 short name
+  function nextMix() { remix(mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1); }
+  var mixBtn = null;
+  function wireMix() {
+    mixBtn = document.getElementById('dj-mix'); if (!mixBtn) return;
+    var held = 0, longDone = false;
+    mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; remix(null); }, IPH * MS); });   // phi: hold PHI^-1 s
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { mixBtn.addEventListener(n, function () { clearTimeout(held); }); });
+    mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } if (e.shiftKey) remix(null); else nextMix(); });
+    mixBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
   function resumeTap() {
     disarm(); if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }
     if (stalled && playing && ctx) { stalled = false; try { ctx.resume(); } catch (e) {} elPlay(); jump(); tick(); session('playing'); paint(compute()); return; }
@@ -331,10 +374,11 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec() }; }
+  function snapshot() { return { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed }; }
   function catchUp(e, s, mode) {
     if (mode === 'return') { wake(); return; }
     if (!s) return;
+    if (s.mix != null && isFinite(s.mix)) { mixSeed = s.mix; M = genome(mixSeed); }   // his mix choice carries through reloads and the daily restart
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
     if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = s.T0;
@@ -354,7 +398,7 @@
   function paint(c) {
     if (!read) return;
     var shown = playing && cur ? cur : c, g = playing && cur && cur.genre ? cur.genre : c.genres.join(' / ');
-    read.textContent = g + ' \u00B7 ' + Math.round(shown.bpm) + ' BPM \u00B7 fade ' + shown.fade.toFixed(1) + ' s \u00B7 vol ' + Math.round(shown.vol * 100) + '%';
+    read.textContent = mixName() + ' \u00B7 ' + g + ' \u00B7 ' + Math.round(shown.bpm) + ' BPM \u00B7 fade ' + shown.fade.toFixed(1) + ' s \u00B7 vol ' + Math.round(shown.vol * 100) + '%';
     var p = c.p, pendN = playing && cur && (Math.abs(cur.s - c.s) > Number.EPSILON || cur.p.mood !== c.p.mood);
     readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) +
       (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
@@ -419,6 +463,7 @@
     document.addEventListener('visibilitychange', function () { if (!ctx) return; if (document.hidden) { if (!playing) try { ctx.suspend(); } catch (e) {} } else wake(); });
     window.addEventListener('pageshow', function () { wake(); });
     document.addEventListener('simwx', function () { if (!playing) { cur = compute(); paint(cur); } });
+    wireMix();
     if (window.RhythmContinuity) RC = RhythmContinuity.register('dj', { save: snapshot, catchUp: catchUp, reset: reset });
     buildChips(); cur = compute(); paint(cur); schedule(cur.fade);
     setInterval(function () { if (!document.hidden) paint(compute()); }, 1000);
@@ -426,6 +471,7 @@
   window.DadAutoDJ = { compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step } : null; },
+    get mix() { return { seed: mixSeed, name: mixName(), genome: M }; }, remix: function (seed) { if (seed === undefined) nextMix(); else remix(seed); },
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
     level: function () { if (!meter) return 0; var a = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(a); var q = 0; for (var i = 0; i < a.length; i++) q += a[i] * a[i]; return Math.sqrt(q / a.length); },
