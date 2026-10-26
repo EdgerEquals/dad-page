@@ -144,7 +144,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=9';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=10';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -154,7 +154,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=6', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=7', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -235,11 +235,24 @@
       l.frequency.value = Math.pow(PHI, (u - 1 / 2) * IPH); d.gain.setValueAtTime(0, t); d.gain.setTargetAtTime(CENT * Math.pow(PHI, -4) * (IPH + (1 - u) * IPH), t, PHI);   // phi: PHI^-4 semitone x tension, eased over PHI s
       l.connect(d); l.start(t); tr.vib = d; tr.lfo = l; } catch (e) {}
   }
+  // CHIP GRADIENT (Danny 16:53 AWST 26 Oct: 'less electronic gaming and more organic ... a little bit of computer game sound every now
+  // and again ... come and go faster and less often'). chip(tr) in 0..1 is the share of chiptune timbre (square/pulse leads, bass and
+  // arpeggio blips, bit-crush) right now: a fast pump pair (periods PHI^PHI.. s) raised to PHI^(PHI + s + 1 - u), so it peaks briefly and
+  // rarely, rarer still as sophistication s rises and energy u falls. Each note draws against it on the golden sequence (no rng use);
+  // a note that misses takes the organic voice: filtered, detuned saw with a breath transient (js/dj-extras.js reed) or a plucked one.
+  var chipP = null;
+  function chip(tr) {
+    var P = window.PhiPumps; if (!chipP) chipP = P && P.node ? P.node('dj:chip', 2, PHI, IPH, P.page, 7) : { modes: function (t) { return Math.sin(2 * Math.PI * t / Math.pow(PHI, PHI)); } };   // phi: period PHI^PHI s
+    tr = tr && tr.tk || tr; var now = P && P.now ? P.now() : ctx ? ctx.currentTime : 0, x = (1 + clamp(chipP.modes(now), -1, 1)) / 2;
+    var s = tr && tr.s != null ? tr.s : IPH, u = tr && tr.u != null ? tr.u : IPH; return Math.pow(x, Math.pow(PHI, PHI + s + 1 - u));
+  }
+  function chipNote(tr) { tr = tr && tr.tk || tr; return frac(((tr.step || 0) + 1) * IPH + (tr.seed | 0) * IPH * IPH) < chip(tr); }   // phi: golden-sequence draw
+  function wv(tr, w) { return w === 'square' && !chipNote(tr) ? 'sawtooth' : w; }   // square waves only while the chip share lets them through
   var INST = {
-    pad:   function (tr, f, t, d, v) { voice(tr, pwave(tr.g.wave || 'sine', tr.s) || tr.g.wave, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
-    pluck: function (tr, f, t, d, v) { voice(tr, tr.g.wave || 'triangle', f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
+    pad:   function (tr, f, t, d, v) { var w0 = wv(tr, tr.g.wave || 'sine'); voice(tr, pwave(w0, tr.s) || w0, f, t, d, v * 0.10, { a: d * 0.35, hold: d * 0.6, rel: d * 0.25, cut: tr.g.cut, det: 9, rev: 0.8 }); },
+    pluck: function (tr, f, t, d, v) { voice(tr, wv(tr, tr.g.wave || 'triangle'), f, t, d, v * 0.16, { a: 0.003, hold: 0.01, rel: 0.22, cut: tr.g.cut * PHI, sweep: 0.08, rev: 0.4 }); },
     bass:  function (tr, f, t, d, v) { if (tr.g.bwave === 'piano') return (INST.piano || INST.pluck)(tr, f, t, d, v * 1.2);
-                                       voice(tr, tr.g.bwave, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * 0.8, rel: 0.08, cut: tr.g.cut * IPH }); }
+                                       var bw = wv(tr, tr.g.bwave); voice(tr, bw, f, t, d, v * (tr.g.bwave === 'sine' ? 0.22 : 0.16), { a: 0.006, hold: d * (bw === 'square' ? IPH : 0.8), rel: 0.08, cut: tr.g.cut * IPH * (bw !== tr.g.bwave ? IPH : 1) }); }   // phi: the organic bass a rung darker
   };
   // ---------- a track: one generated piece (genre + BPM + seed) ----------
   // KEY TRAVEL (MIDI Bot transitions design #2; Danny 16:30 AWST 26 Oct: 'a gradient really ... on a dial', 'top of the dial can jump
@@ -330,7 +343,7 @@
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
       ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn)); });   // phi: strum spread PHI^-4 of a sixteenth
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]); pl('chords', INST.square, tr.x, a2[s16 % a2.length] + 24, t, dur16 * 0.8, 0.45); }
+    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
     var bn = root0 - 12;
@@ -341,7 +354,7 @@
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.sc, ln = lsc.length;
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; pl('lead', INST[g.lead], tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
@@ -639,7 +652,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  window.DadAutoDJ = { _kit: { grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { _kit: { wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },

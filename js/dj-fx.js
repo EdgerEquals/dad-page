@@ -109,7 +109,8 @@
     }
     to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(e * IPH, now + q * PHI * PHI, tau || IPH);
     to(wSend.gain, wConv.buffer ? E.wash.v * IPH : 0, tau);
-    var cr = E.crush.v, b = cr ? Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
+    var cr = E.crush.v * (K.chip ? K.chip() : 1), b = cr ?   // bit-crush rides the chip share (Danny 16:53)
+       Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
     if (b && b !== bits) { bits = b; shp.curve = crushCurve(b); }
     to(cWet.gain, cr * IPH * IPH, tau); to(cDry.gain, 1 - cr * Math.pow(PHI, -3), tau);   // phi: gentle, at most PHI^-2 wet
     var m = (E.echo.v + E.wash.v + E.crush.v + Math.abs(E.filter.v) + (E.roll.v ? IPH : 0)) / R2N(); bk += (m - bk) * (1 - Math.exp(-IPH / (PHI * PHI)));   // phi: tau PHI^2 s

@@ -15,7 +15,7 @@
   function C() { return ctx || (ctx = K.ctx); }
   // ---------- lead voices (unchanged from the single-file engine) ----------
   var MORE = {
-    stab:  function (tr, f, t, d, v) { voice(tr, tr.g.wave, f, t, d, v * 0.07, { a: 0.004, hold: d * 0.5, rel: 0.06, cut: tr.g.cut, det: 7, rev: 0.25 }); },
+    stab:  function (tr, f, t, d, v) { voice(tr, K.wv ? K.wv(tr, tr.g.wave) : tr.g.wave, f, t, d, v * 0.07, { a: 0.004, hold: d * 0.5, rel: 0.06, cut: tr.g.cut, det: 7, rev: 0.25 }); },
     ep:    function (tr, f, t, d, v) {                                  // FM e-piano: ratio 2, index PHI^(2s-1) x f falling to PHI^-(4+(1-s)) x f (sophistication dial)
       var so = tr.s == null ? IPH : tr.s;
       voice(tr, 'sine', f, t, d, v * Math.pow(PHI, -SPB - IPH), { a: Math.pow(PHI, -Math.pow(PHI, 4) - SPB - IPH), hold: d * IPH, rel: IPH * IPH, cut: FHI * IPH * IPH, rev: IPH * IPH, fm: { r: 2, i0: Math.pow(PHI, 2 * so - 1), i1: Math.pow(PHI, -(SPB + 1 - so)), tau: Math.pow(PHI, -3) } }); },   // phi: index rungs; unit: 2:1 FM ratio (octave)
@@ -25,10 +25,19 @@
       var so = tr.s == null ? IPH : tr.s;
       voice(tr, 'sine', f, t, d, v * Math.pow(PHI, -2 * PHI * PHI), { a: Math.pow(PHI, -Math.pow(PHI, 4) - PHI * PHI), hold: Math.pow(PHI, -SPB * PHI - PHI), rel: IPH + Math.pow(PHI, -PHI * PHI), cut: FHI * Math.pow(PHI, -1 - so), rev: 1, fm: { r: PHI * PHI, i0: Math.pow(PHI, so * PHI) * IPH, i1: Math.pow(PHI, -SPB), tau: IPH } }); },   // phi: bell partials and cut
     horn:  function (tr, f, t, d, v) { voice(tr, 'sawtooth', f, t, d, v * 0.06, { a: 0.12, hold: d * 0.8, rel: 0.3, cut: 1100, det: 5, rev: 0.8 }); },
+    reed:  function (tr, f, t, d, v) {                                  // organic lead (Danny 16:53): detuned filtered saw, keytracked, with a breath transient
+      var tk = tr.tk || tr, so = tk.s == null ? IPH : tk.s, w = K.pwave ? K.pwave('sawtooth', so) || 'sawtooth' : 'sawtooth';
+      voice(tr, w, f, t, d, v * Math.pow(PHI, -SPB * PHI), { a: Math.pow(PHI, -6), hold: d * IPH, rel: Math.pow(PHI, -3), cut: Math.min(FHI, f * Math.pow(PHI, PHI + so * PHI)), det: Math.pow(PHI, SPB), rev: IPH * IPH });   // phi: level, attack, release, cut over the note, detune
+      breath(tr, f, t, v * Math.pow(PHI, -SPB * PHI - PHI)); },
     square:function (tr, f, t, d, v) { voice(tr, 'square', f, t, d, v * 0.045, { a: 0.004, hold: d * 0.6, rel: 0.08, cut: 2600, rev: 0.3 }); },
     saw:   function (tr, f, t, d, v) { voice(tr, 'sawtooth', f, t, d, v * 0.045, { a: 0.004, hold: d * 0.6, rel: 0.08, cut: 3200, det: 6, rev: 0.3 }); },
   };
   Object.keys(MORE).forEach(function (k) { INST[k] = MORE[k]; });
+  function breath(tr, f, t, v) {                                          // a short band of noise at the note: the air before the tone (grit, not a click)
+    try { var c = C(), s = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(), at = Math.pow(PHI, -8);   // phi: attack PHI^-8 s
+      s.buffer = noise(); bp.type = 'bandpass'; bp.frequency.value = Math.min(FHI, f * PHI); bp.Q.value = PHI;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + at); g.gain.setTargetAtTime(0, t + at, Math.pow(PHI, -5));   // phi: decay PHI^-5 s
+      s.connect(bp); bp.connect(g); g.connect(tr.out); s.start(t, ((t * PHI) % 1) * IPH); s.stop(t + IPH); } catch (e) {} }
   // ---------- drums ----------
   var nb = null;
   function noise() { if (nb) return nb; var c = C(), n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0); for (var j = 0; j < n; j++) d[j] = Math.random() * 2 - 1; return (nb = b); }
