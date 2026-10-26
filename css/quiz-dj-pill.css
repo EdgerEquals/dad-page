@@ -38,3 +38,7 @@
 @keyframes djMix{0%{transform:rotate(0) scale(1)}38.2%{transform:rotate(.382turn) scale(1.272)}100%{transform:rotate(1turn) scale(1)}}
 @media(max-width:480px){.q-head .dj-mix{width:22px;height:22px}}
 @media(prefers-reduced-motion:reduce){.q-head .dj-mix.is-mixing span{animation:none}}
+/* MIDI export button beside the mix button (Danny 14:48 AWST 26 Oct): same round chip; a small shake when there is nothing to export yet */
+.q-head .dj-exp.is-empty span{display:inline-block;animation:djExpNo .382s ease}
+@keyframes djExpNo{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@media(prefers-reduced-motion:reduce){.q-head .dj-exp.is-empty span{animation:none}}

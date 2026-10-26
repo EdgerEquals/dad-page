@@ -217,27 +217,36 @@
     var deg = tr.prog[Math.floor(bar / g.bars) % tr.prog.length], ch = chordNotes(tr.sc, tr.root, deg, g.sev);
     var barLen = dur16 * 16 * g.bars, first = s16 === 0 && bar % g.bars === 0;
     // chords
-    if (g.chords === 'pad' && first) ch.forEach(function (n) { INST.pad(tr, mtof(n + 12), t, barLen, 1); });
+    if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr, n + 12, t, barLen, 1); });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
-      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; inst(tr, mtof(n + 12), t + (g.chords === 'strum' ? k * 0.012 : 0), dur16 * (g.chords === 'ep' ? 5 : 2), s16 ? 0.8 : 1); });
-    if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); (INST.piano || INST.pluck)(tr, mtof(an[(s16 / 2) % an.length] + 12), t, dur16 * 2, s16 % 8 ? 0.6 : 0.9); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]); INST.square(tr.x, mtof(a2[s16 % a2.length] + 24), t, dur16 * 0.8, 0.45); }
-    if (g.ost && s16 % 2 === 0 && INST.stab) INST.stab(tr.x, mtof(ch[s16 % 4 === 0 ? 0 : 2] + 12), t, dur16 * 1.6, 0.7);
+      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * 0.012 : 0), dur16 * (g.chords === 'ep' ? 5 : 2), s16 ? 0.8 : 1); });
+    if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, s16 % 8 ? 0.6 : 0.9); }
+    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]); pl('chords', INST.square, tr.x, a2[s16 % a2.length] + 24, t, dur16 * 0.8, 0.45); }
+    if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
     var bn = ch[0] - 12;
-    if (g.bass === 'hold' && first) INST.bass(tr, mtof(bn), t, barLen * 0.9, 1);
-    if (g.bass === 'roots' && (s16 === 0 || s16 === 8)) INST.bass(tr, mtof(s16 ? ch[2] - 12 : bn), t, dur16 * 6, 1);
-    if (g.bass === 'walk' && [0, 3, 6, 8, 11, 14].indexOf(s16) >= 0) INST.bass(tr, mtof(s16 === 0 ? bn : ch[[0, 1, 2, 1, 2, 0][[0, 3, 6, 8, 11, 14].indexOf(s16)]] - 12), t, dur16 * 2, 0.9);
-    if (g.bass === 'eighths' && s16 % 2 === 0) INST.bass(tr, mtof(bn), t, dur16 * 1.5, s16 % 4 ? 0.7 : 1);
-    if (g.bass === 'octave' && s16 % 2 === 0) INST.bass(tr, mtof(bn + (s16 % 4 ? 12 : 0)), t, dur16 * 1.5, 0.9);
+    if (g.bass === 'hold' && first) pl('bass', INST.bass, tr, bn, t, barLen * 0.9, 1);
+    if (g.bass === 'roots' && (s16 === 0 || s16 === 8)) pl('bass', INST.bass, tr, s16 ? ch[2] - 12 : bn, t, dur16 * 6, 1);
+    if (g.bass === 'walk' && [0, 3, 6, 8, 11, 14].indexOf(s16) >= 0) pl('bass', INST.bass, tr, s16 === 0 ? bn : ch[[0, 1, 2, 1, 2, 0][[0, 3, 6, 8, 11, 14].indexOf(s16)]] - 12, t, dur16 * 2, 0.9);
+    if (g.bass === 'eighths' && s16 % 2 === 0) pl('bass', INST.bass, tr, bn, t, dur16 * 1.5, s16 % 4 ? 0.7 : 1);
+    if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, 0.9);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % 32];
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; INST[g.lead](tr.x, mtof(tr.root + tr.sc[md % 7] + 12 * Math.floor(md / 7) + 12), t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; pl('lead', INST[g.lead], tr.x, tr.root + tr.sc[md % 7] + 12 * Math.floor(md / 7) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
     // drums
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
-    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') X.hit(tr.x, k, t, (v === 'x' ? 1 : 0.55) * dyn); });
+    if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { var pat = (tr.dr || g)[k]; if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = (v === 'x' ? 1 : 0.55) * dyn; X.hit(tr.x, k, t, hv); rec('drums', GM[k], t, dur16, hv); } });
     if (s16 % 4 === 0) beat(t, s16 === 0);
   }
+  // ---------- note log for the MIDI export (Danny 14:48 AWST 26 Oct): the last minute of what played, pruned by wall time ----------
+  // Each entry is [wall ms, part, MIDI note, velocity 0..1, seconds]; at most a minute of steps, a few KB. js/dj-midi.js writes it on tap.
+  var NL = [], WIN = SPM * MS;                                            // unit: one minute
+  var GM = { kick: 36, snare: 38, hat: 42, shaker: 82, tom: 45 };       // cite: General MIDI Level 1 percussion key map (channel 10)
+  function rec(part, m, t, d, v) {
+    var w = Date.now() + (t - ctx.currentTime) * MS; NL.push([w, part, m, v, d]);
+    while (NL.length && NL[0][0] < w - WIN - SPM * MS / SPB) NL.shift();   // keep a little over a minute (look-ahead slack)
+  }
+  function pl(part, inst, tr, m, t, d, v) { inst(tr, mtof(m), t, d, v); rec(part, m, t, d, v); }
   function stepLen(tr) { var d = 60 / tr.bpm / 4, sw = tr.g.swing || 0; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }
 
   // ---------- scheduler (look-ahead) ----------
@@ -422,7 +431,7 @@
     document.addEventListener('visibilitychange', function () { if (!ctx) return; if (document.hidden) { if (!playing) try { ctx.suspend(); } catch (e) {} } else wake(); });
     window.addEventListener('pageshow', function () { wake(); });
     document.addEventListener('simwx', function () { if (!playing) { cur = compute(); paint(cur); } });
-    wireMix();
+    wireMix(); wireExport();
     if (window.RhythmContinuity) RC = RhythmContinuity.register('dj', { save: snapshot, catchUp: catchUp, reset: reset });
     cur = compute(); paint(cur); schedule(cur.fade);
     var dm = document.querySelector('.dad-dj .dj-demo'); if (dm) dm.addEventListener('toggle', function () { if (dm.open) loadX(); });
@@ -449,6 +458,19 @@
   function duckTo(on) { ducked = !!on; if (duck) duck.gain.setTargetAtTime(on ? IPH : 1, ctx.currentTime, on ? IPH * IPH : IPH); }   // rule 6: down tau PHI^-2 s, up tau PHI^-1 s
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
   setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
+  // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
+  var MIDIURL = 'js/dj-midi.js?v=1', midiP = null;
+  function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
+    sc.onload = function () { window.DadMidi ? ok(window.DadMidi) : no(); }; sc.onerror = function () { midiP = null; no(); }; document.head.appendChild(sc); }); return midiP; }
+  function lastMinute() { var now = Date.now(); return NL.filter(function (e) { return e[0] <= now && e[0] >= now - WIN; }); }
+  function wireExport() {
+    var b = document.getElementById('dj-exp'); if (!b) return;
+    b.addEventListener('pointerdown', function () { midiLib().catch(function () {}); });   // start loading on the press, ready by the click
+    b.addEventListener('click', function (e) { e.stopPropagation(); var ev = lastMinute(), bpm = (spec() || {}).bpm || (cur && cur.bpm) || compute().bpm;
+      if (!ev.length) { b.classList.remove('is-empty'); void b.offsetWidth; b.classList.add('is-empty'); b.title = 'Nothing played in the last minute yet'; return; }
+      b.title = 'Export last minute as MIDI';
+      midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre); }).catch(function () {}); });
+  }
   window.DadAutoDJ = { _kit: { extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; } },
@@ -459,7 +481,7 @@
     get bridge() { return el ? { paused: el.paused, direct: direct } : null; }, snapshot: snapshot,
     get playing() { return playing; }, get now() { return cur; }, get tracks() { return tracks.length; },
     level: rms, get out() { return { level: rms(), k_level: rmsOf(kMeter), ref: refS, k: kRef, nominal: nominal(), duck: duck ? duck.gain.value : 1, ducked: ducked }; },
-    get extras() { return !!X; }, get primed() { return primed; },
+    get extras() { return !!X; }, notes: function () { return NL.slice(); }, lastMinute: lastMinute, midi: function () { return midiLib(); }, get primed() { return primed; },
     get graph() { return ctx ? { state: ctx.state, tracks: tracks.length, busGain: bus.gain.value, master: master.gain.value } : null; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
