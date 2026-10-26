@@ -120,10 +120,22 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   var IPH = 1 / PHI, needles = {}, wob = {};
+  // PUMPS RANDOM (Danny 19:58 AWST 26 Oct: 'If I press that it should make that section randomise'): the section button only drew a new
+  // mix genome, so no pump knob moved and the chips never changed. Now modelled on the effects section's draw(): every pump knob gets a
+  // golden-angle rung from one seed, frac((s N + j) PHI^-1) of its own ladder (always inside its range), through the chips' own setTo,
+  // plus the new pump mix as before; the change glides in (the mix's PHI^3 s crossfade, rule 6) and the chips repaint. Hold: back to live.
+  var pSeed = null;
+  function pumpDraw(s) {
+    pSeed = s; GROUPS.forEach(function (gp, j) { var k = gp[0], L = LADDER[k]; if (!L || !L.length) return;
+      setTo(k, s == null ? liveOf(k) : L[Math.floor(frac((s * GROUPS.length + j) * IPH) * L.length)]); });
+    if (s == null) K.defMix(); else K.nextMix();
+    var c = compute(); K.idle(c); paint(c); save(); syncChips();
+  }
+  function frac(x) { return x - Math.floor(x); }
   function buildChips() {
     var hd = document.createElement('div'); hd.className = 'dj-fx-hd';
     var h = document.createElement('span'); h.textContent = 'pumps'; hd.appendChild(h);
-    hd.appendChild(rbtn('dj-fxr', 'pumps', 'Random pump mix (hold: default mix)', function () { K.nextMix(); }, function () { K.defMix(); }));
+    hd.appendChild(rbtn('dj-fxr', 'pumps', 'Random pumps (hold: back to live)', function () { pumpDraw(pSeed == null ? Math.floor(Date.now() / 1e3) : pSeed + 1); }, function () { pumpDraw(null); }));
     chips.appendChild(hd);
     GROUPS.forEach(function (gp) {
       var k = gp[0], fs = document.createElement('fieldset'), lg = document.createElement('legend'); fs.className = 'dj-grp'; lg.textContent = gp[1]; fs.appendChild(lg);
