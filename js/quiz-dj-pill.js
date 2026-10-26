@@ -16,9 +16,9 @@
   // the pill's little light mirrors the DJ play state, so you can see the music is on while the pop-up is closed
   // continuity (Danny 13:47 AWST 26 Oct): before the DJ engine has loaded (tier 2), a DJ that was on is shown on at once, waiting for a tap
   function early(){var R=window.RhythmContinuity,st=R&&R.peek('dj');return !window.DadAutoDJ&&!!(st&&st.on);}
-  function sync(){var wait=early()||!!(play&&play.classList.contains('is-resuming')),on=wait||!!(play&&play.getAttribute('aria-pressed')==='true');
+  function sync(){var wait=early()||!!(play&&play.classList.contains('is-resuming')),on=!wait&&!!(play&&play.getAttribute('aria-pressed')==='true');   // djbtnfix: lit only when sound is heard, like the switch (soundfix3); waiting = the slow breathe
     pill.classList.toggle('is-playing',on);pill.classList.toggle('is-resuming',wait);
-    pill.setAttribute('aria-label',wait?'DJ (on, tap anywhere to resume the sound)':on?'DJ (music on)':'DJ');}
+    pill.setAttribute('aria-label',wait?'DJ (waiting: tap to resume the sound)':on?'DJ (music on)':'DJ');}
   if(play)new MutationObserver(sync).observe(play,{attributes:true,attributeFilter:['aria-pressed','class']});sync();
   // music button (Danny 15:27 AWST 26 Oct): the glow keeps the DJ's beat (css/dj-buttons.css --djb-beat; drift = beat x PHI^4, as Bonnie's music-glow.js).
   // Re-read only at a drift-cycle boundary, so the pulse never jumps mid-swell.

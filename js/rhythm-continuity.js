@@ -213,7 +213,11 @@
     AU.t = setTimeout(function () { AU.t = 0; attempt('ladder'); }, TAP * Math.pow(PHI, k) * MS);   // phi: beat x PHI^k, k = 0 .. 5
   }
   function later(why) { if (AU.wait) return; AU.wait = setTimeout(function () { AU.wait = 0; attempt(why); }, TAP * MS); }   // one tap-rung beat first
+  // djbtnfix (Danny 21:0x AWST 26 Oct, 'erratic'): a press on the DJ's own controls is theirs alone. Before, a stalled DJ was resumed
+  // here on the touch press and then the switch's own click saw 'playing' and stopped it again (one tap, two flips, net silence).
+  var OWN = '#dj-pill,#qh-djpop,#dj-mix,#dj-exp';
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
+    var tg = e && e.target; if (tg && tg.closest && tg.closest(OWN)) return;
     hook(); if (!wanted() || !AU.ctx) return;
     var ok = done() && !AU.down; if (ok && elOn()) return;                        // all well: the tap is not a resume
     var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift   // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)

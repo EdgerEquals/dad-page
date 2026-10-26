@@ -792,7 +792,10 @@
     if (pend) start(pend);
   }
   var armed = false, GEST = ['touchend', 'click', 'keydown'];
-  function onGesture(e) { if (btn && btn.contains(e.target)) return; if (pend || stalled) resumeTap(); else disarm(); }
+  // djbtnfix (Danny 21:0x AWST 26 Oct, 'the buttons are just behaving erratically'): the DJ's own controls (music button, pop-up, header
+  // Random, export) are never a 'tap anywhere' resume, so each tap does only its own job; anywhere else on the page still brings the sound back.
+  var OWN = '#dj-pill,#qh-djpop,#dj-mix,#dj-exp';
+  function onGesture(e) { var t = e.target; if (t && t.closest && t.closest(OWN)) return; if (pend || stalled) resumeTap(); else disarm(); }
   function arm() { if (armed) return; armed = true; GEST.forEach(function (n) { document.addEventListener(n, onGesture, true); }); }
   function disarm() { if (!armed) return; armed = false; GEST.forEach(function (n) { document.removeEventListener(n, onGesture, true); }); }
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
