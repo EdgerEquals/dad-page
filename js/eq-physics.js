@@ -111,11 +111,11 @@
   function attach(host,img,opts){
     opts=opts||{};var P=PARAMS,m=new Model(P,(Math.random()*1e9)|0),cv=document.createElement('canvas'),x=cv.getContext('2d'),raf=0,last=0,waves=[],pulses=[];
     var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-    cv.className='eqp-canvas';cv.setAttribute('aria-hidden','true');cv.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:2';
+    cv.className='eqp-canvas';cv.setAttribute('aria-hidden','true');cv.style.cssText='position:fixed;left:0;top:0;pointer-events:none;z-index:2';   // sized in px from innerWidth/innerHeight in size(): 100vh is the LARGE viewport on iPhone Safari, which stretched the canvas and drew the equals below the rings' centre (Danny 14:55 AWST 26 Oct)
     host.appendChild(cv);
     m.t=(opts.t0!=null?opts.t0:P.breath.T*.15);
-    function size(){var d=Math.min(window.devicePixelRatio||1,2);cv.width=innerWidth*d;cv.height=innerHeight*d;x.setTransform(d,0,0,d,0,0);}
-    size();addEventListener('resize',size);
+    function size(){var d=Math.min(window.devicePixelRatio||1,2);cv.width=innerWidth*d;cv.height=innerHeight*d;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';x.setTransform(d,0,0,d,0,0);}
+    var vv=window.visualViewport;size();addEventListener('resize',size);if(vv)vv.addEventListener('resize',size);
     function draw(){
       var R=img.getBoundingClientRect();if(!R.width)return;var k=R.width/64,cx=R.left+R.width/2,cy=R.top+R.height/2;
       x.clearRect(0,0,innerWidth,innerHeight);
@@ -146,7 +146,7 @@
         m.events.forEach(function(e){if(e.kind!=='peak')pulses.push(e.t);if(P.waves.on)waves.push({t:e.t,a:(e.amp||1)*P.waves.a0});});m.events=[];}
       draw();}
     raf=requestAnimationFrame(frame);
-    var h={model:m,ff:function(T){while(m.t<T){m.step(1/240);}m.events=[];},stop:function(){cancelAnimationFrame(raf);removeEventListener('resize',size);if(cv.parentNode)cv.parentNode.removeChild(cv);}};
+    var h={model:m,ff:function(T){while(m.t<T){m.step(1/240);}m.events=[];},stop:function(){cancelAnimationFrame(raf);removeEventListener('resize',size);if(vv)vv.removeEventListener('resize',size);if(cv.parentNode)cv.parentNode.removeChild(cv);}};
     api.last=h;return h;
   }
   var api={PARAMS:PARAMS,Model:Model,wave:wave,attach:attach,PHI:PHI};

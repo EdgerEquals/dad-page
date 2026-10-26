@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Dad's world equals mark">
 <!-- Dad mark v2, SLIM HEADER version (emerald). Two orbits, two bodies, the equals. 6 animations, transform and opacity only, no filters.
-     The detailed mark (toroid field lines) loads only in the tap-to-zoom view. Timings: Dad ladder PHI^n x PHI^-1.5. -->
+     The detailed mark (toroid field lines) loads only in the tap-to-zoom view. Timings: Dad ladder PHI^n x PHI^-1.5.
+     Start state (Danny 14:55 AWST 26 Oct): the ring groups (#s, #p1, #p2) have no start offset, so frame 0 is the design pose, ring 1 at -20deg and ring 2 at +25deg,
+     crossed 45deg apart (1/8 turn), not collapsed; the tier-0 inline mark in index.html draws this same pose. -->
 <style>
 .v{transform-box:view-box;transform-origin:32px 32px}
-#s{animation:a 46.98s linear -29.03s infinite}
-#p1{animation:b 29.03s linear -6.85s infinite}
-#p2{animation:b 17.94s linear -15.32s infinite}
+#s{animation:a 46.98s linear infinite}
+#p1{animation:b 29.03s linear infinite}
+#p2{animation:b 17.94s linear infinite}
 #b1{animation:a 2.62s linear -1.62s infinite}
 #b2{animation:a 4.24s linear -1.00s infinite}
 @keyframes a{to{transform:rotate(360deg)}}

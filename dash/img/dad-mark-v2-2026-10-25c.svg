@@ -29,11 +29,12 @@
 /* END PARAMS */
 .v{transform-box:view-box;transform-origin:32px 32px}
 .pc{opacity:.72}
-#dm-sys{animation:spin var(--t-system) linear calc(var(--t-system) * -0.618) infinite}
+/* start state (Danny 14:55 AWST 26 Oct): system + both precessions start at 0, so the rings open crossed at the design pose (-20deg / +25deg, 1/8 turn apart), not collapsed */
+#dm-sys{animation:spin var(--t-system) linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes unspin{to{transform:rotate(-360deg)}}
-#pr1{animation:unspin var(--t-prec-outer) linear calc(var(--t-prec-outer) * -0.236) infinite}
-#pr2{animation:unspin var(--t-prec-inner) linear calc(var(--t-prec-inner) * -0.854) infinite}
+#pr1{animation:unspin var(--t-prec-outer) linear infinite}
+#pr2{animation:unspin var(--t-prec-inner) linear infinite}
 .strata{animation:breathe ease-in-out infinite alternate}
 #br1{animation-duration:var(--t-strata-outer);animation-delay:calc(var(--t-strata-outer) * -0.090)}
 #br2{animation-duration:var(--t-strata-inner);animation-delay:calc(var(--t-strata-inner) * -0.708)}
