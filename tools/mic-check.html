@@ -11,7 +11,9 @@
        A  echo cancellation ON  + play-and-record   (iOS's voice processing should remove the page's own sound from the mic; on iOS
                                                      26.2-27 playback may crackle while it is open: WebKit bug 326286)
        B  echo cancellation OFF + play-and-record   (the sound stays in the mic)
-       C  echo cancellation OFF + play-and-record   (the session workaround, WebKit bug 218012; kept as the original C)
+       C  re-route nudge: EC OFF + play-and-record, set to 'play-and-record' AGAIN once getUserMedia resolves (micC, 26 Oct: the
+                                                     Stack Overflow 79401143 / WebKit bug 282939 re-route kick); session type and
+                                                     output/base latency logged before and after that re-set
      micfix (Danny 20:51/20:52 AWST 26 Oct, iOS 26.6 GrokApp: A/B threw 'AudioSession category is not compatible with audio capture'
      under 'playback'; 'nothing playing out of the speaker', tone -79 dBFS under a -69 floor): every mode now opens the mic under
      navigator.audioSession.type 'play-and-record' (falls back to 'auto' if that throws), records the type in effect at capture and puts
@@ -90,7 +92,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--mute
   var MODES = [
     { k: 'A', name: 'Echo cancellation ON + play-and-record', ec: true, hint: 'iOS should remove the sound from what the mic hears. Listen: loud speaker or quiet earpiece? Any crackle?' },
     { k: 'B', name: 'Echo cancellation OFF + play-and-record', ec: false, hint: 'The mic hears the sound. Listen: does it come from the loud speaker or quietly from the earpiece?' },
-    { k: 'C', name: 'Echo cancellation OFF + play-and-record', ec: false, hint: 'The audio-session workaround (as before). Same questions: speaker or earpiece, any crackle?' }];
+    { k: 'C', name: 'C: re-route nudge (EC OFF + play-and-record, set again after the mic opens)', ec: false, nudge: true, hint: 'After the mic opens the page sets play-and-record again, to nudge iOS back to the loud speaker. Same questions: speaker or earpiece, any crackle?' }];
   var $ = function (id) { return document.getElementById(id); }, ctx = null, results = { ua: navigator.userAgent, when: new Date().toISOString(), modes: [] };
   function db(x) { return x > 0 ? 20 * Math.log10(x) : -Infinity; }
   function db10(x) { return x > 0 ? 10 * Math.log10(x) : -Infinity; }
@@ -189,6 +191,12 @@ pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--mute
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: { ideal: M.ec }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } } }); }
     catch (e) { R.error = e.name + ': ' + e.message; R.session_at_capture = sessType(); restore(); return R; }
     R.session_at_capture = sessType();
+    if (M.nudge) {                                                       // micC: set play-and-record again once the mic is open, to nudge iOS to re-route (Stack Overflow 79401143 / WebKit bug 282939)
+      R.nudge = { before: { session: sessType(), outputLatency_ms: c.outputLatency != null ? num(c.outputLatency * MS) : null, baseLatency_ms: c.baseLatency != null ? num(c.baseLatency * MS) : null } };
+      R.nudge.set = navigator.audioSession ? session('play-and-record') : 'n/a';
+      await sleep(Math.pow(PHI, -3));                                    // phi: PHI^-3 s for a route change to land before reading again
+      R.nudge.after = { session: sessType(), outputLatency_ms: c.outputLatency != null ? num(c.outputLatency * MS) : null, baseLatency_ms: c.baseLatency != null ? num(c.baseLatency * MS) : null };
+    }
     try { if (c.state !== 'running') await c.resume(); } catch (e) {}
     var tr = stream.getAudioTracks()[0]; R.settings = tr && tr.getSettings ? tr.getSettings() : {};
     var src = c.createMediaStreamSource(stream), mg = c.createChannelMerger(3), sp = c.createScriptProcessor(4096, 3, 1), sink = c.createGain(), refTap = c.createGain(), out = c.createGain(), an = c.createAnalyser();   // unit: 4096-frame capture blocks
@@ -224,6 +232,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--mute
     var x = R.chirp || {}, O = R.out || {};
     kv(k, [['echoCancellation', String(s.echoCancellation)], ['noiseSuppression', String(s.noiseSuppression)], ['autoGainControl', String(s.autoGainControl)],
       ['mic', (s.sampleRate || '?') + ' Hz, ' + (s.channelCount || '?') + ' ch' + (s.latency != null ? ', ' + fmt(s.latency * MS) + ' ms' : '')], ['session', 'at capture ' + R.session_at_capture + ' -> ' + R.after_session],
+      ['nudge', R.nudge ? R.nudge.before.session + ' -> set ' + R.nudge.set + ' -> ' + R.nudge.after.session + '; output ' + fmt(R.nudge.before.outputLatency_ms) + ' -> ' + fmt(R.nudge.after.outputLatency_ms) + ' ms, base ' + fmt(R.nudge.before.baseLatency_ms) + ' -> ' + fmt(R.nudge.after.baseLatency_ms) + ' ms' : 'not in this test'],
       ['output', 'sink ' + O.sinkId + ', base ' + fmt(O.baseLatency_ms) + ' ms, output ' + fmt(O.outputLatency_ms) + ' ms, route ' + O.route],
       ['tone sent', fmt(O.tone_at_analyser_dBFS) + ' dBFS at the analyser'],
       ['room floor', fmt(R.floor_dBFS) + ' dBFS'], ['tone in the mic', fmt(R.tone_in_mic_dBFS) + ' dBFS (' + fmt(R.coupling_dB) + ' dB vs sent)'],
@@ -243,7 +252,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--mute
   function verdict() {
     var A = results.modes[0] || {}, B = results.modes[1] || {}, C = results.modes[2] || {}, v = [];
     if (isFinite(A.coupling_dB) && isFinite(B.coupling_dB) && A.coupling_dB != null && B.coupling_dB != null) { var d = B.coupling_dB - A.coupling_dB; v.push('Echo cancellation ' + (d >= 0 ? 'removed ' : 'added ') + fmt(Math.abs(d)) + ' dB of the tone (B vs A).'); }
-    if (C.coupling_dB != null && B.coupling_dB != null && isFinite(C.coupling_dB) && isFinite(B.coupling_dB)) v.push('Mode C changed the tone in the mic by ' + fmt(C.coupling_dB - B.coupling_dB) + ' dB (C vs B).');
+    if (C.coupling_dB != null && B.coupling_dB != null && isFinite(C.coupling_dB) && isFinite(B.coupling_dB)) v.push('The re-route nudge (C) changed the tone in the mic by ' + fmt(C.coupling_dB - B.coupling_dB) + ' dB (C vs B).');
     if (A.clicks_per_s != null && B.clicks_per_s != null) v.push('Clicks: ' + fmt(A.clicks_per_s) + '/s with EC on vs ' + fmt(B.clicks_per_s) + '/s off.');
     var c = document.createElement('div'); c.className = 'card'; c.innerHTML = '<h2>Summary</h2>'; var p = document.createElement('p'); p.className = 'verdict'; p.textContent = v.join(' ') || 'No numbers (see errors above).'; c.appendChild(p);
     var n = document.createElement('p'); n.className = 'small'; n.textContent = 'Answer the two questions under each test, then tap Copy results and paste them to the DJ chat.'; c.appendChild(n); $('cards').appendChild(c);
@@ -256,7 +265,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-size:11.5px;color:var(--mute
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('status').textContent = 'This browser has no microphone access for web pages.'; go.disabled = false; $('spk').disabled = false; return; }
     for (var i = 0; i < MODES.length; i++) {
       var M = MODES[i], card = document.createElement('div'); card.className = 'card run'; card.innerHTML = '<h2></h2><p class="small"></p><div class="kv"></div>';
-      card.querySelector('h2').textContent = M.k + '. ' + M.name; card.querySelector('p').textContent = M.hint; $('cards').appendChild(card);
+      card.querySelector('h2').textContent = M.name.indexOf(M.k + ':') === 0 ? M.name : M.k + '. ' + M.name; card.querySelector('p').textContent = M.hint; $('cards').appendChild(card);
       var R = await runMode(M, card); results.modes.push(R); show(R, card); await sleep(IPH);
     }
     session('auto'); device(); verdict(); $('status').textContent = 'Done. Mic closed.'; go.disabled = false; $('spk').disabled = false; go.textContent = 'Run again'; $('copy').disabled = false;
