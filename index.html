@@ -549,7 +549,7 @@ body.paused .home-code::before{animation-play-state:paused}
   </div></div>
   <!-- "Questions for Bonnie" row removed from the home screen (Danny 11:25 AWST 26 Oct): it lives only on the questionnaire page -->
 </div>
-<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
+<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=1",1,{id:"dad-mark"})</script><!-- first content: Dad's logo card, tap opens his logo view (Danny 15:24 AWST 26 Oct) --><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
   <div class="strip" aria-label="Page status">
@@ -1069,7 +1069,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 (function(){var b=document.querySelector(".q-head .dad-zoom"),i=b&&b.querySelector(".dad-mark");if(!b||!i)return;var st=0,q=[];
 function js(u,cb){var s=document.createElement("script");s.src=u;s.async=false;s.onload=s.onerror=cb;document.head.appendChild(s);}
 function heavy(cb){if(cb)q.push(cb);if(window.LogoZoom){q.splice(0).forEach(function(f){f();});return;}if(st)return;st=1;
-  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=14",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
+  js("js/phi-pumps.js?v=djpersist1",function(){js("js/dad-mark-zoom.js?v=15",function(){q.splice(0).forEach(function(f){try{f();}catch(e){}});});});}
 function anim(){var h=i.getAttribute("data-head-src");if(h&&i.src.indexOf(h)<0){var im=new Image();im.onload=function(){i.src=h;};im.src=h;}}
 b.addEventListener("click",function(e){if(window.LogoZoom)return;e.preventDefault();e.stopPropagation();heavy(function(){LogoZoom.open("dad");});});
 if(window.LoadTiers){LoadTiers.add(3,function(){anim();heavy();LoadTiers.prefetch(i.getAttribute("data-zoom-src"),{id:"dad-mark"});if(i.getAttribute("data-zoom-stage"))LoadTiers.prefetch(i.getAttribute("data-zoom-stage"),{id:"dad-mark"});LoadTiers.script("js/eq-physics.js?v=3",3,{id:"dad-mark"});},"dad mark heavy",{id:"dad-mark",last:true});}

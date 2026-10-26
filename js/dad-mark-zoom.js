@@ -10,7 +10,7 @@
    file and EqPhysics.attach() draws the equals, its particles, pulses and reflecting waves on a canvas over it; otherwise the CSS version shows.
    Sound (Danny voice 15:28-15:30 AWST): Dad's mark has its own music on the shared logo engine (see DAD'S MARK SOUND below); the Rebella
    logo keeps its own (js/rebella-zoom-life.js). Only one logo sounds at a time.
-   API: LogoZoom.open(name) / close() / isOpen(); DadMarkZoom kept as an alias for the dad mark. */
+   API: LogoZoom.open(name[, fromEl]) / close() / isOpen(); DadMarkZoom kept as an alias for the dad mark. */
 (function(){
   'use strict';
   var btns=[].slice.call(document.querySelectorAll('.q-head [data-zoom]'));if(!btns.length)return;
@@ -18,7 +18,7 @@
   var ov=document.createElement('div');ov.className='dmz';ov.hidden=true;ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
   ov.innerHTML='<button type="button" class="dmz-x" aria-label="Close">&times;</button><figure class="dmz-fig"></figure>';
   document.body.appendChild(ov);
-  var fig=ov.querySelector('.dmz-fig'),x=ov.querySelector('.dmz-x'),cur=null,t=null,phys=null;
+  var fig=ov.querySelector('.dmz-fig'),x=ov.querySelector('.dmz-x'),cur=null,org=null,t=null,phys=null;
   function endPhys(){if(phys){phys.stop();phys=null;}}
   function srcEl(b){return b.querySelector('img,svg');}
   // Rebella neon (Danny t710u): rim + halo behind, small letter holes painted black on top of the glow, then the logo. Units = logo viewBox (1810 wide).
@@ -114,10 +114,11 @@
     if(window.RebellaZoomLife){try{RebellaZoomLife.start(fig,AC);}catch(e){}return;}
     if(lifeLoading)return;lifeLoading=true;var sc=document.createElement('script');sc.src=LIFE;sc.async=true;
     sc.onload=function(){lifeLoading=false;life();};sc.onerror=function(){lifeLoading=false;};document.head.appendChild(sc);}
-  function fromBtn(){var a=srcEl(cur).getBoundingClientRect();fig.style.transition='none';fig.style.transform='none';
+  function fromBtn(){var a=(srcEl(org)||org).getBoundingClientRect();fig.style.transition='none';fig.style.transform='none';
     var b=fig.getBoundingClientRect();if(!b.width||!a.width)return 'none';
     return 'translate('+(a.left-b.left)+'px,'+(a.top-b.top)+'px) scale('+(a.width/b.width)+','+(a.height/b.height)+')';}
-  function open(b){if(cur)return;clearTimeout(t);try{window.QuizPopups&&QuizPopups.close();}catch(e){}
+  function open(b,o){if(cur)return;clearTimeout(t);org=o||b.__zf||b;b.__zf=null;   // o / b.__zf: the element the zoom grows from and returns focus to (the first content card, Danny 15:24 AWST 26 Oct); default the header mark
+    try{window.QuizPopups&&QuizPopups.close();}catch(e){}
     var rb=b.getAttribute('data-zoom')==='rebella',dd=b.getAttribute('data-zoom')==='dad';if(rb){audio();chord(true);}if(dd){audio();dadSting(true);}
     cur=b;build(b);ov.hidden=false;b.setAttribute('aria-expanded','true');ov.classList.remove('is-open');
     if(!rm.matches){var f=fromBtn();fig.style.transform=f;void fig.offsetWidth;fig.style.transition='';}
@@ -130,7 +131,7 @@
     b.setAttribute('aria-expanded','false');ov.classList.remove('is-open');
     if(rm.matches){ov.hidden=true;endPhys();}else{var f=fromBtn();fig.style.transform='none';void fig.offsetWidth;fig.style.transition='';fig.style.transform=f;
       t=setTimeout(function(){ov.hidden=true;fig.style.transform='';endPhys();},D);}
-    cur=null;b.focus({preventScroll:true});}
+    cur=null;(org||b).focus({preventScroll:true});}
   btns.forEach(function(b){b.setAttribute('aria-expanded','false');b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open(b);});});
   x.addEventListener('click',function(e){e.stopPropagation();close();});
   ov.addEventListener('click',function(e){if(!fig.contains(e.target))close();});
@@ -138,6 +139,6 @@
     if(e.key==='Escape'||e.key==='Esc'){e.preventDefault();e.stopPropagation();close();}
     else if(e.key==='Tab'){e.preventDefault();x.focus({preventScroll:true});}},true);
   function byName(n){for(var i=0;i<btns.length;i++)if(btns[i].getAttribute('data-zoom')===n)return btns[i];return btns[0];}
-  window.LogoZoom={open:function(n){open(byName(n));},close:close,isOpen:function(){return !!cur;}};
+  window.LogoZoom={open:function(n,o){open(byName(n),o);},close:close,isOpen:function(){return !!cur;}};
   window.DadMarkZoom={open:function(){open(byName('dad'));},close:close,isOpen:function(){return !!cur;}};
 })();
