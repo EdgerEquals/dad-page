@@ -1,4 +1,8 @@
 # Dev tool only (not loaded by any page). Renders media/space-loop.webm|mp4 + poster (portrait) and, with ORIENT=land, media/space-loop-land.* ; reads js/phi-sun.js via PHI_SUN.
+# Saturn loop v5 (Danny 14:58 AWST 26 Oct 2026): the falling stars spiral down vortex funnels (see 'vortex falling stars'),
+#   five instead of three, each unique, with a spectrum dispersion trail and a glow map that only blooms at one high-Q peak.
+# Encode (v5): frames/%04d.png at 24 fps -> webm: libvpx-vp9 -crf 47 -b:v 0, yuv420p; mp4: libx264 -preset veryslow -crf 31 (land 32),
+#   yuv420p, +faststart; poster: frame 95 (Saturn mid-sweep), PIL WebP method 6, quality 60 (portrait 50).
 # Saturn loop v3 (Danny 12:34 AWST 26 Oct 2026): every speed one phi step slower, Uranus on a larger orbit (Kepler III on cited
 # semimajor axes), a small star-like Sun at the shared anchor (rule 13) with both orbits centred on it in perspective.
 # Shared numbers come from js/phi-sun.js (the SKY JSON block), the same file the page reads.
@@ -9,13 +13,13 @@
 #   golden angle), and once per pass turns luminous with a rainbow wave travelling across it. Everything else runs faster
 #   (whole cycles per loop, so the loop stays seamless).
 import numpy as np, os, math, json, colorsys, re
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 PHI = (1 + math.sqrt(5)) / 2; IP = 1 / PHI; TAU = 2 * math.pi   # phi: the golden ratio itself
 A8 = 255; HEX = 16; CH = 3; SEXT = 6; DEG = 360   # unit: 8-bit channel max, hex base, RGB channels, HSV sextants, degrees per turn
 SHADE = (DEG * 5 / 6, DEG / 3)   # anchor: the trial's moon shadow side (render.py chord 300..120 deg, unchanged)
 GA = IP * IP                                     # golden angle as a fraction of a turn
 REF = json.load(open('/workspace/orbit-ref-data-draft.json'))['ringed_planet']
-SKYC = json.loads(re.sub(r'//[^\n]*', '', open(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.environ.get('PHI_SUN', '../dp-loadorder-wt/js/phi-sun.js'))).read().split('/*SKY*/')[1]))
+SKYC = json.loads(re.sub(r'//[^\n]*', '', open(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.environ.get('PHI_SUN', '../js/phi-sun.js'))).read().split('/*SKY*/')[1]))
 W, H, FPS = 720, 1280, 24                        # anchor: the existing loop's frame size and frame rate (media/space-loop.webm)
 LAND = os.environ.get('ORIENT') == 'land'           # landscape variant (media/space-loop-land.*): the same frame turned on its side
 if LAND: W, H = H, W
@@ -150,8 +154,76 @@ ORB = [(TPR * PHI ** 2, TPR * IP ** IP), (TPR * PHI ** 2 * PHI ** IP, TPR * PHI 
 MOONS = [(0, round(PHI), IP ** 2, TPR * IP ** 3 * PHI, SAND), (1, -round(PHI ** 2), PHI ** 2, TPR * IP ** 5, hsv(GA, IP ** 2, 1)),
          (1, -round(PHI ** 2), PHI ** 2 + math.pi, TPR * IP ** 6 * PHI, hsv(2 * GA, IP ** 2, 1))]
 SAT_REVS = round(PHI ** 4)
-SHOOT = [(k * IP ** 2 + IP ** 4) % 1 for k in range(round(PHI ** 2))]   # start fractions of the loop, golden spacing
-SH_LEN = IP ** 3                                                         # each streak lasts PHI^-3 of the loop (one step slower)
+# ---- vortex falling stars (v5, Danny 14:58 AWST 26 Oct 2026) ----
+# Each star falls down a vortex: a helix around its own fall axis whose radius narrows or widens by phi steps along the fall
+# (a funnel, not a straight screw). Entry point, heading, spin turns, handedness, funnel direction, life and spiral phase are
+# each drawn from a different golden-angle / phi-power sequence, so no two stars share a path. A dispersion trail of spectrum
+# bands diffuses sideways off the spiral (light refracting), and a soft glow map blooms it. Quiet by default (low luminance,
+# pale bands); the full spectrum and bloom open only at one sharp, high-Q peak per loop (a peaked phi envelope).
+def frac(x): return x % 1
+NV = round(PHI ** 5 / math.sqrt(5))                    # Binet: Fibonacci 5 (v4 had round(PHI^2) = 3 streaks)
+NB = round(PHI ** 4)                                   # spectrum bands in each dispersion trail (seven: red .. violet)
+NT = round(PHI ** 8)                                   # trail samples along the spiral
+TRAIL = IP                                             # trail length as a share of the star's own life
+Q_PEAK = PHI ** 8                                      # envelope sharpness: high Q, about PHI^-6 of the loop wide
+QUIET = IP                                             # resting luminance share between peaks
+VSTARS = []
+for k in range(NV):
+    a1, a2, a3, a4, a5 = frac(k * IP + IP ** 4), frac(k * GA + IP ** 3), frac(k * IP ** 3 + IP ** 2), frac(k * GA * PHI ** 2 + IP), frac(k * IP ** 5 + IP ** 6)
+    life = IP ** 3 * PHI ** (a2 - 1 / 2)               # share of the loop the star is visible (whole loop = seamless wrap)
+    x0 = SW * (IP ** 3 + a1 * (1 - IP ** 2))             # entry across the top, golden spacing
+    y0 = SH * a3 * IP ** 3                             # enters in the top band, already falling
+    head = math.pi / 2 + (a4 - 1 / 2) * TAU * IP ** (5 / 2) + (x0 / SW - 1 / 2) * IP   # heading from straight down, leaning inward
+    VSTARS.append(dict(s0=frac(k * IP + IP ** 5), life=life, x0=x0, y0=y0, head=head,
+                       dist=SH * PHI ** (-1 / 2 - a5 * IP),                     # fall length along the axis
+                       turns=PHI ** (PHI + a3 * PHI),                         # spiral turns over the fall: PHI^PHI .. PHI^(2 PHI)
+                       hand=1 if frac(k * IP * PHI ** 2) < 1 / 2 else -1,       # handedness
+                       funnel=(1 if frac(k * GA * PHI) < 1 / 2 else -1) * PHI ** 2 * PHI ** (a2 * IP),   # radius narrows (+) or widens (-)
+                       r0=Z * PHI ** -5 * PHI ** (a5 * PHI),                   # helix radius at mid-fall
+                       ph0=TAU * frac(k * GA * PHI ** 3),                      # spiral phase at entry
+                       hue=frac(k * GA)))                                      # the star's own tint
+HERO = VSTARS[0]; T_PEAK = frac(HERO['s0'] + HERO['life'] * IP)                    # the one bright peak: the first star at its golden point
+def envelope(t):                                       # peaked phi envelope: cos^2 raised to a high Q, period = the loop (seamless)
+    return ((1 + math.cos(TAU * (t - T_PEAK))) / 2) ** Q_PEAK
+def vortex_pos(v, s):                                  # s = 0..1 through the star's life -> x, y, depth (-1 back .. 1 front)
+    ca, sa_ = math.cos(v['head']), math.sin(v['head'])
+    ax, ay = v['x0'] + ca * v['dist'] * s, v['y0'] + sa_ * v['dist'] * s
+    r = v['r0'] * PHI ** (-v['funnel'] * (s - 1 / 2))
+    ph = v['ph0'] + v['hand'] * TAU * v['turns'] * s
+    c, z = math.cos(ph), math.sin(ph)
+    off_t = r * z * IP                                 # helix seen a little from above: circles read as ellipses along the axis
+    return ax - sa_ * r * c + ca * off_t, ay + ca * r * c + sa_ * off_t, z
+def vortex_stars(d, gd, t, E):
+    g = 1 / GLOW_DIV                                   # glow map coordinates (quarter resolution)
+    for v in VSTARS:
+        u = (t - v['s0']) % 1
+        if u >= v['life']: continue
+        s = u / v['life']; fade = math.sin(math.pi * s)
+        lit = fade * (QUIET + (1 - QUIET) * E)        # luminance: quiet most of the loop, full only at the peak
+        sat = IP + (1 - IP) * E                       # spectrum saturation opens with the peak
+        band_a = IP ** 2 + (1 - IP ** 2) * E          # spectrum band strength: faint at rest, full at the peak
+        pts = [vortex_pos(v, max(0, s - TRAIL * j / NT)) for j in range(NT + 1)]
+        for j in range(NT):                            # dispersion trail: spectrum bands spread sideways as the light ages
+            (xa, ya, za), (xb, yb, zb) = pts[j], pts[j + 1]
+            age = (j + 1 / 2) / NT; dx, dy = xb - xa, yb - ya; L = math.hypot(dx, dy) or 1
+            nx, ny = -dy / L * v['hand'], dx / L * v['hand']
+            spread = S * (IP + PHI ** 2 * E) * age ** IP
+            depth = PHI ** (za * IP) / PHI ** IP       # back of the helix dimmer
+            for b in range(NB):
+                o = (b - (NB - 1) / 2) * spread; hb = b / (NB - 1) * (1 - IP ** 3)   # red .. violet
+                al = int(A8 * band_a * fade * depth * (1 - age) ** IP)
+                if al < 1: continue
+                col = hsv(hb, sat, 1)
+                d.line((xa + nx * o, ya + ny * o, xb + nx * o, yb + ny * o), fill=col + (al,), width=S)
+                if E > IP ** 8:                        # glow map: the bands bloom only around the peak
+                    gd.line(((xa + nx * o * PHI) * g, (ya + ny * o * PHI) * g, (xb + nx * o * PHI) * g, (yb + ny * o * PHI) * g),
+                            fill=hsv(hb, sat, E * fade * (1 - age)), width=max(1, round(PHI * (1 + PHI * E))))
+            core = int(A8 * lit * depth * (1 - age) ** PHI)
+            d.line((xa, ya, xb, yb), fill=hsv(v['hue'] + age * IP, IP ** 3, 1) + (core,), width=max(1, int((PHI - IP * age) * S)))
+        hx, hy, hz = pts[0]; hr = S * PHI ** (1 + hz * IP ** 2)
+        disc(d, hx, hy, hr, SAND + (int(A8 * min(1, lit * PHI)),))
+        disc(gd, hx * g, hy * g, hr * PHI ** 2 * g * (1 + PHI ** 2 * E), hsv(v['hue'], IP ** 2, lit))   # head halo, always (quiet glow)
+GLOW_DIV = round(PHI ** 3)                             # glow map at a quarter of the supersampled size (cheap blur)
 def frame(f):
     t = f / N; T = TAU * t; sec = t * LOOP
     im = BG.copy(); ov = Image.new('RGBA', (SW, SH), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
@@ -159,17 +231,13 @@ def frame(f):
         a = sa[i] * (1 + math.sin(tk[i] * T + tph[i])) / 2 if tw[i] else sa[i]
         r = sr[i] * (1 - IP ** 3 + IP ** 2 * a) if tw[i] else sr[i]
         disc(d, sx[i], sy[i], r, hsv(sh[i], IP ** 3, 1) + (int(A8 * a),))
-    for k, s0 in enumerate(SHOOT):
-        u = (t - s0) % 1
-        if u < SH_LEN:
-            u /= SH_LEN; fade = math.sin(math.pi * u)
-            x0, y0 = SW * ((k * IP) % 1), SH * ((k * GA) % 1) * IP; ang = TAU * (IP ** 3 + (k * GA) % 1 * IP ** 4)
-            L = SW * IP; hx, hy = x0 + math.cos(ang) * L * u, y0 + math.sin(ang) * L * u
-            tail = SW * IP ** 4 * min(1, u * PHI ** 2)
-            for j in range(round(PHI ** 5)):
-                a0 = j / round(PHI ** 5); a1 = (j + 1) / round(PHI ** 5)
-                d.line((hx - math.cos(ang) * tail * a0, hy - math.sin(ang) * tail * a0, hx - math.cos(ang) * tail * a1, hy - math.sin(ang) * tail * a1),
-                       fill=hsv(k * GA + a0 * IP, IP ** 2, 1) + (int(A8 * fade * (1 - a0)),), width=max(1, int((PHI ** 2 - PHI * a0) * S)))
+    E = envelope(t)
+    gl = Image.new('RGB', (SW // GLOW_DIV, SH // GLOW_DIV), (0, 0, 0)); gd = ImageDraw.Draw(gl)
+    vortex_stars(d, gd, t, E)
+    gl = gl.filter(ImageFilter.GaussianBlur(Z / GLOW_DIV * PHI ** -9 * (1 + PHI * E)))
+    gain = IP + (PHI ** 2 - IP) * E                     # bloom: faint at rest, full at the peak
+    gl = Image.eval(gl, lambda c: min(A8, int(c * gain))).resize((SW, SH), Image.BILINEAR)
+    im = ImageChops.screen(im, gl)
     im.paste(ov, (0, 0), ov)
     # the Sun and the two orbits (rule 13 anchor)
     ov = Image.new('RGBA', (SW, SH), (0, 0, 0, 0)); d = ImageDraw.Draw(ov); orbit_lines(d); sun(d); im.paste(ov, (0, 0), ov)

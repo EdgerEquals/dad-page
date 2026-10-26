@@ -480,8 +480,8 @@ body.paused .home-code::before{animation-play-state:paused}
 /* ---- Space loop background (trial, preview only): fixed full-page video at 30% behind all content; poster only for reduced motion ---- */
 .bgloop,.bgloop-still{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:.3}
 .bgloop{object-fit:cover;object-position:calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)}   /* rule 13: video Sun on the shared anchor at any aspect */
-.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=3") calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)/cover no-repeat}
-@media(orientation:landscape){.bgloop-still{background-image:url("media/space-loop-land-poster.webp?v=1")}}
+.bgloop-still{display:none;background:url("media/space-loop-poster.webp?v=4") calc(var(--sun-x,1) * 100%) calc(var(--sun-y,0) * 100%)/cover no-repeat}
+@media(orientation:landscape){.bgloop-still{background-image:url("media/space-loop-land-poster.webp?v=2")}}
 @media(prefers-reduced-motion:reduce){.bgloop{display:none}.bgloop-still{display:block}}
 </style>
 <link rel="stylesheet" href="css/command-centre.css?v=7d03a9b6">
@@ -509,7 +509,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <noscript><link rel="stylesheet" href="css/quiz-popups.css?v=1"><link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab"></noscript>
 </head>
 <body>
-<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture data-poster="media/space-loop-poster.webp?v=3" data-src-webm="media/space-loop.webm?v=3" data-src-mp4="media/space-loop.mp4?v=3" data-poster-land="media/space-loop-land-poster.webp?v=1" data-src-webm-land="media/space-loop-land.webm?v=1" data-src-mp4-land="media/space-loop-land.mp4?v=1"></video><div class="bgloop-still" aria-hidden="true"></div>
+<video class="bgloop" id="bgloop" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture data-poster="media/space-loop-poster.webp?v=4" data-src-webm="media/space-loop.webm?v=4" data-src-mp4="media/space-loop.mp4?v=4" data-poster-land="media/space-loop-land-poster.webp?v=2" data-src-webm-land="media/space-loop-land.webm?v=2" data-src-mp4-land="media/space-loop-land.mp4?v=2"></video><div class="bgloop-still" aria-hidden="true"></div>
 <script>(function(){var v=document.getElementById('bgloop'),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');function sync(){if((rm&&rm.matches)||document.hidden){v.pause();}else{var p=v.play();if(p&&p.catch)p.catch(function(){});}}v.muted=true;/* landscape screens get the landscape render (Uranus and Saturn cross inside the frame; Danny 12:46), portrait the v3 loop */var lm=window.matchMedia&&matchMedia('(orientation: landscape)');function sfx(){return lm&&lm.matches?'-land':''}function pick(){v.poster=v.getAttribute('data-poster'+sfx());if(!v.getAttribute('data-on'))return;var t0=v.currentTime;while(v.firstChild)v.removeChild(v.firstChild);[['webm','video/webm'],['mp4','video/mp4']].forEach(function(t){var s=document.createElement('source');s.src=v.getAttribute('data-src-'+t[0]+sfx());s.type=t[1];v.appendChild(s);});v.load();v.currentTime=t0;sync();}pick();if(lm&&lm.addEventListener)lm.addEventListener('change',pick);function go(){if(v.getAttribute('data-on'))return;v.setAttribute('data-on','1');v.preload='auto';pick();document.addEventListener('visibilitychange',sync);if(rm&&rm.addEventListener)rm.addEventListener('change',sync);sync();}/* space loop video starts after load, when idle (poster shows until then; Danny t713u lighter load) */if(window.LoadTiers)LoadTiers.add(2,go,'space-loop video',{id:'space',w:141.3});else addEventListener('load',go);window.__bgloopGo=go;})();</script>
 <div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="fx" id="fxA" aria-hidden="true"></div><div class="fx" id="fxB" aria-hidden="true"></div>
