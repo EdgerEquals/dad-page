@@ -66,3 +66,8 @@ index.html :: landmark:header
 index.html :: style:css/dad-mark-waves.css
 # (index.html :: landmark:header was already listed from 24 Oct, so set-based guard needs the page line below for this one push; the only removals in it are the three items above: verified with page_guard.py check)
 index.html
+# approved by Danny 11:51 AWST 26 Oct ("swap out the Rebella logo with my logo"): Rebella logo button + its svg (role img) replaced on the home page by Dad's equals mark; the questionnaire page keeps Rebella
+index.html :: button:Enlarge Rebella logo
+index.html :: role:img
+# approved by Danny 11:54 AWST 26 Oct ("the logo should be the first priority, but a lighter weight version ... they won't click on it till much later"): js/dad-mark-zoom.js no longer a static defer tag; it loads last (tier 3) or on first tap
+index.html :: script:js/dad-mark-zoom.js
