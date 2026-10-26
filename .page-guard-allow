@@ -74,3 +74,5 @@ index.html :: script:js/dad-mark-zoom.js
 # approved by Danny 16:06 AWST 26 Oct ("Yes, allow the two labels and push the Ed rename"): Ed, not Dad, on his dashboard - the DJ close button and the header logo button keep their place, only their labels say Ed now
 index.html :: button:Close Dad's DJ
 index.html :: button:Enlarge Dad's logo
+# approved by Danny 20:15 AWST 26 Oct ("Yes, push the sound fix live, remove the volume slider and allow the page guard line for it"): soundfix3 removes the DJ pop-up's music volume slider
+index.html :: id:dj-vol

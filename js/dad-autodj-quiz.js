@@ -265,7 +265,7 @@
   function ensure() {
     if (ctx || !AC) return ctx;
     try {
-      ctx = new AC();
+      ctx = window.__djAC || new AC(); window.__djAC = null;              // soundfix3: a context unlocked by the inline early-touch catcher (index.html) before this file landed
       master = ctx.createGain(); master.gain.value = sliderVol();           // the volume slider
       bus = ctx.createGain(); bus.gain.value = IPH;                       // the pump volume
       var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
@@ -812,6 +812,7 @@
     var w = resumeW(e), now = Date.now();
     if (isFinite(s.flip)) genreFlip = s.flip; if (isFinite(s.T0)) T0 = now + (s.T0 - now) * w;   // the rotation phase fades toward a fresh start's (T0 = now) the same way
     if (s.on && AC) { pend = s.tr ? Object.assign({}, s.tr) : {}; if (pend.dm && typeof pend.dm.drive === 'number') pend.dm = Object.assign({}, pend.dm, { w: w }); arm(); }
+    if (pend && window.__djTap) { window.__djTap = 0; setTimeout(resumeTap, 0); }   // soundfix3: he already touched the page before the engine landed: that touch counts
   }
   function reset() {                                                      // daily restart at local solar midnight: knobs back to live, fresh rotation
     Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); genreFlip = 0; T0 = Date.now(); held = null;
@@ -822,7 +823,7 @@
   // ---------- UI (Dad header) ----------
   var $ = function (id) { return document.getElementById(id); };
   var btn, vol, read, readP, led, chips;
-  function sliderVol() { var v = vol ? +vol.value : +(store(K_VOL) || 80); return clamp(isFinite(v) ? v : 80, 0, 100) / 100; }
+  function sliderVol() { return 80 / 100; }   // volume slider removed (Danny 20:09 AWST 26 Oct: 'redundant, doesn't really work'): the master stays at its old default; a saved slider value is ignored
   function sgn(v) { return (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00B1') + +Math.abs(v).toFixed(2); }
   function paint(c) {
     if (!read) return;
@@ -832,7 +833,7 @@
     readP.textContent = 's ' + sgn(c.s) + ' = time ' + p.time + ' ' + sgn(p.tp) + ', sky ' + p.sky + ' ' + sgn(p.wp) + ', ' + p.urgency + ' ' + sgn(p.up) + ', ' + p.mood + ' ' + sgn(p.mp) + ' \u00B7 ' + DIMS.map(function (d) { return d + ' ' + c.dims[d].toFixed(2); }).join(', ') +
       (pendN ? ' \u2192 next: ' + (c.genres.length === Object.keys(GEN).length ? 'every style' : c.genres.join('/')) + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
     var on = playing || !!pend || stalled, wait = !!pend || stalled;
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
+    btn.setAttribute('aria-pressed', playing && !stalled ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);   // soundfix3: the switch shows what he hears (pending / stalled = off, 'tap to resume'), so off never starts sound and on never stops it
     var WHO = (document.documentElement.getAttribute('data-who')||'Dad');   // shown name: Ed on his dashboard (data-who, Danny 15:39 AWST 26 Oct), Dad on Bonnie's pages
     btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? WHO + '\u2019s DJ \u00B7 tap to resume' : playing ? WHO + '\u2019s DJ on' : WHO + '\u2019s DJ';
     syncChips();
@@ -852,8 +853,6 @@
   function boot() {
     btn = $('dj-play'); vol = $('dj-vol'); read = $('dj-read'); readP = $('dj-pumps'); chips = $('dj-chips'); led = btn && btn.querySelector('.dj-led');
     if (!btn || !read) return;
-    vol.value = Math.round(sliderVol() * 100);
-    vol.addEventListener('input', function () { store(K_VOL, vol.value); if (master) master.gain.setTargetAtTime(sliderVol(), ctx.currentTime, 0.03); });
     btn.addEventListener('click', function () {
       if (pend || stalled) { resumeTap(); return; }
       if (playing) { stop(); return; }
