@@ -175,6 +175,13 @@ summary{cursor:pointer;color:var(--muted)}
     <div class="steps"><button type="button" data-sstep="-1" aria-label="Pings more often, one rung">more often</button><button type="button" data-sstep="1" aria-label="Pings rarer, one rung">rarer</button></div>
     <p class="note">Applies on this device the next time the home page loads.</p>
   </section>
+  <section class="tile" data-scene-dial="intensity" aria-labelledby="h-intensity"><!-- solar-model INTENSITY dial (Danny 15:32 AWST 26 Oct: start rich, dial it back) -->
+    <h2 id="h-intensity">7 &middot; Intensity</h2>
+    <p class="what">How strongly the home page's solar system shows: the planets round the Sun and the &#x1F4AB; on its long ellipse. Lowest rung turns them off.</p>
+    <div class="big"><span class="v" data-v>&hellip;</span><span class="rung" data-rung></span></div>
+    <div class="steps"><button type="button" data-sstep="-1" aria-label="Solar system intensity down, one rung">dial back</button><button type="button" data-sstep="1" aria-label="Solar system intensity up, one rung">richer</button></div>
+    <p class="note">Applies on this device the next time the home page loads (or comes back to the front).</p>
+  </section>
 </main>
 <div class="foot">
   <button type="button" id="dsUndo">Undo last step</button>
@@ -183,6 +190,6 @@ summary{cursor:pointer;color:var(--muted)}
 </div>
 <script src="js/season-pumps.js?v=1" defer></script>
 <script src="js/dial-sandbox.js?v=1" defer></script>
-<script src="js/scene-dials.js?v=4" defer></script>
+<script src="js/scene-dials.js?v=5" defer></script>
 </body>
 </html>

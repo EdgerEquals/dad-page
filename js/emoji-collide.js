@@ -23,7 +23,7 @@
   var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.rain i', '.es-comet'];
   var HEAD = { 'rain': 'left:50%;bottom:0', 'es-comet': 'right:0;top:0;width:1em;height:1em' };   // unit: where a streak's glowing head is drawn
   var TICK = MS * Math.pow(IP, 6), FIND = MS * PHI * PHI, BACK = Math.pow(PHI, 3), GRACE = PHI;   // phi: tick PHI^-6 s, rescan PHI^2 s, back after PHI^3 s, PHI s grace
-  var RAD = Math.pow(IP, 1 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-0.5 of the half-box (glyph ink, not padding), 5 effects at once (Fibonacci), PHI s between hits
+  var RAD = Math.pow(IP, 1 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-0.5 of the half-box (glyph ink, not padding), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
   var css = '.ec-gone{visibility:hidden!important}.ec-h{position:absolute;width:0;height:0;pointer-events:none;visibility:hidden}' +
     '.ec-l{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;contain:strict}' +   // unit: just under the launcher's top layer
     '.ec-l>*{position:absolute;left:0;top:0;line-height:1;will-change:transform,opacity;font-style:normal}' +

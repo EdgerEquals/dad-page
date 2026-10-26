@@ -2,7 +2,8 @@
      BIG EARTH  one big faint Earth, stationary, its face turning (Americas / Africa-Europe / Asia-Australia crossfade) once per
                 sidereal day scaled onto the phi ladder (cite: NASA Earth fact sheet, sidereal rotation 23.9345 h), tilted by the
                 obliquity (cite: Astronomical Almanac, 23.4397 deg).
-     MOON GROUP top left of the content box (PHI^-4 in from its corner, below the header): tonight's real phase from the synodic month
+     MOON GROUP (solarsystem, Danny 17:50 AWST: "Yes, have the Moon orbit the Earth") orbits the big Earth on a Kepler ellipse (cited
+                eccentricity 0.0549, sidereal month on a phi rung), so it leaves the screen with the Earth; was top left of the content box. tonight's real phase from the synodic month
                 (cite: 29.530588861 d, new moon 2000-01-06 18:14 UTC), drawn as seen from Perth (southern sky, so mirrored).
                 A satellite (ISS period, cite 5577.6 s) and an astronaut (Himawari period, cite 86163.7 s), each scaled onto its own
                 phi rung, orbit it and pass behind (smaller, dimmer, under the Moon) and in front. They ping only in front and near
@@ -33,6 +34,7 @@
   var LIGHT = 384400 / 299792.458;                  // cite: NASA mean Earth-Moon distance 384,400 km / SI c 299,792.458 km/s
   var OBL = 23.4397 * DEG;                          // cite: Astronomical Almanac, obliquity of the ecliptic 23.4397 deg
   var J2000 = Date.UTC(2000, 0, 1, 12);             // cite: J2000.0 epoch, 2000-01-01 12:00 TT (UTC within a minute)
+  var SIDM = 27.321661 * DAY, MOONE = 0.0549;       // cite: NASA Moon fact sheet, sidereal month 27.321661 d, orbit eccentricity 0.0549
   var SOUTH = true;                                  // anchor: the page's place is Perth (latitude -31.95), southern sky
   function rung(T, lo) { var n = Math.floor(Math.log(T) / Math.log(PHI)); return T * Math.pow(PHI, lo - n); }   // phi: T onto [PHI^lo, PHI^(lo+1))
   function fr(x) { return x - Math.floor(x); }
@@ -71,6 +73,7 @@
   sunN.o.style.setProperty('--sp', (SUN.loop || Math.pow(PHI, 4)) * IP + 's'); sunN.o.style.setProperty('--s0', 1 - Math.pow(IP, 3));   // phi: pulse one rung below the loop, floor 1-PHI^-3
   var PH = ['\uD83C\uDF11', '\uD83C\uDF12', '\uD83C\uDF13', '\uD83C\uDF14', '\uD83C\uDF15', '\uD83C\uDF16', '\uD83C\uDF17', '\uD83C\uDF18'];
   var moon = node(PH[0], 'pl-moon'), sat = node('\uD83D\uDEF0\uFE0F', 'pl-sat'), ast = node('\uD83E\uDDD1\u200D\uD83D\uDE80', 'pl-ast');
+  sat.p.dataset.ec = ast.p.dataset.ec = 'moongroup';                        // emoji-collide: the Moon group is a designed pair (never a crash between its orbiters)
   var scope = node('\uD83D\uDD2D', 'pl-scope'), dish = node('\uD83D\uDCE1', 'pl-dish');
 
   var OP = Math.pow(IP, 2), OPB = Math.pow(IP, 4), PEAK = 1 - Math.pow(IP, 3);   // phi: node 0.382, big Earth 0.146, pulse peak 0.764
@@ -90,11 +93,12 @@
   var ANCH = [
     ['sun',   { of: 'view',    at: [SUN.x, SUN.y], s: Math.pow(IP, 2), sOf: 'content' }],          // rule 13: the shared Sun, the size the big Earth had (PHI^-2)
     ['earth', { of: 'sun',     orb: [Math.pow(IP, 3 / 2), Math.pow(IP, 2), IP], s: Math.pow(IP, 2), sOf: 'content' }],  // phi: Kepler ellipse, Sun at the right focus: semi-major PHI^-1.5 of the view width, depth PHI^-2, eccentricity PHI^-1 (slow, wide arc across the screen)
-    ['moon',  { of: 'content', at: [Math.pow(IP, 4), Math.pow(IP, 4)], s: Math.pow(IP, 11 / 2), sOf: 'view' }],   // phi: top left, PHI^-4 in from the content corner (clear of the header), node size PHI^-5.5
+    ['moon',  { of: 'earth',   orbS: [Math.pow(IP, 1 / 2), Math.pow(IP, 2), MOONE], T: rung(SIDM, 5), s: Math.pow(IP, 11 / 2), sOf: 'view' }],   // solarsystem (Danny 17:50 AWST): the Moon group orbits the Earth; semi-major PHI^-0.5 x the Earth's drawn size (just clear of its disc), depth PHI^-2, real eccentricity (cite), real sidereal month on phi rung 5; node size PHI^-5.5
     ['small', { of: 'moon',    at: [PHI, IP], s: IP }],                                          // phi: little face-Earth beside the Moon
     ['scope', { of: 'content', at: [Math.pow(IP, 4), 1], off: [0, -PHI], s: Math.pow(IP, 11 / 2), sOf: 'view' }],     // phi: bottom-left, PHI x its size above the footer
     ['dish',  { of: 'content', at: [1 - Math.pow(IP, 5), 1], off: [0, -PHI], s: Math.pow(IP, 11 / 2), sOf: 'view' }]  // phi: bottom-right, mirrored
   ];
+  var ZS = 6;                                                                 // unit: the Sun's z (room for a child orbit and its orbiters on either side)
   var A = {}, SPEC = {}; ANCH.forEach(function (a) { SPEC[a[0]] = a[1]; });
   var MEM = [                                                                // member -> anchor, look, aim (derived)
     { n: sunN, a: 'sun', full: true },                                      // unit: the Sun at full opacity, its one animation is the pulse
@@ -112,7 +116,7 @@
     var top = hd ? Math.max(0, hd.getBoundingClientRect().bottom) : 0, bot = ft ? ft.getBoundingClientRect().top : H;
     A.view = { box: true, x0: 0, y0: 0, w: W, h: H }; A.content = { box: true, x0: 0, y0: top, w: W, h: bot - top };   // anchor: measured boxes
   }
-  var ORT = { th: TAU / 2 };                                                 // unit: mean anomaly, starts at aphelion (the left end, fully in view)
+  var ORT = { th: TAU / 2, moon: TAU * fr((Date.now() - NEWMOON) / MS / SYN) };   // unit: mean anomaly; Earth starts at aphelion (the left end, fully in view); the Moon starts at tonight's phase fraction of a turn                                                 // unit: mean anomaly, starts at aphelion (the left end, fully in view)
   function place(k) {
     var sp = SPEC[k], P = A[sp.of], S = sp.sOf ? A[sp.sOf] : P, x, y, sz, sc = 1;
     sz = sp.s * (S.box ? Math.min(S.w, S.h) : S.s);
@@ -120,9 +124,16 @@
       for (i = 0; i < 5; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));   // unit: Newton steps (5 is ample for e = PHI^-1)
       var sn = Math.sin(E), ra = sp.orb[0] * A.view.w; sc = Math.pow(PHI, sn - 1);   // phi: perspective, near point full size
       x = P.x + ra * (Math.cos(E) - e); y = P.y + ra * sp.orb[1] * sn; A._E = E; }
+    else if (sp.orbS) { var e2 = sp.orbS[2] || 0, M2 = ORT[k] || 0, E2 = M2, j;   // an orbit round a moving parent: radius in the parent's DRAWN size, so it shrinks with the parent's depth
+      for (j = 0; j < 5; j++) E2 -= (E2 - e2 * Math.sin(E2) - M2) / (1 - e2 * Math.cos(E2));   // unit: Newton steps
+      var sn2 = Math.sin(E2), ra2 = sp.orbS[0] * P.s; sc = (P.sc || 1) * Math.pow(PHI, (sn2 - 1) * IP);   // phi: parent's depth x its own (gentler, PHI^-1 exponent)
+      x = P.x + ra2 * (Math.cos(E2) - e2); y = P.y + ra2 * sp.orbS[1] * sn2; A._E2 = E2; }
     else if (P.box) { x = P.x0 + sp.at[0] * P.w; y = P.y0 + sp.at[1] * P.h; } else { x = P.x + sp.at[0] * P.s; y = P.y + sp.at[1] * P.s; }
     if (sp.off) { x += sp.off[0] * sz; y += sp.off[1] * sz; }
-    A[k] = { x: x, y: y, s: sz * sc, s0: sz, sc: sc, front: sp.orb ? Math.sin(A._E) > 0 : null };
+    var fr0 = sp.orb ? Math.sin(A._E) > 0 : sp.orbS ? Math.sin(A._E2) > 0 : null;
+    // z ladder (the Sun is ZS): an orbit sits ZS +- ZS*2/3 round the Sun; a child orbit sits +- ZS/3 round its parent; orbiters round the Moon +-1 round it
+    var z = sp.orb ? (fr0 ? ZS + ZS * 2 / 3 : ZS - ZS * 2 / 3) : sp.orbS ? (A[sp.of].z != null ? A[sp.of].z : ZS) + (fr0 ? ZS / 3 : -ZS / 3) : null;
+    A[k] = { x: x, y: y, s: sz * sc, s0: sz, sc: sc, front: fr0, z: z };
   }
   function opOf(m) { return m.full ? 1 : opAim(m.base ? m.base() : 0); }    // unit: full = opacity 1
   function putMem(m, opNow) {
@@ -132,15 +143,15 @@
       flip = Math.abs(rf) < Math.abs(r); rot = flip ? rf : r;
     }
     put(m.n, a.x, a.y, a.s0 || a.s, rot, opNow == null ? opOf(m) : opNow, flip, a.sc);
-    if (a.front != null) { var z = a.front ? 2 : 0; if (m.n.z !== z) { m.n.z = z; m.n.o.style.zIndex = z; } }   // unit: in front of / behind the Sun (z 1)
+    if (a.z != null) { var z = a.z; if (m.n.z !== z) { m.n.z = z; m.n.o.style.zIndex = z; } }   // in front of / behind the Sun (ZS), or its parent
   }
   var MOVING = [];                                                           // anchors that ride an orbit, plus everything that hangs off them
-  function moving() { MOVING = []; ANCH.forEach(function (a) { var k = a[0], sp = SPEC[k]; if (sp.orb || MOVING.indexOf(sp.of) >= 0) MOVING.push(k); }); }
+  function moving() { MOVING = []; ANCH.forEach(function (a) { var k = a[0], sp = SPEC[k]; if (sp.orb || sp.orbS || MOVING.indexOf(sp.of) >= 0) MOVING.push(k); }); }
   function resolve() {
     frame(); moving();
     ANCH.forEach(function (a) { place(a[0]); });
     MEM.forEach(function (m) { putMem(m); });
-    sunN.o.style.zIndex = 1;
+    sunN.o.style.zIndex = ZS;
     big.o.style.setProperty('--fx', '0s');                                    // unit: no CSS fade on the big Earth, its spin is continuous
     if (NM) NM.fit();
   }
@@ -175,7 +186,7 @@
     ORB.forEach(function (q) {
       var th = TAU * (t / q.T + q.ph), sn = Math.sin(th), sc = Math.pow(PHI, (sn - 1) * IP);   // phi: perspective, largest in front
       q.front = sn > 0; q.peak = sn > PEAK;
-      var M = A[q.a], rx = M.s * ORX, o = q.n.o.style; o.fontSize = (M.s * q.s) + 'px'; o.zIndex = q.front ? 2 : 0; moon.o.style.zIndex = 1;
+      var M = A[q.a], rx = M.s * ORX, o = q.n.o.style; o.fontSize = (M.s * q.s) + 'px'; var mz = M.z != null ? M.z : ZS; o.zIndex = mz + (q.front ? 1 : -1);
       o.transform = 'translate3d(' + (M.x + rx * Math.cos(th)) + 'px,' + (M.y + rx * ORY * sn) + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) scale(' + sc + ')';   // unit: centre on the point
       o.opacity = IP + ((q.op || OPA) - IP) * (1 + sn) / 2;                  // phi: floor PHI^-1 (far side), peak 1-PHI^-3 pumped (near side)
     });
@@ -185,12 +196,12 @@
   function orbitEarth(now) {
     var P = root.PhiPumps; if (P && !opump) opump = P.node('pingorbit', 3, 6, Math.pow(IP, 4), P.page, 13);   // phi: 3 pumps, rungs 6.., depth PHI^-4
     var k = 1; try { k = opump ? opump.out() : 1; } catch (e) {}
-    if (oLast) ORT.th -= TAU * Math.min(now - oLast, MS) / MS / (TO / k); oLast = now;   // unit: dt capped at a second; minus = left to right on the near side
+    if (oLast) { var dts = Math.min(now - oLast, MS) / MS; ORT.th -= TAU * dts / (TO / k); ANCH.forEach(function (a) { var sp = SPEC[a[0]]; if (sp.orbS) ORT[a[0]] = (ORT[a[0]] || 0) - TAU * dts / (sp.T / k); }); } oLast = now;   // unit: dt capped at a second; minus = left to right on the near side
     MOVING.forEach(place);
     MEM.forEach(function (m) { if (MOVING.indexOf(m.a) >= 0 || MOVING.indexOf(m.aim) >= 0) putMem(m, m.n.op); });
   }
   var raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);                      // phi: frame cap PHI^-7 s
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbit(now); orbitEarth(now); spinBig(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
+  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbitEarth(now); orbit(now); spinBig(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
   function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
 
   // ---------- ping chain ----------
