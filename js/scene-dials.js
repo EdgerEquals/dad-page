@@ -7,7 +7,7 @@
   var KEY = 'dadSceneDials.v1';
   var PCT = 100;                                                         // unit: percent
   var SPEC = { clouds: { def: 10, lo: 7, hi: 13, fmt: 'every' },          // phi: rungs; default 10 = one cloud per 123 s (rarer), range 29 s .. 521 s
-    topsweep: { def: 3, lo: 2, hi: 6, fmt: 'faint' },                    // phi: top-sweep planet opacity PHI^-r, default 0.236
+    topsweep: { def: 3, lo: 2, hi: 5, fmt: 'faint' },                    // phi: top-sweep planet peak opacity 1 - PHI^-(hi+1-r), default 0.764
     pings: { def: 6, lo: 4, hi: 9, fmt: 'every' } };                     // phi: ping chain every PHI^r s, default 17.9 s
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
@@ -15,7 +15,7 @@
     var id = t.getAttribute('data-scene-dial'), sp = SPEC[id]; if (!sp) return;
     var v = t.querySelector('[data-v]'), rg = t.querySelector('[data-rung]');
     function get() { var d = load(); return d[id] != null ? +d[id] : sp.def; }
-    function show() { var r = get(), s = Math.pow(PHI, r); if (sp.fmt === 'faint') v.textContent = 'opacity ' + Math.round(PCT / s) + '%'; else v.textContent = 'one every ' + (s < 60 ? Math.round(s) + ' s' : (s / 60).toFixed(1) + ' min');   // unit: seconds per minute
+    function show() { var r = get(), s = Math.pow(PHI, r); if (sp.fmt === 'faint') v.textContent = 'opacity ' + Math.round(PCT * (1 - Math.pow(PHI, r - sp.hi - 1))) + '%'; else v.textContent = 'one every ' + (s < 60 ? Math.round(s) + ' s' : (s / 60).toFixed(1) + ' min');   // unit: seconds per minute
       rg.textContent = 'rung ' + r + (r === sp.def ? ' (default)' : ''); }
     Array.prototype.forEach.call(t.querySelectorAll('[data-sstep]'), function (b) {
       b.addEventListener('click', function () { var d = load(), r = get() + (+b.getAttribute('data-sstep')); if (r < sp.lo || r > sp.hi) return; d[id] = r; save(d); show(); });

@@ -75,7 +75,14 @@
     items.forEach(function (it) {
       var sun = window.PhiSun && document.documentElement.hasAttribute('data-scene-comet') ? window.PhiSun : null;   // home: rule 13, centred on the shared Sun
       it.o.style.setProperty('--cx', Math.round(sun ? sun.x * W : it.d[6] * W) + 'px'); it.o.style.setProperty('--cy', Math.round(sun ? sun.y * innerHeight - top - GAP : it.d[7] * H) + 'px');
+      if (sun) {   // orbitvis (Danny 14:45 AWST 26 Oct): fit round the Sun so each orbit crosses the visible band; nested, tipped down-left
+        var IPp = 1 / PHI, rx = sun.x * W * Math.pow(IPp, 2 - it.j / 2);   // phi: semi-major PHI^-2, PHI^-1.5, PHI^-1 of the Sun's x
+        it.e.style.setProperty('--rx', Math.round(rx) + 'px'); it.y.style.setProperty('--ry', Math.round(rx * Math.pow(IPp, 2)) + 'px');   // phi: depth PHI^-2
+        it.o.style.setProperty('--ring', (-Math.abs(RINGS[it.d[1]])) + 'deg');   // unit: same tilt, always down-left
+        it.op.style.setProperty('--qs-lo', IPp); it.op.style.setProperty('--qs-hi', 1 - Math.pow(IPp, 3));   // phi: pulse PHI^-1 .. 1-PHI^-3
+      } else {
       it.e.style.setProperty('--rx', Math.round(GROW * 0.5 * W) + 'px'); it.y.style.setProperty('--ry', Math.round(GROW * Math.abs(it.d[2]) * H) + 'px');
+      }
     });
   }
   var r = 0; function q() { if (!r) r = requestAnimationFrame(function () { r = 0; band(); }); }

@@ -17,14 +17,14 @@
 .qs .qs-y{display:block;animation:qsY var(--qs-half,61.5s) cubic-bezier(.3642,0,.6358,1) var(--ydel,0s) infinite alternate}
 .qs .qs-c{display:block;transform:translate(-50%,-50%)}
 .qs .qs-rot{display:block;transform-style:preserve-3d;animation:var(--rot-kf,qsSpin) var(--qs-rot,34.79s) var(--rot-ease,linear) var(--rdel,0s) infinite}
-.qs .qs-op{display:block;opacity:.08;animation:qsPulse var(--qs-pulse,14.1s) ease-in-out var(--pdel,0s) infinite}
+.qs .qs-op{display:block;opacity:var(--qs-lo,.08);animation:qsPulse var(--qs-pulse,14.1s) ease-in-out var(--pdel,0s) infinite}
 @keyframes qsX{from{transform:translate3d(calc(-1 * var(--rx,300px)),0,0)}to{transform:translate3d(var(--rx,300px),0,0)}}
 @keyframes qsY{from{transform:translate3d(0,calc(-1 * var(--ry,100px)),0)}to{transform:translate3d(0,var(--ry,100px),0)}}
 @keyframes qsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes qsFlip{0%{transform:perspective(200px) rotateY(0deg)}50%{transform:perspective(200px) rotateY(180deg)}100%{transform:perspective(200px) rotateY(360deg)}}
 @keyframes qsHalf{0%,100%{transform:rotate(0deg)}50%{transform:rotate(180deg)}}
 @keyframes qsRock{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(20deg)}}
-@keyframes qsPulse{0%,100%{opacity:.08}50%{opacity:.32}}
+@keyframes qsPulse{0%,100%{opacity:var(--qs-lo,.08)}50%{opacity:var(--qs-hi,.32)}}
 @media (max-width:575px){.qs-orb .qs{font-size:14px}}
 .qs-layer.qs-paused *,body.paused .qs-layer *{animation-play-state:paused!important}
 @media (prefers-reduced-motion:reduce){.qs-layer{display:none}}

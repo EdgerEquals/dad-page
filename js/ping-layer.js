@@ -67,6 +67,7 @@
   var scope = node('\uD83D\uDD2D', 'pl-scope'), dish = node('\uD83D\uDCE1', 'pl-dish');
 
   var OP = Math.pow(IP, 2), OPB = Math.pow(IP, 4), PEAK = 1 - Math.pow(IP, 3);   // phi: node 0.382, big Earth 0.146, pulse peak 0.764
+  var OPE = 1 - Math.pow(IP, 4);                                            // phi: big Earth one rung above the rest, 0.854 (pumped)
   var OPA = 1 - Math.pow(IP, 3);                                            // phi: telescope + dish one rung up, 0.764 (pumped)
   var G = {}, ORB = [
     { n: sat, T: rung(ISS, 3), ph: fr(IP), s: IP },                       // phi: satellite on rung 3 (4.2..6.9 s)
@@ -75,11 +76,17 @@
     var W = innerWidth, H = innerHeight, m = Math.min(W, H), ft = doc.querySelector('.foot'), fy = ft ? ft.getBoundingClientRect().top : H;
     G.fs = m * Math.pow(IP, 11 / 2);                                       // phi: node size PHI^-5.5 of the short side
     G.mx = W * Math.pow(IP, SUN.k); G.my = H * SUN.y;                      // rule 13 mirror: top left at PHI^-k
-    G.ex = W / 2; G.ey = H * IP; G.bfs = m * Math.pow(IP, 2);              // phi: big Earth at the golden height, PHI^-2 of the short side
+    // earthspin (Danny 14:53 AWST 26 Oct): big Earth in the top-right corner of the content box (header bottom .. footer top), its top
+    // clear of the Sun's glow (rule 13 anchor + one glow diameter), size PHI^-2 of the box's short side
+    var hd = doc.getElementById('q-head'), ct = hd ? Math.max(0, hd.getBoundingClientRect().bottom) : 0, CW = W, CH = fy - ct;
+    G.bfs = Math.min(CW, CH) * Math.pow(IP, 2);                            // phi: PHI^-2 of the content box's short side
+    var er = G.bfs * IP + G.bfs * Math.pow(IP, 3);                         // phi: glyph half-box ~ font x (PHI^-1 + PHI^-3)
+    var sunClear = H * SUN.y + m * Math.pow(IP, 4);                        // anchor: Sun centre + its glow disc (PHI^-4 of the short side)
+    G.ex = CW - er - CW * Math.pow(IP, 6); G.ey = Math.max(ct + CH * Math.pow(IP, 5), sunClear) + er;   // phi: inset PHI^-6 of the width, PHI^-5 of the height
     G.rx = G.fs * PHI; G.ry = G.rx * Math.pow(IP, 2);                      // phi: orbit around the Moon
     var low = fy - G.fs * PHI;                                             // phi: one node-size x PHI above the footer
     G.sx = W * Math.pow(IP, 5); G.sy = low; G.dx = W * (1 - Math.pow(IP, 5)); G.dy = low;   // phi: near the bottom corners
-    put(big, G.ex, G.ey, G.bfs, -OBL, opAim());                         // pingop (Danny 14:41): Earth + Moon group on the 1-PHI^-3 rung too
+    put(big, G.ex, G.ey, G.bfs, -OBL, opAim(OPE)); big.o.style.setProperty('--fx', '0s');   // unit: no CSS fade, the spin is continuous                         // pingop (Danny 14:41): Earth + Moon group on the 1-PHI^-3 rung too
     put(moon, G.mx, G.my, G.fs, 0, opAim(), SOUTH);
     put(small, G.mx + G.fs * PHI, G.my + G.fs * IP, G.fs * IP, 0, opAim());
     put(scope, G.sx, G.sy, G.fs, 0, opAim()); put(dish, G.dx, G.dy, G.fs, 0, opAim());
@@ -96,8 +103,8 @@
   }
   function point() { aimOne(scope, NATIVE.scope); aimOne(dish, NATIVE.dish); }
   var apump = null;
-  function opAim() { var P = root.PhiPumps; if (P && !apump) apump = P.node('pingaim', 3, 4, Math.pow(IP, 4), P.page, 3);   // phi: 3 pumps, rungs 4.., depth PHI^-4
-    var k = 1; try { k = apump ? apump.out() : 1; } catch (e) {} return Math.min(1, OPA * k); }   // unit: opacity cap
+  function opAim(base) { var P = root.PhiPumps; if (P && !apump) apump = P.node('pingaim', 3, 4, Math.pow(IP, 4), P.page, 3);   // phi: 3 pumps, rungs 4.., depth PHI^-4
+    var k = 1; try { k = apump ? apump.out() : 1; } catch (e) {} return Math.min(1, (base || OPA) * k); }   // unit: opacity cap
   function put(n, x, y, fs, rot, op, flip) {
     n.o.style.fontSize = fs + 'px'; n.o.style.opacity = op; n.x = x; n.y = y; n.op = op;
     n.o.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) rotate(' + rot + 'rad)' + (flip ? ' scaleX(-1)' : '');   // unit: centre on the point
@@ -109,7 +116,13 @@
     G.lon = lon; G.age = age / DAY;
   }
   var t0 = performance.now(), TB = rung(SID, 8);                            // phi: big Earth turns once per rung-8 sidereal day (47..76 s)
-  function spinBig(now) { var w = faceW(TAU * fr((now - t0) / MS / TB) - TAU / 2); big.f.forEach(function (e, j) { e.style.opacity = w[j]; }); }
+  var spump = null, turns = 0, sLast = 0, TS = Math.pow(PHI, 6);         // phi: one globe turn per PHI^6 s (17.9 s), rate pumped
+  function spinBig(now) {
+    var P = root.PhiPumps; if (P && !spump) spump = P.node('pingspin', 3, 5, Math.pow(IP, 4), P.page, 5);   // phi: 3 pumps, rungs 5.., depth PHI^-4
+    var k = 1; try { k = spump ? spump.out() : 1; } catch (e) {}
+    if (sLast) turns += (now - sLast) / MS / (TS / k); sLast = now;      // unit: integrate the rate, so a pump change never jumps
+    var w = faceW(TAU * fr(turns) - TAU / 2); big.f.forEach(function (e, j) { var v = Math.round(w[j] * MS) / MS;   /* unit: thousandths */ if (e._w !== v) { e._w = v; e.style.opacity = v; } });
+  }
 
   if (root.RhythmContinuity) RhythmContinuity.phase('scene:ping', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   // orbiters: rAF, capped
@@ -124,7 +137,7 @@
     });
   }
   var raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);                      // phi: frame cap PHI^-7 s
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbit(now); } raf = requestAnimationFrame(tick); }
+  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; orbit(now); spinBig(now); } raf = requestAnimationFrame(tick); }
   function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
 
   // ---------- ping chain ----------
@@ -149,7 +162,7 @@
 
   doc.body.appendChild(Lr); measure(); sky(); spinBig(performance.now());
   if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); orbit(t0); }      // unit: still, both in front (quarter turn)
-  else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); [scope, dish, big, moon, small].forEach(function (n) { n.op = opAim(); n.o.style.opacity = n.op; }); ORB.forEach(function (q) { q.op = opAim(); }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
+  else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); [scope, dish, moon, small].forEach(function (n) { n.op = opAim(); n.o.style.opacity = n.op; }); big.op = opAim(OPE); big.o.style.opacity = big.op; ORB.forEach(function (q) { q.op = opAim(); }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
   addEventListener('resize', measure); addEventListener('orientationchange', measure);
   if (root.visualViewport) visualViewport.addEventListener('resize', measure);
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(measure);                  // emoji font box settles after load

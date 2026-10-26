@@ -19,7 +19,8 @@
   var LOOP = SUN.loop, SWEEP = SUN.sweep, SPINX = SUN.sky.spinTurnsExp;
   function dial(id, def) { try { var d = JSON.parse(localStorage.getItem('dadSceneDials.v1') || '{}'); return d[id] != null ? +d[id] : def; } catch (e) { return def; } }
   function fr(x) { return x - Math.floor(x); }
-  var FAINT = Math.pow(IP, dial('topsweep', 3));                         // phi: planet opacity ceiling PHI^-3 by default
+  var TOPHI = 5, PEAKP = 1 - Math.pow(IP, TOPHI + 1 - dial('topsweep', 3));   // phi: orbitvis (Danny 14:45): peak 1-PHI^-3 by default (dial hi = 5)
+  var FLOORP = PEAKP - Math.pow(IP, 4), FAINT = PEAKP;                   // phi: far side one PHI^-4 step lower (PHI^-1 by default)
   var CEIL = 1 - Math.pow(IP, 3);                                        // phi: sun pulse ceiling 0.764 (nearest rung to 0.8)
 
   var css = '.tsl-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;overflow:clip;contain:strict}' +
@@ -57,7 +58,8 @@
   var G = { cx: 0, cy: 0, a: 0, b: 0, fs: 0 };
   function measure() {
     var W = innerWidth, H = innerHeight; G.cx = W * SUN.x; G.cy = H * SUN.y;
-    G.a = W * IP; G.b = G.a * (H / W) * IP;                               // phi: base orbit PHI^-1 of the width, depth squash by the aspect x PHI^-1
+    var kmax = P.reduce(function (m, p) { return Math.max(m, p.k); }, 1);   // outer orbit fits the visible width left of the Sun
+    G.a = G.cx * IP / kmax; G.b = G.a * Math.pow(IP, 2);                  // phi: outer semi-major PHI^-1 of the Sun's x, depth PHI^-2 (stays on screen)
     G.fs = Math.min(W, H) * Math.pow(IP, 5);                              // phi: near-side planet size PHI^-5 of the viewport
     P.forEach(function (p) { p.e.style.fontSize = G.fs + 'px'; });
     L.style.zIndex = zTop();
@@ -80,7 +82,7 @@
       var x = G.cx + a * Math.cos(th), y = G.cy + b * sn, sc = Math.pow(PHI, (sn - 1) * PHI);   // phi: perspective, near side full size
       var rot = p.spin ? TAU * p.spin * t / (p.T / 2) : wave - TAU * Math.pow(IP, 6);    // phi: ringed planet tilt PHI^-6 turn + wave
       p.e.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + rot + 'rad) scale(' + sc + ')';
-      p.e.style.opacity = FAINT * sc;
+      p.e.style.opacity = FLOORP + (PEAKP - FLOORP) * (1 + sn) / 2;         // unit: far side floor, near side peak
       var f = sn >= 0; if (f !== p.front) { p.front = f; p.e.style.zIndex = f ? 2 : 0; }   // unit: in front of / behind the sun (z 1)
     });
   }
