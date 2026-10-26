@@ -191,11 +191,12 @@
     setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
     // CC log for the export: brightness (LP up, HP down), flanger wet, wash, sampled on the sixteenth grid from now to the tail
     var R = K.recCC, span = Math.log(FHI / FLO); clearInterval(txLog);
-    if (R) txLog = setInterval(function () {
-      var x = (Math.log(lp.frequency.value / FLO) - Math.log(hp.frequency.value / FLO)) / span;
-      R(74, x); R(93, flW.gain.value * PHI); R(91, wSend.gain.value * PHI);   // unit: GM brightness, chorus/flanger depth, reverb send
-      if (c.currentTime > td + tail) clearInterval(txLog);
-    }, d16 * MS);
+    var q = '';
+    function ccNow() { var x = (Math.log(lp.frequency.value / FLO) - Math.log(hp.frequency.value / FLO)) / span, v = [x, flW.gain.value * PHI, wSend.gain.value * PHI];   // unit: GM brightness, chorus/flanger depth, reverb send
+      R(74, v[0]); R(93, v[1]); R(91, v[2]); var k = v.map(function (y) { return Math.round(clamp(y, 0, 1) * 127); }).join(), same = k === q; q = k; return same; }   // unit: 7-bit CC steps (settled = no step changed)
+    // MIDI Bot review: the values before the sweep are logged at the call, and logging runs on past the hand-back (TXu) until the knobs
+    // have settled again (a beat after apply() takes over), so the file ends at the resting brightness and sends, not mid-tail
+    if (R) { ccNow(); txLog = setInterval(function () { var st = ccNow(); if ((st && c.currentTime > TXu + beat) || c.currentTime > TXu + PHI * PHI * PHI) clearInterval(txLog); }, d16 * MS); }   // phi: give up PHI^3 s after the hand-back
     sync(); return true;
   }
   // ---------- knob chips (same style as the pump knobs) ----------
