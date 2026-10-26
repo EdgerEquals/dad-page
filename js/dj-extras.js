@@ -16,13 +16,14 @@
   // ---------- lead voices (unchanged from the single-file engine) ----------
   var MORE = {
     stab:  function (tr, f, t, d, v) { voice(tr, tr.g.wave, f, t, d, v * 0.07, { a: 0.004, hold: d * 0.5, rel: 0.06, cut: tr.g.cut, det: 7, rev: 0.25 }); },
-    ep:    function (tr, f, t, d, v) {
-      var end = t + d + 1.5, c = osc('sine', f, t, end), m = osc('sine', f * 2, t, end), mg = C().createGain(), g = C().createGain();
-      mg.gain.setValueAtTime(f * 1.2, t); mg.gain.setTargetAtTime(f * 0.1, t, 0.25); m.connect(mg); mg.connect(c.frequency);
-      c.connect(g); env(g, t, 0.004, v * 0.12, d * 0.7, 0.35); g.connect(tr.out); var s = C().createGain(); s.gain.value = 0.4; g.connect(s); s.connect(tr.rev); },
+    ep:    function (tr, f, t, d, v) {                                  // FM e-piano: ratio 2, index PHI^(2s-1) x f falling to PHI^-(4+(1-s)) x f (sophistication dial)
+      var so = tr.s == null ? IPH : tr.s;
+      voice(tr, 'sine', f, t, d, v * Math.pow(PHI, -SPB - IPH), { a: Math.pow(PHI, -Math.pow(PHI, 4) - SPB - IPH), hold: d * IPH, rel: IPH * IPH, cut: FHI * IPH * IPH, rev: IPH * IPH, fm: { r: 2, i0: Math.pow(PHI, 2 * so - 1), i1: Math.pow(PHI, -(SPB + 1 - so)), tau: Math.pow(PHI, -3) } }); },   // phi: index rungs; unit: 2:1 FM ratio (octave)
     piano: function (tr, f, t, d, v) { voice(tr, 'triangle', f, t, d, v * 0.14, { a: 0.003, hold: 0.02, rel: 0.6, cut: 3200, sweep: 0.5, rev: 0.6 });
                                        voice(tr, 'sine', f * 2, t, d, v * 0.04, { a: 0.003, hold: 0.01, rel: 0.3, cut: 5000 }); },
-    bell:  function (tr, f, t, d, v) { voice(tr, 'sine', f, t, d, v * 0.08, { a: 0.01, hold: 0.02, rel: 0.9, cut: 6000, rev: 1 }); voice(tr, 'sine', f * 3.01, t, d, v * 0.015, { a: 0.005, rel: 0.4, cut: 8000, rev: 1 }); },
+    bell:  function (tr, f, t, d, v) {                                  // FM bell: inharmonic ratio PHI^2, index PHI^(s PHI) x f ringing down over PHI^-1 s (sophistication dial)
+      var so = tr.s == null ? IPH : tr.s;
+      voice(tr, 'sine', f, t, d, v * Math.pow(PHI, -2 * PHI * PHI), { a: Math.pow(PHI, -Math.pow(PHI, 4) - PHI * PHI), hold: Math.pow(PHI, -SPB * PHI - PHI), rel: IPH + Math.pow(PHI, -PHI * PHI), cut: FHI * Math.pow(PHI, -1 - so), rev: 1, fm: { r: PHI * PHI, i0: Math.pow(PHI, so * PHI) * IPH, i1: Math.pow(PHI, -SPB), tau: IPH } }); },   // phi: bell partials and cut
     horn:  function (tr, f, t, d, v) { voice(tr, 'sawtooth', f, t, d, v * 0.06, { a: 0.12, hold: d * 0.8, rel: 0.3, cut: 1100, det: 5, rev: 0.8 }); },
     square:function (tr, f, t, d, v) { voice(tr, 'square', f, t, d, v * 0.045, { a: 0.004, hold: d * 0.6, rel: 0.08, cut: 2600, rev: 0.3 }); },
     saw:   function (tr, f, t, d, v) { voice(tr, 'sawtooth', f, t, d, v * 0.045, { a: 0.004, hold: d * 0.6, rel: 0.08, cut: 3200, det: 6, rev: 0.3 }); },
