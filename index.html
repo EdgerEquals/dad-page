@@ -2,6 +2,9 @@
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual"><!-- whiteline fix (Danny 13:14 AWST 26 Oct): viewport + dark canvas FIRST, before any script, so the very first paint is laid out at device width on a dark canvas -->
+<meta name="color-scheme" content="dark light">
+<style>:root{color-scheme:dark}html[data-theme="light"]{color-scheme:light}body{background-color:#161B1F}</style><!-- default canvas + scrollbars dark from byte one; NO html background (that stops the body background propagating and blanks the z<0 scene) -->
 <script>try{if(localStorage.getItem("dadQuizTheme")==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}</script><!-- light theme before first paint (Danny t0u 25 Oct; switch = footer tty satellite, js/quiz-theme.js) -->
 <script src="js/phi-sun.js?v=1" defer></script><!-- rule 13 shared Sun anchor + sky constants (Danny 12:34 AWST 26 Oct) -->
 <script id="phi-timing">
@@ -187,7 +190,6 @@ window.QUIZ_COPY = {
 
 /* Header ticker + Simmie terminal facts come from facts.json (sourced, verified, filtered by the age dial). */
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Questionnaire preview for Bonnie</title>
