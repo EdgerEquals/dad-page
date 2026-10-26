@@ -475,7 +475,6 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
 <link rel="stylesheet" href="css/dad-dj-quiz.css?v=ef59eefe">
 <link rel="stylesheet" href="css/quiz-dad-head.css?v=logodown1"><!-- Dad's palette (Danny 24 Oct 08:38 AWST: the questionnaire is from Dad, so it always uses his palette) -->
 <link rel="stylesheet" href="css/quiz-qcard-compact.css?v=markbar"><!-- Questions for Bonnie row at half height (Danny 13:00 AWST 24 Oct, t623u) -->
-<link rel="stylesheet" href="css/quiz-startbtn-portrait.css?v=b3ac5a78"><!-- Start button slimmer in phone portrait (Danny 13:04 AWST 24 Oct, t630u) -->
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide"})</script>
@@ -536,38 +535,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
     <div class="dh-brand"><button type="button" class="dad-zoom" data-zoom="dad" data-zoom-title="Dad's logo" aria-label="Enlarge Dad's logo" aria-haspopup="dialog"><img class="dad-mark" data-zoom-alt="Dad’s world equals mark" src="dash/img/dad-mark-v2-head-2026-10-25c.svg?v=breathe1" data-zoom-src="dash/img/dad-mark-v2-2026-10-25c.svg?v=breathe1" data-zoom-stage="dash/img/dad-mark-v2-stage-2026-10-25c.svg?v=breathe1" width="32" height="32" alt=""><span class="dmw" aria-hidden="true"><i class="o"></i><i class="r"></i><i class="o"></i><i class="r"></i></span></button><div class="dh-words"><span class="dh-title" data-copy="headTitle">Questions for Bonnie</span><span class="dh-pill" data-copy="headPill">from Dad</span><p class="dh-sub" data-copy="headSub">Go with whatever feels right to you.</p></div></div><!-- tagline under the title, mark x2 (Danny t681u 18:09 AWST 24 Oct) -->
   </div></header>
 </div>
-<main class="wrap">
-  <section class="panel" id="start">
-    <h1><span data-copy="intro">Hey Bonnie, here's a questionnaire I prepared for you,</span> <span class="from" data-copy="from">from Dad</span></h1>
-    <div class="leadrow"><span class="simmie" data-simmie style="--sz:56px"></span><p class="lead" data-copy="instruction">Pick the one you like better, tap Reroll under a choice to swap in a different topic, or type a question or comment in the box under each one.</p></div>
-    <button class="btn big" id="go" data-copy="start">Start questionnaire</button>
-  </section>
-
-  <section class="panel" id="quiz" hidden aria-live="polite">
-    <div class="stars" id="stars" aria-hidden="true"></div>
-    <p class="count" id="count"></p>
-    <p class="agenote" id="agenote" hidden></p>
-    <h2 class="qlabel" data-copy="label">Which one would you prefer?</h2>
-    <div class="choices">
-      <div class="choice"><button class="tile" id="t0"><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="emo" aria-hidden="true"></span><span class="txt"></span></button><button class="btn reroll" data-i="0" data-copy="reroll">&#x1F3B2; Reroll</button></div>
-      <div class="choice"><button class="tile" id="t1"><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="sp" aria-hidden="true"></span><span class="emo" aria-hidden="true"></span><span class="txt"></span></button><button class="btn reroll" data-i="1" data-copy="reroll">&#x1F3B2; Reroll</button></div>
-    </div>
-    <div class="askbox" id="askbox">
-      <label for="note" data-copy="askLabel">Type a question or comment</label>
-      <textarea id="note" placeholder="Anything you want to ask or tell Dad about this one…"></textarea>
-      <div class="btnrow"><button class="btn bk" id="back" data-copy="back">&larr; Back</button><button class="btn send" id="send" data-copy="send">Send</button><button class="btn skip" id="skip" data-copy="skip">Skip</button><button class="btn bk" id="back2" data-copy="backRight">Back &rarr;</button></div>
-      <span class="saved" id="saved" role="status"></span>
-      <ul class="notes" id="notes"></ul>
-    </div>
-  </section>
-
-  <section class="panel sum" id="summary" hidden>
-    <h2 data-copy="sumTitle">&#x2728; You did it, Bonnie! &#x2728;</h2>
-    <p class="yay" data-copy="sumLead">Here's what you picked:</p>
-    <ol id="sumlist"></ol>
-    <button class="btn big" id="again" data-copy="again">Start again</button>
-  </section>
-</main>
+<main class="wrap" id="home-main"></main><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
   <div class="strip" aria-label="Page status">
@@ -596,7 +564,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
   function fmt(k,v){return String(C[k]||'').replace(/\{(\w+)\}/g,function(_,n){return v&&v[n]!=null?v[n]:'';});}
   document.title=C.pageTitle||document.title;
   Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'),function(el){var k=el.getAttribute('data-copy');if(C[k]!=null)el.textContent=C[k];});
-  if(C.askPlaceholder)document.getElementById('note').placeholder=C.askPlaceholder;
+  if(C.askPlaceholder&&document.getElementById('note'))document.getElementById('note').placeholder=C.askPlaceholder;
   // ---- Options: text, emoji, tile colour, background theme ----
   var O=function(t,e,c,th){return {t:t,e:e,c:c,th:th};};
   var PAIRS=[
@@ -841,7 +809,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
   var lastDone=0;
   function light(id,cls,val){var el=$(id);el.classList.remove('warn','bad','idle');if(cls)el.classList.add(cls);el.querySelector('b').textContent=val;}
   window.SIM_LIGHTS=function(){
-    var q=$('quiz'),sm=$('summary'),total=state?state.length:12;
+    var q=$('quiz')||{hidden:true},sm=$('summary')||{hidden:true},total=state?state.length:12;
     light('ltStep',(q.hidden&&sm.hidden)?'idle':'',!q.hidden?(qi+1)+'/'+total:(!sm.hidden?total+'/'+total:'--'));
     var done=state?state.filter(function(x){return x.pick!=null;}).length:0;
     light('ltDone',done?'':'idle',String(done));
@@ -1016,6 +984,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
       ol.appendChild(li);
     });
   }
+  if($('go')){ /* questionnaire wiring: only where the questionnaire is (not on the blank home screen) */
   $('go').onclick=function(){simLastQ=-1;reset();show('quiz');render();$('t0').focus({preventScroll:true});};
   $('again').onclick=function(){simLastQ=-1;reset();show('start');theme('teen');};
   [0,1].forEach(function(i){
@@ -1040,6 +1009,7 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
     state[qi].notes.push(v);render();$('saved').textContent=C.saved;};
   $('back').onclick=$('back2').onclick=function(){if(qi>0){qi--;render();}};
   $('skip').onclick=function(){MLOG.log('q'+(qi+1)+' skipped');next();};
+  }
   reset();theme('teen');SIM_LIGHTS();readout();
 })();
 </script>
@@ -1049,7 +1019,6 @@ body.paused #start.panel::before,body.paused #quiz.panel::before,body.paused #su
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
 addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive:true});f();})();</script>
 <script>LoadTiers.script("js/quiz-space-sweep.js?v=0da0a804",2,{id:"space"})</script>
-<script>LoadTiers.script("js/quiz-front-orbit.js?v=8548b767",2,{id:"orbit"})</script>
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>

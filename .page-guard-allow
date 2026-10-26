@@ -23,3 +23,40 @@ index.html :: script:js/dad-autodj-quiz.js
 index.html :: script:js/quiz-front-orbit.js
 index.html :: script:js/quiz-space-sweep.js
 index.html :: script:js/quiz-term-status.js
+# approved by Danny 11:19 AWST 26 Oct (pt18u, "move Bonnie's questionnaire to a hidden page ... have it come up blank where we've currently got Bonnie's checklist"): the questionnaire (start/quiz/summary panels + its start-button css) moved off the home screen to its own unlinked page; home area left blank
+index.html :: button:again
+index.html :: button:back
+index.html :: button:back2
+index.html :: button:go
+index.html :: button:send
+index.html :: button:skip
+index.html :: button:t0
+index.html :: button:t1
+index.html :: button:🎲 Reroll
+index.html :: h1:Hey Bonnie, here's a questionnaire I prepared for you, from Dad
+index.html :: h2:Which one would you prefer?
+index.html :: h2:✨ You did it, Bonnie! ✨
+index.html :: id:again
+index.html :: id:agenote
+index.html :: id:askbox
+index.html :: id:back
+index.html :: id:back2
+index.html :: id:count
+index.html :: id:go
+index.html :: id:note
+index.html :: id:notes
+index.html :: id:quiz
+index.html :: id:saved
+index.html :: id:send
+index.html :: id:skip
+index.html :: id:stars
+index.html :: id:start
+index.html :: id:sumlist
+index.html :: id:summary
+index.html :: id:t0
+index.html :: id:t1
+index.html :: landmark:section#quiz
+index.html :: landmark:section#start
+index.html :: landmark:section#summary
+index.html :: role:status#saved
+index.html :: style:css/quiz-startbtn-portrait.css
