@@ -115,3 +115,13 @@ body.paused .foot .tty::after,body.paused .foot .ttybar .tg .tgb i,body.paused .
   .foot .ttybar .tg-qz .tgb i.on{filter:none}
   .foot .ttybar .tg .tgb i{transition:none}.foot .note .fl-k{display:none}
 }
+
+/* foottransparent (Danny 14:38 AWST 26 Oct, "the dark blue box seems to be there in the background again ... I just want all
+   transparent ... just the black at the background"). Dark theme only: no fill, gradient, floor or panel tint anywhere in the footer,
+   so the page's own black shows through. The deep-blue floor (.foot::before, t721u) and the tty panel fill above are what kept
+   bringing the box back, because this file loads last; this block sits at the end of the same file so nothing later re-adds them.
+   Kept: text, emoji, the bar graphs, the dashed top rule and the panel's outline as a faint line. Light theme untouched. */
+html:not([data-theme="light"]) .foot{background:transparent}
+html:not([data-theme="light"]) .foot::before{content:none;background:none;animation:none}
+html:not([data-theme="light"]) .foot .tty{background:none;border:1px solid rgba(60,120,152,.38);box-shadow:none}
+html:not([data-theme="light"]) .foot .ttybar{background:none;box-shadow:none}
