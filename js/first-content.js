@@ -38,7 +38,7 @@
   var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
   var sec = doc.createElement('section'); sec.className = 'fc'; sec.setAttribute('aria-label', 'Content');
   var b = doc.createElement('button'); b.type = 'button'; b.className = 'fc-card'; b.setAttribute('aria-haspopup', 'dialog');
-  b.setAttribute('aria-label', "Open Dad's logo");
+  b.setAttribute('aria-label', "Open Ed's logo");
   var im = doc.createElement('img'); im.className = 'fc-mark'; im.alt = ''; im.decoding = 'async'; im.src = hi.src;
   var t = doc.createElement('span'); t.className = 'fc-t'; t.textContent = 'EdgerEquals';
   var s = doc.createElement('span'); s.className = 'fc-s'; s.textContent = 'logo';

@@ -71,3 +71,6 @@ index.html :: button:Enlarge Rebella logo
 index.html :: role:img
 # approved by Danny 11:54 AWST 26 Oct ("the logo should be the first priority, but a lighter weight version ... they won't click on it till much later"): js/dad-mark-zoom.js no longer a static defer tag; it loads last (tier 3) or on first tap
 index.html :: script:js/dad-mark-zoom.js
+# approved by Danny 16:06 AWST 26 Oct ("Yes, allow the two labels and push the Ed rename"): Ed, not Dad, on his dashboard - the DJ close button and the header logo button keep their place, only their labels say Ed now
+index.html :: button:Close Dad's DJ
+index.html :: button:Enlarge Dad's logo

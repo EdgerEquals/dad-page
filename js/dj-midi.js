@@ -23,12 +23,12 @@
       tl.forEach(function (x) { if (x[0] > t0 && x[1] !== seg[seg.length - 1][1]) seg.push([x[0], x[1]]); }); }   // only real tempo changes
     var tk = function (ms) { var k = 0; for (var i = 0; i < seg.length; i++) { var a = seg[i][0], b = i + 1 < seg.length ? Math.min(seg[i + 1][0], ms) : ms; if (b <= a) break; k += (b - a) / MS * seg[i][1] / SPM * PPQ; } return Math.max(0, Math.round(k)); };
     var tempo = Math.round(SPM * US / seg[0][1]), tracks = [], rows = [];
-    var c0 = meta(0x03, str('Dad\'s DJ' + (title ? ' - ' + title : '')));
+    var c0 = meta(0x03, str((document.documentElement.getAttribute('data-who')||'Dad') + '\'s DJ' + (title ? ' - ' + title : '')));
     c0 = [0].concat(c0, [0], meta(0x51, [(tempo >> 16) & 0xFF, (tempo >> 8) & 0xFF, tempo & 0xFF]), [0], meta(0x58, TS));   // unit: tempo as 3 big-endian bytes (SMF meta 0x51)
     var lastT = 0; seg.slice(1).forEach(function (x) { var at = tk(x[0]), us = Math.round(SPM * US / x[1]); c0 = c0.concat(vlq(at - lastT), meta(0x51, [(us >> 16) & 0xFF, (us >> 8) & 0xFF, us & 0xFF])); lastT = at; rows.push([1, at, 'Tempo', us]); });   // unit: tempo bytes
     c0 = c0.concat([0], meta(0x2F, []));
     tracks.push(c0);
-    rows.push([0, 0, 'Header', 1, PARTS.length + 1, PPQ], [1, 0, 'Start_track'], [1, 0, 'Title_t', '"Dad\'s DJ"'], [1, 0, 'Tempo', tempo], [1, 0, 'Time_signature'].concat(TS));
+    rows.push([0, 0, 'Header', 1, PARTS.length + 1, PPQ], [1, 0, 'Start_track'], [1, 0, 'Title_t', '"' + (document.documentElement.getAttribute('data-who')||'Dad') + '\'s DJ"'], [1, 0, 'Tempo', tempo], [1, 0, 'Time_signature'].concat(TS));
     rows.push([1, lastT, 'End_track']);
     PARTS.forEach(function (P, pi) {
       var ch = P[2], es = [];

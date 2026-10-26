@@ -136,7 +136,7 @@
         m.setActionHandler('play', function () { if (stalled || pend) resumeTap(); else if (!playing) start(held); });
         m.setActionHandler('pause', function () { if (playing) stop(); });
         m.setActionHandler('stop', function () { if (playing) stop(); }); }
-      if (state === 'playing' && window.MediaMetadata) m.metadata = new MediaMetadata({ title: "Dad's DJ", artist: 'EdgerEquals', album: cur && cur.genre ? cur.genre : '' });
+      if (state === 'playing' && window.MediaMetadata) m.metadata = new MediaMetadata({ title: (document.documentElement.getAttribute('data-who')||'Dad') + "'s DJ", artist: 'EdgerEquals', album: cur && cur.genre ? cur.genre : '' });
       m.playbackState = state;
     } catch (e) {}
   }
@@ -485,7 +485,8 @@
       (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
     var on = playing || !!pend || stalled, wait = !!pend || stalled;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
-    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? 'Ed\u2019s DJ \u00B7 tap to resume' : playing ? 'Ed\u2019s DJ on' : 'Ed\u2019s DJ';   // panel text: the music owner is Ed (Danny 15:44)
+    var WHO = (document.documentElement.getAttribute('data-who')||'Dad');   // shown name: Ed on his dashboard (data-who, Danny 15:39 AWST 26 Oct), Dad on Bonnie's pages
+    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? WHO + '\u2019s DJ \u00B7 tap to resume' : playing ? WHO + '\u2019s DJ on' : WHO + '\u2019s DJ';
     syncChips();
     btn.disabled = !AC;
   }
@@ -547,7 +548,7 @@
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
   setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
-  var MIDIURL = 'js/dj-midi.js?v=3', midiP = null;
+  var MIDIURL = 'js/dj-midi.js?v=edname2', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
     sc.onload = function () { window.DadMidi ? ok(window.DadMidi) : no(); }; sc.onerror = function () { midiP = null; no(); }; document.head.appendChild(sc); }); return midiP; }
   function lastMinute() { var now = Date.now(); return NL.filter(function (e) { return e[0] <= now && e[0] >= now - WIN; }); }

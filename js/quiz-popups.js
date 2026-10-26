@@ -30,12 +30,12 @@
       return '<p class="qp-big">'+esc(txt($('wxIcon')))+'</p>'+kv([['now',(COND[w.cond]||'n/a')+(w.temp!=null?', '+Math.round(w.temp)+'\u00B0C':'')],w.say?['note','It\u2019s '+w.say]:null,['day/night',c?(c.day?'day':'night'):'n/a'],['updated',c&&c.t?awst(new Date(c.t)):'n/a'],w.forced?['preview','?weather='+w.forced]:null])+
         '<p class="qp-note">Open-Meteo current weather for Perth, refreshed at most every 30 min.</p>';}],
     ['#wxr','Weather faces',function(){var r=$('wxr'),f=r?[].map.call(r.querySelectorAll('.fs>span'),txt).join(' '):'',o=r?[].map.call(r.querySelectorAll('.os>span'),txt).join(' '):'';
-      return '<p>Dad&rsquo;s little reaction to today&rsquo;s weather.</p>'+kv([['faces',f||'n/a'],['offering',o||'n/a']]);}],
-    ['.tick .tview','Fun facts from Dad',function(){var s=[].slice.call(document.querySelectorAll('#ttrack>span'));s=s.slice(0,Math.max(1,Math.ceil(s.length/2)));
+      return '<p>'+(document.documentElement.getAttribute('data-who')||'Dad')+'&rsquo;s little reaction to today&rsquo;s weather.</p>'+kv([['faces',f||'n/a'],['offering',o||'n/a']]);}],
+    ['.tick .tview','Fun facts from '+(document.documentElement.getAttribute('data-who')||'Dad'),function(){var s=[].slice.call(document.querySelectorAll('#ttrack>span'));s=s.slice(0,Math.max(1,Math.ceil(s.length/2)));
       var li=s.map(function(x){var t=x.querySelector('.ts'),c=x.querySelector('.tc');return '<li>'+esc(t?txt(t).replace(/^"|"$/g,''):txt(x))+(c?' <span class="src">'+esc(txt(c).replace(/^\/\/\s*/,''))+'</span>':'')+'</li>';}).join('');
       return '<p class="qp-note">Picked for age '+esc(window.SIM_AGE?window.SIM_AGE():13)+'.</p><ul class="qp-list">'+(li||'<li>Loading&hellip;</li>')+'</ul>';}],
     ['.qh-mast .dh-sub','Questions for Bonnie',function(){return '<p>'+esc(txt(document.querySelector('.dh-sub')))+'</p>';}],
-    ['.qh-mast .dh-words','Questions for Bonnie',function(){var q=$('quiz'),c=$('count');return '<p>From Dad. '+esc(txt(document.querySelector('.dh-sub')))+'</p>'+kv([['progress',q&&!q.hidden?txt(c):($('summary')&&!$('summary').hidden?'finished':'not started')],['answered',txt($('vDone'))||'0']]);}],
+    ['.qh-mast .dh-words','Questions for Bonnie',function(){var q=$('quiz'),c=$('count');return '<p>From '+(document.documentElement.getAttribute('data-who')||'Dad')+'. '+esc(txt(document.querySelector('.dh-sub')))+'</p>'+kv([['progress',q&&!q.hidden?txt(c):($('summary')&&!$('summary').hidden?'finished':'not started')],['answered',txt($('vDone'))||'0']]);}],
     ['#ltStep','STEP',function(){return kv([['question',txt($('vStep'))],['state',$('quiz')&&!$('quiz').hidden?'in progress':'waiting']])+'<p class="qp-note">Which question you&rsquo;re on.</p>';}],
     ['#ltDone','DONE',function(){return kv([['answered',txt($('vDone'))]])+'<p class="qp-note">Questions answered so far (kept on this page only).</p>';}],
     ['#ltSky','SKY',function(){var w=window.SIM_WX||{};return kv([['weather feed',w.status==='ok'?'OK':w.status==='fail'?'not available':'loading'],['sky',COND[w.cond]||'n/a']]);}],

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en-AU">
+<html lang="en-AU" data-who="Ed">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual"><!-- whiteline fix (Danny 13:14 AWST 26 Oct): viewport + dark canvas FIRST, before any script, so the very first paint is laid out at device width on a dark canvas -->
@@ -150,7 +150,7 @@
 window.QUIZ_COPY = {
   pageTitle: "Questionnaire preview for Bonnie",
   intro: "Hey Bonnie, here's a questionnaire I prepared for you,",
-  from: "from Dad",
+  from: "from Ed",
   instruction: "Pick the one you like better, tap Reroll under a choice to swap in a different topic, or type a question or comment in the box under each one.",
   start: "Start questionnaire",
   progress: "Question {n} of {total}",
@@ -178,11 +178,11 @@ window.QUIZ_COPY = {
   either: "{a} or {b}",
   again: "Start again",
   footer: "Preview only, nothing is sent",
-  credit: "Made by Dad, with help from Simmie",
-  tickerLabel: "Fun facts from Dad",
-  tag: "From Dad",
+  credit: "Made by Ed, with help from Simmie",
+  tickerLabel: "Fun facts from Ed",
+  tag: "From Ed",
   headTitle: "Questions for Bonnie",
-  headPill: "from Dad",
+  headPill: "from Ed",
   headSub: "Go with whatever feels right to you.",
   ageTag: "age {age}",
   place: "Perth"
@@ -492,7 +492,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djtrans1",1,{id:"dj"})</script><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=edname2",1,{id:"dj"})</script><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=djexp1"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/dj-buttons.css?v=1"><!-- music button (Bonnie's music-note button, Dad's palette) + DJ button family (Danny 15:27 AWST 26 Oct) -->
@@ -523,12 +523,12 @@ body.paused .home-code::before{animation-play-state:paused}
      Replaces Dad's-palette header 53b7cda (restore from that commit: header.dad-head, dad-head-quiz.css). -->
 <div class="q-head dad-head" id="q-head">
   <div class="qh-top"><div class="qh-c">
-    <button type="button" class="dad-zoom" data-zoom="dad" data-zoom-title="Dad's logo" aria-label="Enlarge Dad's logo" aria-haspopup="dialog"><img class="dad-mark" data-zoom-alt="Dad’s world equals mark" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%235F86A0' stroke-opacity='.5'%3E%3Cellipse cx='32' cy='32' rx='29' ry='11' transform='rotate(-20 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='26' ry='14' transform='rotate(25 32 32)'/%3E%3C/g%3E%3Cg fill='%2300C896'%3E%3Crect x='16.9' y='19.6' width='30.2' height='11' rx='5.5' opacity='.14'/%3E%3Crect x='16.9' y='33.4' width='30.2' height='11' rx='5.5' opacity='.14'/%3E%3Crect x='18' y='20.7' width='28' height='8.8' rx='3.2' opacity='.3'/%3E%3Crect x='18' y='34.5' width='28' height='8.8' rx='3.2' opacity='.3'/%3E%3C/g%3E%3Cg fill='%233DFFB0'%3E%3Crect x='19.2' y='21.9' width='25.6' height='6.4'/%3E%3Crect x='19.2' y='35.7' width='25.6' height='6.4'/%3E%3C/g%3E%3Cg fill='%23E6FFF4'%3E%3Crect x='21' y='24.5' width='22' height='1.2'/%3E%3Crect x='21' y='38.3' width='22' height='1.2'/%3E%3C/g%3E%3C/svg%3E" data-head-src="dash/img/dad-mark-v2-head-2026-10-25c.svg?v=markcentre1" data-zoom-src="dash/img/dad-mark-v2-2026-10-25c.svg?v=markcentre1" data-zoom-stage="dash/img/dad-mark-v2-stage-2026-10-25c.svg?v=markcentre1" width="32" height="32" alt=""><span class="dmw" aria-hidden="true"><i class="o"></i><i class="r"></i><i class="o"></i><i class="r"></i></span></button><!-- Dad's equals mark in the logo spot (Danny 11:51 AWST 26 Oct "swap out the Rebella logo with my logo"); Rebella logo off the home page -->
+    <button type="button" class="dad-zoom" data-zoom="dad" data-zoom-title="Ed's logo" aria-label="Enlarge Ed's logo" aria-haspopup="dialog"><img class="dad-mark" data-zoom-alt="Ed’s world equals mark" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%235F86A0' stroke-opacity='.5'%3E%3Cellipse cx='32' cy='32' rx='29' ry='11' transform='rotate(-20 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='26' ry='14' transform='rotate(25 32 32)'/%3E%3C/g%3E%3Cg fill='%2300C896'%3E%3Crect x='16.9' y='19.6' width='30.2' height='11' rx='5.5' opacity='.14'/%3E%3Crect x='16.9' y='33.4' width='30.2' height='11' rx='5.5' opacity='.14'/%3E%3Crect x='18' y='20.7' width='28' height='8.8' rx='3.2' opacity='.3'/%3E%3Crect x='18' y='34.5' width='28' height='8.8' rx='3.2' opacity='.3'/%3E%3C/g%3E%3Cg fill='%233DFFB0'%3E%3Crect x='19.2' y='21.9' width='25.6' height='6.4'/%3E%3Crect x='19.2' y='35.7' width='25.6' height='6.4'/%3E%3C/g%3E%3Cg fill='%23E6FFF4'%3E%3Crect x='21' y='24.5' width='22' height='1.2'/%3E%3Crect x='21' y='38.3' width='22' height='1.2'/%3E%3C/g%3E%3C/svg%3E" data-head-src="dash/img/dad-mark-v2-head-2026-10-25c.svg?v=markcentre1" data-zoom-src="dash/img/dad-mark-v2-2026-10-25c.svg?v=markcentre1" data-zoom-stage="dash/img/dad-mark-v2-stage-2026-10-25c.svg?v=markcentre1" width="32" height="32" alt=""><span class="dmw" aria-hidden="true"><i class="o"></i><i class="r"></i><i class="o"></i><i class="r"></i></span></button><!-- Dad's equals mark in the logo spot (Danny 11:51 AWST 26 Oct "swap out the Rebella logo with my logo"); Rebella logo off the home page -->
     <span class="qh-right"><button type="button" class="dj-pill djb" id="dj-pill" aria-expanded="false" aria-controls="qh-djpop" aria-haspopup="dialog"><span class="djp-ico" aria-hidden="true"></span><span class="djp-lbl">DJ</span></button><button type="button" class="dj-mix" id="dj-mix" aria-label="Random pump mix (hold for the default mix)" title="Random pump mix (hold: default mix)"><span aria-hidden="true">&#128256;</span></button><button type="button" class="dj-mix dj-exp" id="dj-exp" aria-label="Export the last minute of the DJ as a MIDI file" title="Export last minute as MIDI"><span aria-hidden="true">&#11015;&#65039;</span></button><button type="button" class="beacon chk" id="beacon" aria-live="polite" title="Rebella status"><i aria-hidden="true"></i><span class="bn">REBELLA &middot; </span><span class="bs">CHECKING</span></button></span>
   </div></div>
   <div class="qh-hud"><div class="qh-c">
-    <div class="tick" id="tick" role="region" aria-label="Fun facts from Dad">
-      <span class="tag" id="ttag">From Dad &middot; age 13</span>
+    <div class="tick" id="tick" role="region" aria-label="Fun facts from Ed">
+      <span class="tag" id="ttag">From Ed &middot; age 13</span>
       <span class="tstat" id="tstat" aria-hidden="true"><i class="ts-dot"></i><span class="ts-w"><b class="ts-s"><i>status</i></b><b class="ts-l">live</b></span></span><!-- terminal status pill (Danny 13:18 AWST 24 Oct, t637u) -->
       <span class="wx" id="wx" hidden><span id="wxIcon"></span> <span id="wxText"></span></span>
       <span class="wxr" id="wxr" aria-hidden="true" hidden></span>
@@ -540,7 +540,7 @@ body.paused .home-code::before{animation-play-state:paused}
   <div class="qh-djpop" id="qh-djpop" role="dialog" aria-label="Ed's DJ" hidden><div class="qh-c">
   <!-- Dad's auto-DJ (phi rule 10): generated in the browser, plays only after a tap; the sound switch below is the master mute -->
   <section class="dad-dj" id="dad-dj" data-guard="dad-dj" aria-label="Ed's music">
-    <button type="button" class="djp-x" aria-label="Close Dad's DJ">&times;</button>
+    <button type="button" class="djp-x" aria-label="Close Ed's DJ">&times;</button>
     <div class="dj-row">
       <button type="button" class="dj-play" id="dj-play" aria-pressed="false"><span class="dj-led" aria-hidden="true"></span><span class="dj-lbl">Ed&rsquo;s DJ</span></button>
       <label class="dj-vol"><span>music vol</span><input type="range" id="dj-vol" min="0" max="100" step="1" value="80"></label>
@@ -551,7 +551,7 @@ body.paused .home-code::before{animation-play-state:paused}
   </div></div>
   <!-- "Questions for Bonnie" row removed from the home screen (Danny 11:25 AWST 26 Oct): it lives only on the questionnaire page -->
 </div>
-<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=2",1,{id:"dad-mark"});LoadTiers.script("js/home-windows.js?v=1",1,{id:"home-windows"})</script><!-- home windows: six peeks into what the header and footer already run (Danny 15:47 AWST 26 Oct) --><!-- first content: Dad's logo card, tap opens his logo view (Danny 15:24 AWST 26 Oct) --><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
+<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=edname2",1,{id:"dad-mark"});LoadTiers.script("js/home-windows.js?v=1",1,{id:"home-windows"})</script><!-- home windows: six peeks into what the header and footer already run (Danny 15:47 AWST 26 Oct) --><!-- first content: Dad's logo card, tap opens his logo view (Danny 15:24 AWST 26 Oct) --><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
   <div class="strip" aria-label="Page status">
@@ -571,7 +571,7 @@ body.paused .home-code::before{animation-play-state:paused}
       </div>
     </div>
   </div>
-  <div class="note"><span class="fl" id="footLine" tabindex="0"></span><!-- cycling readout: quote / on this day / word / countdown / science (js/foot-line.js; Danny t691u/t693u 25 Oct). Was: "Preview only, nothing is sent" --><span class="dot" aria-hidden="true">&middot;</span><span data-copy="credit">Made by Dad, with help from Simmie</span><span class="fcr" id="fcr" aria-hidden="true"></span><span class="tsw" id="fts" data-ts-key="dadQuizTide" hidden></span></div>
+  <div class="note"><span class="fl" id="footLine" tabindex="0"></span><!-- cycling readout: quote / on this day / word / countdown / science (js/foot-line.js; Danny t691u/t693u 25 Oct). Was: "Preview only, nothing is sent" --><span class="dot" aria-hidden="true">&middot;</span><span data-copy="credit">Made by Ed, with help from Simmie</span><span class="fcr" id="fcr" aria-hidden="true"></span><span class="tsw" id="fts" data-ts-key="dadQuizTide" hidden></span></div>
 </div>
 <script>
 (function(){
@@ -1063,7 +1063,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
 <script>addEventListener("DOMContentLoaded",function(){ if(window.FootLine) FootLine.init(document.getElementById("footLine"), {tz:"Australia/Perth", rate:2, bounce:true}); });</script>
-<script src="js/quiz-popups.js?v=7" defer></script>
+<script src="js/quiz-popups.js?v=edname1" defer></script>
 <script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->
 <!-- Rebella header logo reduced state: faint slow glow only, tier 3 (Danny t744u 25 Oct) --><script>/* Dad's mark, light first (Danny 11:54 AWST 26 Oct): tier 0 = the static inline mark above (no JS, emerald bars at once).
    Its heavy parts load LAST: tier 3 (after tier 2 has drained, idle) swaps in the animated header mark and loads phi-pumps + js/dad-mark-zoom.js
