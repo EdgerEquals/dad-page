@@ -144,7 +144,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=6';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=7';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = x; XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -154,7 +154,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=3', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=4', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
     if (fxC || !ctx) return; fxC = f; var t = ctx.currentTime, G = Math.pow(PHI, 2);   // phi: crossfade PHI^2 s (rule 6)
@@ -257,7 +257,7 @@
   function ageOf(tr) { return clamp((Date.now() - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }
   function shape(tr, t, barLen) {                                         // once a bar: glide the layers to the arc
     var a = ageOf(tr), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
-    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(Math.sqrt(e), t, tau);
+    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e), t, tau);
     tr.L.pad.out.gain.setTargetAtTime(clamp(IPH * IPH + (1 - e) * PHI, 0, 1), t, tau);
   }
   // VOICE LEADING + EXTENSIONS: 3 + a pump-ratio count of stacked thirds (triad, 7th, 9th); of the inversions (+-12 per note) the one
@@ -313,6 +313,7 @@
     var w = Date.now() + (t - ctx.currentTime) * MS; NL.push([w, part, m, v, d]);
     while (NL.length && NL[0][0] < w - WIN - SPM * MS / SPB) NL.shift();   // keep a little over a minute (look-ahead slack)
   }
+  function recCC(n, v) { NL.push([Date.now(), 'cc', n, clamp(v, 0, 1), 0]); }   // transition sweeps for the .mid (controller n, value 0..1)
   function pl(part, inst, tr, m, t, d, v) { inst(tr, mtof(m), t, d, v); var o = (tr.tk || tr).out; rec(part, m, t, d, v * (o ? Math.min(1, o.gain.value) : 1)); }   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
@@ -333,13 +334,15 @@
   function fadeTrack(tr, up, t, len) { fadeGain(tr.out, up, t, len); fadeGain(tr.wet, up, t, len); }
   // ---------- the DJ ----------
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
-  function startTrack(c, fade, sp) {
-    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = ctx.currentTime + Math.pow(PHI, -6);   // phi: fade starts PHI^-6 s out
+  function startTrack(c, fade, sp, ox) {
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : gs[(genreFlip++) % gs.length], t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : c.bpm, sp && isFinite(sp.seed) ? sp.seed : (Math.random() * SEEDS) | 0);
-    if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }   // pick up the arrangement where wall-clock time has it
+    if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
+    if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
     fadeTrack(tr, true, t, len);
-    old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); setTimeout(function () { kill(o); }, len * 1000 + 300); });
+    old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); if (ox && ox.swap) { o.noBass = true; o.L.bass.out.gain.cancelScheduledValues(t); o.L.bass.out.gain.setTargetAtTime(0, t, Math.pow(PHI, -6)); }   // bass swap at the drop
+      setTimeout(function () { kill(o); }, (t - ctx.currentTime + len) * 1000 + 300); });
     TL.push([Date.now() + len * MS / 2, tr.bpm]); while (TL.length > 1 && TL[1][0] < Date.now() - WIN) TL.shift();
     tracks.push(tr); fadingUntil = Date.now() + len * 1000; lastMood = c.p.mood;
     return tr;
@@ -403,16 +406,16 @@
     var check = function () { if (playing && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
     if (p && p.then) p.then(check, check); else check();
   }
-  function glide() {                                                     // a change glides in over a PHI^3 s crossfade (rule 6), never a cut
+  function glide(ox) {                                                   // a change glides in over a PHI^3 s crossfade (rule 6), never a cut (or the transition's own fade)
     var c = compute();
-    if (playing && ctx) { var tr = startTrack(c, Math.pow(PHI, 3)); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
+    if (playing && ctx) { var tr = startTrack(c, ox && ox.fade || Math.pow(PHI, 3), null, ox); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
     else cur = c;
     paint(c); save();
   }
-  function remix(seed) {
+  function remix(seed, ox) {
     if (seed == null) Object.keys(kseed).forEach(function (k) { delete kseed[k]; });   // the default mix also clears the knob seeds
     mixSeed = seed; M = withKnobs(genome(seed)); if (seed != null) genreFlip += Math.floor(M.flip * SPB);
-    glide();
+    glide(ox);
     if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing');
       mixBtn.setAttribute('aria-label', 'Random pump mix (now ' + mixName() + '; hold for the default mix)'); }
   }
@@ -422,13 +425,20 @@
   }
   function mixName() { return mixSeed == null ? 'default mix' : 'mix ' + mixSeed.toString(36).toUpperCase(); }   // unit: base-36 short name
   function nextMix() { remix(mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1); }
+  // TRANSITION (Danny 15:44 AWST 26 Oct): the 🔀 button mixes into the new mix like a DJ. js/dj-fx.js plans it on the bar grid (style knob),
+  // runs the sweeps, and calls back just before the drop; the new track starts ON the drop with the style's fade and a bass swap.
+  function mixGo() {
+    var s = mixSeed == null ? Math.floor(Date.now() / MS) : mixSeed + 1, F = window.DadAutoDJ && DadAutoDJ.fx;
+    if (playing && ctx && F && F.transition) { if (F.transition(function (ox) { remix(s, ox); })) { if (mixBtn) { mixBtn.classList.remove('is-mixing'); void mixBtn.offsetWidth; mixBtn.classList.add('is-mixing'); } return; } }
+    remix(s);
+  }
   var mixBtn = null;
   function wireMix() {
     mixBtn = document.getElementById('dj-mix'); if (!mixBtn) return;
     var held = 0, longDone = false;
     mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; remix(null); }, IPH * MS); });   // phi: hold PHI^-1 s
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { mixBtn.addEventListener(n, function () { clearTimeout(held); }); });
-    mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } if (e.shiftKey) remix(null); else nextMix(); });
+    mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } if (e.shiftKey) remix(null); else mixGo(); });
     mixBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
   function resumeTap() {
@@ -475,7 +485,7 @@
       (pendN ? ' \u2192 next: ' + c.genres.join('/') + ' ' + Math.round(c.bpm) + ' BPM in ' + Math.max(0, nextIn()).toFixed(1) + ' s' : '') + liveLine();
     var on = playing || !!pend || stalled, wait = !!pend || stalled;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('is-resuming', wait);
-    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? 'Dad\u2019s DJ \u00B7 tap to resume' : playing ? 'Dad\u2019s DJ on' : 'Dad\u2019s DJ';
+    btn.querySelector('.dj-lbl').textContent = !AC ? 'no sound here' : wait ? 'Ed\u2019s DJ \u00B7 tap to resume' : playing ? 'Ed\u2019s DJ on' : 'Ed\u2019s DJ';   // panel text: the music owner is Ed (Danny 15:44)
     syncChips();
     btn.disabled = !AC;
   }
@@ -537,7 +547,7 @@
   window.PageMusic = { ref: ref, duck: duckTo, get ducked() { return ducked; } };
   setInterval(function () { if (playing && !document.hidden) ref(); }, PHI * MS);   // phi: keep learning k every PHI s while the music plays
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
-  var MIDIURL = 'js/dj-midi.js?v=2', midiP = null;
+  var MIDIURL = 'js/dj-midi.js?v=3', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
     sc.onload = function () { window.DadMidi ? ok(window.DadMidi) : no(); }; sc.onerror = function () { midiP = null; no(); }; document.head.appendChild(sc); }); return midiP; }
   function lastMinute() { var now = Date.now(); return NL.filter(function (e) { return e[0] <= now && e[0] >= now - WIN; }); }
@@ -552,7 +562,7 @@
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
   window.DadAutoDJ = { _kit: { grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
-      idle: function (c) { if (!playing) cur = c; }, get voices() { return nlive; } },
+      idle: function (c) { if (!playing) cur = c; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; } },
     compute: compute, pumps: pumps, GEN: Object.keys(GEN), set: function (k, v) { if (LADDER[k]) setTo(k, v); paint(compute()); save(); },
     get nudge() { return JSON.parse(JSON.stringify(nudge)); }, live: function (k) { return liveOf(k); }, get pending() { return !!pend || stalled; },
     get track() { var t = spec(); return t ? { genre: t.genre, bpm: t.bpm, born: t.born, len: t.len, step: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).step, arc: (tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).e, breakdown: !!(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0] || {}).bd } : null; },

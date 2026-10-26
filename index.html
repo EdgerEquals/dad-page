@@ -492,7 +492,7 @@ body.paused .home-code::before{animation-play-state:paused}
 <link rel="stylesheet" href="css/quiz-foot-lock.css?v=footline1">
 <link rel="stylesheet" href="dash/css/tide-swell.css?v=1" media="print" onload="this.media='all'"><!-- tide + swell after the critters (Danny 03:43 AWST 24 Oct; live 12:39) -->
 <script>LoadTiers.script("dash/js/tide-swell.js?v=2",2,{id:"tide",w:9.6})</script>
-<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djnoise1",1,{id:"dj"})</script><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
+<script>LoadTiers.script("js/dad-autodj-quiz.js?v=djtrans1",1,{id:"dj"})</script><!-- DJ start engine at tier 1, just after first paint; js/dj-extras.js follows the first sound (Danny 14:20 AWST 26 Oct) -->
 <link rel="stylesheet" href="css/quiz-dots-glow.css?v=19d4b8ab" media="print" onload="this.media='all'"><!-- travelling glow on the four footer lights (Danny 10:42 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/quiz-dj-pill.css?v=djexp1"><!-- Dad's DJ pill + pop-up (Danny 11:06 AWST 24 Oct) -->
 <link rel="stylesheet" href="css/dj-buttons.css?v=1"><!-- music button (Bonnie's music-note button, Dad's palette) + DJ button family (Danny 15:27 AWST 26 Oct) -->
@@ -537,12 +537,12 @@ body.paused .home-code::before{animation-play-state:paused}
     </div>
     <div class="lane" id="laneH" aria-hidden="true"></div>
   </div></div>
-  <div class="qh-djpop" id="qh-djpop" role="dialog" aria-label="Dad's DJ" hidden><div class="qh-c">
+  <div class="qh-djpop" id="qh-djpop" role="dialog" aria-label="Ed's DJ" hidden><div class="qh-c">
   <!-- Dad's auto-DJ (phi rule 10): generated in the browser, plays only after a tap; the sound switch below is the master mute -->
-  <section class="dad-dj" id="dad-dj" data-guard="dad-dj" aria-label="Dad's music">
+  <section class="dad-dj" id="dad-dj" data-guard="dad-dj" aria-label="Ed's music">
     <button type="button" class="djp-x" aria-label="Close Dad's DJ">&times;</button>
     <div class="dj-row">
-      <button type="button" class="dj-play" id="dj-play" aria-pressed="false"><span class="dj-led" aria-hidden="true"></span><span class="dj-lbl">Dad&rsquo;s DJ</span></button>
+      <button type="button" class="dj-play" id="dj-play" aria-pressed="false"><span class="dj-led" aria-hidden="true"></span><span class="dj-lbl">Ed&rsquo;s DJ</span></button>
       <label class="dj-vol"><span>music vol</span><input type="range" id="dj-vol" min="0" max="100" step="1" value="80"></label>
       <output class="dj-read" id="dj-read" aria-live="off"></output>
     </div>

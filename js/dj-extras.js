@@ -46,7 +46,7 @@
     var c = C(), z = tr.nz, P = nzPumps(), now = (window.PhiPumps && PhiPumps.now) ? PhiPumps.now() : c.currentTime;
     if (!z) { z = tr.nz = { in: c.createGain(), sh: c.createBiquadFilter(), g: c.createGain() };
       z.sh.type = 'highshelf'; z.sh.frequency.value = FHI * Math.pow(PHI, -3); z.g.gain.value = 0; z.in.connect(z.sh); z.sh.connect(z.g); z.g.connect(tr.out); }   // phi: shelf PHI^-3 under the top
-    var a = P.a.modes(now), b = P.b.modes(now), m = P.c.modes(now), sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    var a = P.a.modes(now), b = P.b.modes(now), m = P.c.modes(now), sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };   // unit: smoothstep 3x^2 - 2x^3
     var io = Math.pow(PHI, -3) + (1 - Math.pow(PHI, -3)) * sm((1 + (a + IPH * b) / (1 + IPH)) / 2);       // in/out: two fast pumps, floor PHI^-3
     var ceil = Math.pow(PHI, -3 + (m + IPH * a) / (1 + IPH));                                              // ceiling: centre PHI^-3, range PHI^-4..PHI^-2
     z.lvl = ceil * io; z.ceil = ceil; z.io = io;

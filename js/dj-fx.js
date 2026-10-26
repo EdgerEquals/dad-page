@@ -33,6 +33,12 @@
   post.connect(eSend); eSend.connect(eDel); eDel.connect(eFb); eFb.connect(eDel); eDel.connect(eRet); eRet.connect(post2);
   post.connect(wSend); wSend.connect(wConv); wConv.connect(post2);
   post2.connect(cDry); cDry.connect(out); post2.connect(shp); shp.connect(cWet); cWet.connect(out);
+  // FLANGER + RISER (transitions only, Danny 15:44; 'flounder' = flanger): a short swept delay with feedback beside the dry path, and a
+  // band-passed noise riser; both silent until a transition opens them.
+  var flD = c.createDelay(IPH), flL = c.createOscillator(), flDep = g(Math.pow(PHI, -9)), flFb = g(0), flW = g(0), FLB = Math.pow(PHI, -7);   // phi: base delay PHI^-7 s (3.4 ms), sweep +-PHI^-9 s
+  flD.delayTime.value = FLB; flL.frequency.value = 0; flL.connect(flDep); flDep.connect(flD.delayTime); flL.start();
+  post.connect(flD); flD.connect(flFb); flFb.connect(flD); flD.connect(flW); flW.connect(post2);
+  var nzBP = c.createBiquadFilter(), nzG = g(0), nzB = null; nzBP.type = 'bandpass'; nzBP.connect(nzG); nzG.connect(post2);
   function irReady() { if (wConv.buffer) return; var b = K.ir && K.ir(); if (b) try { wConv.buffer = b; } catch (e) {} }
   // ---------- knobs: ladders, live values, nudges ----------
   function R2N() { return SPB + 1; }                                     // unit: off + four rungs, as the amount ladders
@@ -43,7 +49,8 @@
     { k: 'filter', lab: 'Filter', L: [-1, -IPH, 0, IPH, 1], names: ['low \u25C0\u25C0', 'low \u25C0', 'open', 'high \u25B6', 'high \u25B6\u25B6'], kind: 'add' },
     { k: 'echo', lab: 'Echo', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
     { k: 'wash', lab: 'Wash', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
-    { k: 'crush', lab: 'Crush', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' }
+    { k: 'crush', lab: 'Crush', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
+    { k: 'trans', lab: 'Transition (\uD83D\uDD00)', L: [0, 1, 2, 3, 4, 5], names: ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash'], kind: 'pick' }   // unit: style index (0 = auto)
   ];
   var nudge = {}, seed = null, nodes = {};
   FX.forEach(function (f, i) { nudge[f.k] = 0; nodes[f.k] = P ? P.node('djfx:' + f.k, SPB - 1, PHI * SPB - 1, IPH * IPH, P.page, i) : null; });   // phi: periods PHI^5.5.. s, depth PHI^-2
@@ -54,7 +61,7 @@
   // so mood, urgency, sky and time move every effect differently; the coupling glides (tau PHI s, rule 6). A tiny 🎲 per effect re-rolls
   // its rung and its coupling weights. The effects feed back a little: their smoothed mean (back(), tau PHI^2 s) leans the chain level
   // down by up to PHI^-2 rungs and sways the pump-knob needles.
-  var PKS = ['tp', 'wp', 'up', 'mp'], CW0 = { roll: [-1, -1, 1, 1], filter: [1, 1, -1, -1], echo: [-1, 0, 0, 1], wash: [1, 1, -1, 0], crush: [-1, -1, 1, 0] };   // unit: default coupling rung per pump (-1 = PHI^-1, 0 = 1, 1 = PHI)
+  var PKS = ['tp', 'wp', 'up', 'mp'], CW0 = { roll: [-1, -1, 1, 1], filter: [1, 1, -1, -1], echo: [-1, 0, 0, 1], wash: [1, 1, -1, 0], crush: [-1, -1, 1, 0], trans: [1, 0, 1, -1] };   // unit: default coupling rung per pump (-1 = PHI^-1, 0 = 1, 1 = PHI)
   var wseed = {}, uk = {}, bk = 0, T0FX = c.currentTime;               // T0FX: the engine's own PHI^2 s fade-in owns the level until then
   function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return Math.pow(PHI, sd == null ? CW0[k][j] : 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
   function uOf(k, dt) {                                                   // this effect's own pump energy, damped
@@ -69,12 +76,15 @@
     if (k === 'filter') return clamp((2 * u - 1) * IPH * IPH + (wob(k) - 1) * IPH, -1, 1);
     if (k === 'echo') return clamp(u * IPH * IPH * wob(k), 0, 1);
     if (k === 'wash') return clamp((1 - u) * IPH * wob(k), 0, 1);
+    if (k === 'trans') return AUTO[clamp(Math.floor(u * wob(k) * AUTO.length), 0, AUTO.length - 1)];   // auto: calm pumps flanger/echo, lively scatter/techno
     return clamp((u - IPH) * IPH * wob(k), 0, 1);                        // crush: only on the liveliest pumps
   }
-  function near(f, v) { if (f.kind === 'idx') return v; var b = 0, d = Infinity; f.L.forEach(function (x, i) { if (Math.abs(x - v) < d) { d = Math.abs(x - v); b = i; } }); return b; }
+  var AUTO = [5, 3, 2, 4, 1];                                             // unit: styles in order of pump energy
+  function near(f, v) { if (f.kind === 'idx' || f.kind === 'pick') return v; var b = 0, d = Infinity; f.L.forEach(function (x, i) { if (Math.abs(x - v) < d) { d = Math.abs(x - v); b = i; } }); return b; }
   function liveIdx(f, u) { var v = live(f.k, u), i = near(f, v); return f.kind === 'mul' && v > 0 && i === 0 ? 1 : i; }
   function effOf(f, u) {                                                   // live value with the hand nudge on top (in rungs)
     var v = live(f.k, u), li = liveIdx(f, u), j = clamp(li + nudge[f.k], 0, f.L.length - 1);
+    if (f.kind === 'pick') { var hi = clamp(nudge[f.k] | 0, 0, f.L.length - 1); return { v: hi || li, i: hi, li: li }; }   // a hand pick is absolute; 0 = auto
     if (!nudge[f.k]) return { v: f.kind === 'idx' ? f.L[li] : v, i: f.kind === 'idx' ? li : near(f, v), li: li };
     if (f.kind === 'idx') return { v: f.L[j], i: j, li: li };
     if (f.kind === 'add') return { v: clamp(f.L[j] + (v - f.L[li]), -1, 1), i: j, li: li };
@@ -89,6 +99,7 @@
   function apply(tau) {
     irReady(); FX.forEach(function (f) { uOf(f.k); }); var u = energy(), bpm = (D.track && D.track.bpm) || D.compute().bpm, beat = SPM / bpm;
     FX.forEach(function (f) { E[f.k] = effOf(f, u); });
+    if (c.currentTime < TXu) { sync(); return; }                         // a transition owns the sweeps until its tail is done
     var fv = E.filter.v, span = Math.log(FHI / FLO);
     to(lp.frequency, FHI * Math.exp(-span * IPH * Math.max(0, -fv)), tau); to(hp.frequency, FLO * Math.exp(span * IPH * Math.max(0, fv)), tau);
     var e = E.echo.v, dT = beat / 2, now = c.currentTime, q = Math.pow(PHI, -6);
@@ -101,7 +112,7 @@
     var cr = E.crush.v, b = cr ? Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
     if (b && b !== bits) { bits = b; shp.curve = crushCurve(b); }
     to(cWet.gain, cr * IPH * IPH, tau); to(cDry.gain, 1 - cr * Math.pow(PHI, -3), tau);   // phi: gentle, at most PHI^-2 wet
-    var m = (E.echo.v + E.wash.v + E.crush.v + Math.abs(E.filter.v) + (E.roll.v ? IPH : 0)) / FX.length; bk += (m - bk) * (1 - Math.exp(-IPH / (PHI * PHI)));   // phi: tau PHI^2 s
+    var m = (E.echo.v + E.wash.v + E.crush.v + Math.abs(E.filter.v) + (E.roll.v ? IPH : 0)) / R2N(); bk += (m - bk) * (1 - Math.exp(-IPH / (PHI * PHI)));   // phi: tau PHI^2 s
     if (c.currentTime > T0FX + PHI * PHI) out.gain.setTargetAtTime(Math.pow(PHI, -bk * IPH * IPH), c.currentTime, PHI * PHI);   // phi: up to PHI^-2 rungs lean, tau PHI^2 s
     var trg = TRG = energy() * IPH / (beat * SPB);                              // rolls per second: share of bars x bars per second
     lfo.frequency.setTargetAtTime(trg * PHI * PHI, c.currentTime, tau || IPH);   // phi: scatter amplitude moves PHI^2 faster than its trigger rate (rule 6 glide)
@@ -110,7 +121,7 @@
   // ---------- roll scheduler: on the last beat of a bar, loop a beat / F slice for the rest of that beat ----------
   var rolled = -1, rolls = 0, TRG = 0, lastF = 0;
   function rollTick() {                                                  // on the AUDIO clock: the engine's last even step is the anchor (MIDI Bot review: no wall-clock drift)
-    var F = E.roll ? E.roll.v : 0, G = K.grid && K.grid(); if (!F || !G || !D.playing) return;
+    var F = E.roll ? E.roll.v : 0, G = K.grid && K.grid(); if (!F || !G || !D.playing) return; if (c.currentTime < TXu) return;   // a transition owns the roll
     var S = SPB * SPB, beat = G.d16 * SPB, n = Math.floor(G.step / S), k = n * S + S - SPB;   // unit: sixteenths per bar; the last beat's first sixteenth
     if (k < G.step) { n++; k += S; }
     var t = G.t + (k - G.step) * G.d16, ahead = t - c.currentTime;
@@ -128,6 +139,64 @@
     var w = beat - L;                                                     // the looping part of the beat: swell in (tau w PHI^-2), fade out from PHI^-1 of it (tau w PHI^-3)
     rOut.gain.setTargetAtTime(1, t + L, w * IPH * IPH); rOut.gain.setTargetAtTime(0, t + L + w * IPH, w * Math.pow(PHI, -3)); rOut.gain.setTargetAtTime(0, end, s);
     rDry.gain.setTargetAtTime(IPH, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
+  }
+  // ---------- TRANSITIONS (Danny 15:44): techno/trance-style mix-over on the bar grid ----------
+  // A style = rungs (weight PHI^-k, null = off) for HP sweep on the outgoing, LP riser, flanger, scatter on the last beats, echo-out,
+  // wash and noise riser; its length is a Fibonacci count of bars (1, 2, 3, 5, 8: the base rung, nudged a rung by pump energy),
+  // starting on the next bar line, the drop pushed to a phrase line (SPB bars) when long; the new track lands ON the drop with the
+  // style's fade (bars x PHI^k) and a bass swap. While it runs, the chain belongs to it (apply() hands off); the sweeps are logged
+  // as CC74 (brightness), CC93 (flanger) and CC91 (wash) for the .mid.
+  var BARS = [1].concat(FIB.slice(1)), TXu = 0, txBusy = false, txLog = null, lastTx = null;   // Fibonacci bar counts 1, 2, 3, 5, 8
+  var STY = [null,
+    { n: 'techno cut',    r: 0, hp: 0, fl: 2, sc: 1, ec: 2, fade: -2 },   // unit: rung exponents
+    { n: 'trance build',  r: 3, lp: 0, fl: 1, sc: 2, wa: 2, nz: 1, fade: 0 },   // unit: rung exponents
+    { n: 'echo out',      r: 1, hp: 1, ec: 0, wa: 2, fade: -3 },   // unit: rung exponents
+    { n: 'scatter roll',  r: 0, hp: 2, fl: 2, sc: 0, ec: 2, fade: -1 },   // unit: rung exponents
+    { n: 'flanger wash',  r: 2, lp: 2, fl: 0, wa: 1, nz: 2, fade: 1 }];   // unit: rung exponents (weight = PHI^-k)
+  function wt(S, k) { return S[k] == null ? 0 : Math.pow(PHI, -S[k]); }
+  function noiseBuf() { if (nzB) return nzB; var n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0); for (var j = 0; j < n; j++) d[j] = Math.random() * 2 - 1; return (nzB = b); }   // unit: one second of white noise
+  function hold(p, t) { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
+  function rollAt(t, beat, F) {                                           // one beat-repeat: loop a beat / F slice for the rest of the beat
+    var L = beat / F, s = Math.pow(PHI, -8), end = t + beat;               // phi: click-free edges
+    rDel.delayTime.setValueAtTime(L, t); rIn.gain.setTargetAtTime(1, t, s); rIn.gain.setTargetAtTime(0, t + L, s);
+    rFb.gain.setTargetAtTime(1, t + L, s); rFb.gain.setTargetAtTime(0, end, s);
+    rOut.gain.setTargetAtTime(1, t + L, s); rOut.gain.setTargetAtTime(0, end, s); rDry.gain.setTargetAtTime(IPH, t + L, s); rDry.gain.setTargetAtTime(1, end, s);
+  }
+  function transition(go) {
+    var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
+    var st = E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
+    var u = energy(), ri = clamp(S.r + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // pump nudge of up to a rung
+    var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
+    var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
+    var td = ts + (bd - bs) * bar, T = td - ts, tail = bar, s8 = Math.pow(PHI, -6);
+    txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: st, bars: bd - bs, start: ts, drop: td, now: now };
+    [lp.frequency, hp.frequency, eSend.gain, eFb.gain, wSend.gain, flW.gain, flFb.gain, flL.frequency, nzG.gain, nzBP.frequency].forEach(function (p) { hold(p, now); });
+    var w;
+    if ((w = wt(S, 'hp'))) { hp.frequency.setValueAtTime(Math.max(FLO, hp.frequency.value), ts); hp.frequency.exponentialRampToValueAtTime(FLO * Math.pow(PHI, SPB + PHI * PHI * w), td);   // phi: HP sweep up to FLO PHI^(4+PHI^2 w)
+      hp.frequency.setTargetAtTime(FLO, td, s8); }
+    if ((w = wt(S, 'lp'))) { lp.frequency.setTargetAtTime(FHI * Math.pow(PHI, -PHI * PHI * PHI * w), now, beat * IPH); lp.frequency.setValueAtTime(FHI * Math.pow(PHI, -PHI * PHI * PHI * w), ts);
+      lp.frequency.exponentialRampToValueAtTime(FHI, td); }                // phi: riser from PHI^-PHI^3 under the top, open at the drop
+    if ((w = wt(S, 'fl'))) { flW.gain.setValueAtTime(0, ts); flW.gain.linearRampToValueAtTime(w * IPH, td); flW.gain.setTargetAtTime(0, td + beat, tail * IPH);
+      flFb.gain.setValueAtTime(w * IPH * IPH, ts); flFb.gain.setTargetAtTime(0, td + tail, tail * IPH);
+      flL.frequency.setValueAtTime(1 / bar, ts); flL.frequency.exponentialRampToValueAtTime(PHI * PHI / beat, td); flL.frequency.setTargetAtTime(0, td + tail, tail); }   // phi: sweep speeds up to PHI^2 per beat
+    if ((w = wt(S, 'sc'))) { var nb = Math.max(1, Math.round(SPB * w)); for (var b = 0; b < nb; b++) rollAt(td - (nb - b) * beat, beat, FIB[clamp(1 + b + SPB - nb, 1, FIB.length - 1)]); }   // last beats, accelerating 1/2 .. 1/8
+    if ((w = wt(S, 'ec'))) { var e0 = td - Math.min(T, bar); eSend.gain.setValueAtTime(eSend.gain.value, e0); eSend.gain.linearRampToValueAtTime(w, td - s8); eSend.gain.setTargetAtTime(0, td, s8);
+      eFb.gain.setValueAtTime(w * IPH, e0); eFb.gain.setTargetAtTime(0, td + tail, tail * IPH); }   // echo-out: only the outgoing feeds the tail
+    if ((w = wt(S, 'wa')) && wConv.buffer) { wSend.gain.setValueAtTime(wSend.gain.value, ts); wSend.gain.linearRampToValueAtTime(w * IPH, td); wSend.gain.setTargetAtTime(0, td, tail * IPH); }
+    if ((w = wt(S, 'nz'))) { var ns = c.createBufferSource(); ns.buffer = noiseBuf(); ns.loop = true; ns.connect(nzBP); ns.start(ts); ns.stop(td + tail);
+      nzBP.frequency.setValueAtTime(FLO * Math.pow(PHI, PHI * PHI * PHI * PHI), ts); nzBP.frequency.exponentialRampToValueAtTime(FHI * IPH * IPH, td);   // phi: riser band PHI^PHI^4 x FLO -> PHI^-2 x FHI
+      nzG.gain.setValueAtTime(0, ts); nzG.gain.linearRampToValueAtTime(w * Math.pow(PHI, -5), td); nzG.gain.setTargetAtTime(0, td, Math.pow(PHI, -4)); }   // phi: riser at most PHI^-5 (the noise stays under the music)
+    var fade = bar * Math.pow(PHI, S.fade);
+    setTimeout(function () { go({ at: td, fade: fade, swap: true, style: S.n }); }, Math.max(0, (td - c.currentTime - Math.pow(PHI, -2)) * MS));   // phi: hand over PHI^-2 s before the drop
+    setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
+    // CC log for the export: brightness (LP up, HP down), flanger wet, wash, sampled on the sixteenth grid from now to the tail
+    var R = K.recCC, span = Math.log(FHI / FLO); clearInterval(txLog);
+    if (R) txLog = setInterval(function () {
+      var x = (Math.log(lp.frequency.value / FLO) - Math.log(hp.frequency.value / FLO)) / span;
+      R(74, x); R(93, flW.gain.value * PHI); R(91, wSend.gain.value * PHI);   // unit: GM brightness, chorus/flanger depth, reverb send
+      if (c.currentTime > td + tail) clearInterval(txLog);
+    }, d16 * MS);
+    sync(); return true;
   }
   // ---------- knob chips (same style as the pump knobs) ----------
   var els = {}, box = null, btn = null, ndl = {};
@@ -147,7 +216,7 @@
       f.names.forEach(function (nm, i) {
         var l = document.createElement('label'), r = document.createElement('input'), s = document.createElement('span');
         r.type = 'radio'; r.name = 'djfx-' + f.k; r.value = i; s.textContent = nm;
-        r.addEventListener('change', function () { if (!r.checked) return; var li = liveIdx(f, energy()); nudge[f.k] = i - li; apply(); save(); });
+        r.addEventListener('change', function () { if (!r.checked) return; var li = liveIdx(f, energy()); nudge[f.k] = f.kind === 'pick' ? i : i - li; apply(); save(); });
         l.appendChild(r); l.appendChild(s); fs.appendChild(l); els[f.k].push([i, r, l]);
       });
       ndl[f.k] = document.createElement('i'); ndl[f.k].className = 'dj-needle'; ndl[f.k].setAttribute('aria-hidden', 'true'); fs.appendChild(ndl[f.k]);
@@ -164,6 +233,7 @@
   function pos(f, e) {                                                    // continuous rung position of the live value (needle)
     var n = f.L.length - 1;
     if (f.kind === 'idx') return clamp(e.i + (wob(f.k) - 1) * PHI, 0, n);
+    if (f.kind === 'pick') return clamp(e.li + (wob(f.k) - 1) * PHI, 0, n);
     if (f.kind === 'add') { for (var i = 0; i < n; i++) if (e.v <= f.L[i + 1]) return i + (e.v - f.L[i]) / (f.L[i + 1] - f.L[i]); return n; }
     return e.v > 0 ? clamp(n + Math.log(e.v) / Math.log(PHI), 1, n) : 0;   // phi: amount rungs are powers of PHI
   }
@@ -175,12 +245,12 @@
   }
   function reroll(f) {                                                    // one effect: a random rung + fresh coupling weights, gliding in
     var sd = Math.floor(Math.random() * Math.pow(2, 32)); wseed[f.k] = sd; uOf(f.k);   // unit: 2^32 seeds
-    nudge[f.k] = Math.floor(frac(sd * IPH) * f.L.length) - liveIdx(f, energy()); apply(PHI); save();
+    nudge[f.k] = Math.floor(frac(sd * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, energy())); apply(PHI); save();
   }
   // ---------- random effects (golden-angle genome), hold = live ----------
   function draw(s) {
     var u = energy(); seed = s; if (s == null) FX.forEach(function (f) { delete wseed[f.k]; });   // hold: back to live couplings too
-    FX.forEach(function (f, j) { nudge[f.k] = s == null ? 0 : Math.floor(frac((s * FX.length + j) * IPH) * f.L.length) - liveIdx(f, u); });
+    FX.forEach(function (f, j) { nudge[f.k] = s == null ? 0 : Math.floor(frac((s * FX.length + j) * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, u)); });
     apply(PHI); save();                                                   // rule 6: a new effects mix glides in, tau PHI s
     if (btn) { btn.classList.remove('is-mixing'); void btn.offsetWidth; btn.classList.add('is-mixing'); }
   }
@@ -206,5 +276,5 @@
   build();
   D.fx = { get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
-    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy };
+    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition, get lastTransition() { return lastTx; } };
 })();

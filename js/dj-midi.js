@@ -36,12 +36,13 @@
       notes.sort(function (a, b) { return a[0] - b[0]; }); var held = {};
       notes.forEach(function (x) { var h = held[x[2]]; if (h && h[1] > x[0]) h[1] = x[0]; held[x[2]] = x; });   // same pitch again: end the earlier note there (no truncation of the new one)
       notes.forEach(function (x) { if (x[1] > x[0]) es.push([x[0], 1, x[2], x[3]], [x[1], 0, x[2], 0]); });
+      var lastCC = {}; ev.forEach(function (e) { if (e[1] !== 'cc') return; var v = Math.max(0, Math.min(B7 - 1, Math.round(e[3] * (B7 - 1)))); if (lastCC[e[2]] === v) return; lastCC[e[2]] = v; es.push([tk(e[0]), 2, e[2], v]); });   // transition sweeps (CC74/93/91) on every part
       es.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });   // note-offs before note-ons at the same tick
       var body = [0].concat(meta(0x03, str(P[1]))), last = 0, tn = pi + 2;
       rows.push([tn, 0, 'Start_track'], [tn, 0, 'Title_t', '"' + P[1] + '"']);
       if (ch !== DCH) { body = body.concat([0, 0xC0 | ch, P[3]]); rows.push([tn, 0, 'Program_c', ch, P[3]]); }
-      es.forEach(function (x) { body = body.concat(vlq(x[0] - last), [(x[1] ? 0x90 : 0x80) | ch, x[2], x[3]]); last = x[0];
-        rows.push([tn, x[0], x[1] ? 'Note_on_c' : 'Note_off_c', ch, x[2], x[3]]); });
+      es.forEach(function (x) { body = body.concat(vlq(x[0] - last), [(x[1] === 2 ? 0xB0 : x[1] ? 0x90 : 0x80) | ch, x[2], x[3]]); last = x[0];   // unit: SMF status bytes (control change / note on / off)
+        rows.push([tn, x[0], x[1] === 2 ? 'Control_c' : x[1] ? 'Note_on_c' : 'Note_off_c', ch, x[2], x[3]]); });
       body = body.concat([0], meta(0x2F, [])); rows.push([tn, last, 'End_track']); tracks.push(body);
     });
     rows.push([0, 0, 'End_of_file']);
