@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=fast1';
+  var CSS = 'css/dj-desk.css?v=multi1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -145,8 +145,13 @@
       return { id: 'fx.' + x[0], name: x[1], k: x[2], L: L, def: null, lab: function (i) { return x[3][i]; }, get: function () { var e = fxe(x[0]); return e ? e.i : null; }, set: function (i) { var F = d && d.fx; if (F && F.set) F.set(x[0], i); },
         live: function () { var e = fxe(x[0]); return e && e.li != null ? e.li / (L.length - 1) : null; } }; }));
     var tx = E('div', 'dk-sws'), TX = ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash', 'random'];
-    TX.forEach(function (lab, i) { tx.appendChild(sw(lab, function () { var e = fxe('trans'); return e ? (e.i | 0) === i : i === 0; }, function () { var F = d && d.fx; if (F && F.set) F.set('trans', i); log('fx.trans', i); tx.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
-    ef.appendChild(E('div', 'dk-sub', 'transition')); ef.appendChild(tx);
+    // MULTI-SELECT (Danny 19:13 AWST 27 Oct: 'select more than one and the random button for that should do the same'): the five styles
+    // toggle, any set plays together; auto and random stand alone (random draws a set at each change, up to the 'random picks' count).
+    var txOn = function (i) { var F = d && d.fx, e = fxe('trans'), h = e ? e.i | 0 : 0; if (i === 0 || i === TX.length - 1) return h === i; return h > 0 && h < TX.length - 1 && !!F && (F.tset || []).indexOf(i) >= 0; };
+    TX.forEach(function (lab, i) { tx.appendChild(sw(lab, function () { return txOn(i); }, function () { var F = d && d.fx; if (F && F.trans) F.trans(i, i > 0 && i < TX.length - 1); else if (F && F.set) F.set('trans', i); log('fx.trans', F && F.tset ? (txOn(0) ? 0 : txOn(TX.length - 1) ? TX.length - 1 : F.tset.join('+')) : i); tx.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
+    ef.appendChild(E('div', 'dk-sub', 'transition · pick any set')); ef.appendChild(tx);
+    TXL = E('div', 'dk-hint dk-txl'); ef.appendChild(TXL);
+    bank(ef, [{ id: 'fx.tn', name: 'random picks', k: 'N', L: [1, 2, 3, 4, 5], def: 3, lab: function (v) { return 'up to ' + v; }, get: function () { var F = d && d.fx; return F && F.tn ? F.tn() : 3; }, set: function (v) { var F = d && d.fx; if (F && F.tn) F.tn(v); } }]);   // pump count: how many styles random may combine
     var fxr = E('div', 'dk-tools'), fb = E('button', 'dk-mini', '🎲'), fbk = E('button', 'dk-mini', 'back to live'); fb.type = fbk.type = 'button';
     fb.addEventListener('click', function () { var F = d && d.fx; if (F && F.random) F.random(); log('fx.roll', 1); setTimeout(paintAll, 60); });
     fbk.addEventListener('click', function () { var F = d && d.fx; if (F && F.back) F.back(); log('fx.live', 1); setTimeout(paintAll, 60); });
@@ -231,6 +236,8 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
+  var TXL = null;
+  function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
   // CHANNEL METERS (Danny 18:47 AWST 27 Oct: 'We don't want it actually measuring the sound volume ... the energy in the circuit ... mapped
@@ -242,7 +249,7 @@
       m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

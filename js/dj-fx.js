@@ -246,6 +246,25 @@
     { n: 'echo out',      r: 1, hp: 1, ec: 0, wa: 2, fade: -3 },   // unit: rung exponents
     { n: 'scatter roll',  r: 0, hp: 2, fl: 2, sc: 0, ec: 2, fade: -1 },   // unit: rung exponents
     { n: 'flanger wash',  r: 2, lp: 2, fl: 0, wa: 1, nz: 2, fade: 1 }];   // unit: rung exponents (weight = PHI^-k)
+  // MULTI-SELECT TRANSITIONS (Danny 19:13 AWST 27 Oct, Claude chat: 'With the effects for the transition I would like to be able to select
+  // more than one and the random button for that should do the same'): the five styles are switches, any set of them at once. A set plays
+  // every effect its members carry, each at its strongest rung (the smallest exponent, so nothing is summed past one style's own depth),
+  // over the members' mean wait rung and mean fade. Random draws a fresh set at every change: 1 .. TN styles, TN a pump count on the desk.
+  // The effects dice lands on a set the same way. Auto is unchanged (the pumps pick one style).
+  var tset = 0, TN = 3, TCOMP = ['hp', 'lp', 'fl', 'sc', 'ec', 'wa', 'nz'];   // unit: bit mask over styles 1..5; pump count: random combines up to 3 styles (a Fibonacci count)
+  function members(m) { var a = []; for (var j = 1; j < STY.length; j++) if (m & (1 << j)) a.push(j); return a; }
+  function tmask() { var m = nudge.trans | 0; if (m < 1 || m >= STY.length) return 0; return (tset & (1 << m)) ? tset : (1 << m); }   // a hand pick: the set, or the one style an older save or the dice picked
+  function pickSet(rnd, first) { var a = [], m = first ? 1 << first : 0, n = Math.floor(rnd() * clamp(TN | 0, 1, STY.length - 1)) + (first ? 0 : 1);   // unit: how many styles join
+    for (var j = 1; j < STY.length; j++) if (j !== first) a.push(j);
+    for (var i = 0; i < n && a.length; i++) { var q = Math.floor(rnd() * a.length); m |= 1 << a[q]; a.splice(q, 1); } return m; }
+  function mixSty(a) { if (a.length === 1) return STY[a[0]]; var S = { n: a.map(function (j) { return STY[j].n; }).join(' + '), r: 0, fade: 0 };
+    a.forEach(function (j) { var T = STY[j]; S.r += T.r; S.fade += T.fade; TCOMP.forEach(function (k) { if (T[k] != null) S[k] = S[k] == null ? T[k] : Math.min(S[k], T[k]); }); });
+    S.r = Math.round(S.r / a.length); S.fade /= a.length; return S; }
+  function setTrans(i, multi) { i = i | 0;
+    if (i < 1 || i >= STY.length) { tset = 0; nudge.trans = clamp(i, 0, STY.length); }   // auto or random: the set clears
+    else if (!multi) { tset = 1 << i; nudge.trans = i; }
+    else { var m = tmask() ^ (1 << i); tset = m; nudge.trans = m ? members(m)[0] : 0; }   // a toggle; the last one off goes back to auto
+    apply(); save(); }
   function wt(S, k) { return S[k] == null ? 0 : Math.pow(PHI, -S[k]); }
   function noiseBuf() { if (nzB) return nzB; var n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0); for (var j = 0; j < n; j++) d[j] = Math.random() * 2 - 1; return (nzB = b); }   // unit: one second of white noise
   function hold(p, t) { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
@@ -270,8 +289,8 @@
     var sw = autoSweep(), dk = !!(o && o.desk); if (sw && !dk) { txN++; var u0 = energy(), g2 = gdraw(2), g3 = gdraw(3), q2 = IPH * IPH;
       o = { wait: g2 * (1 - q2) + (o && o.wait != null ? clamp(o.wait, 0, 1) : u0) * q2,
             depth: Math.pow(Math.pow(PHI, -2 * (1 - g3)), 1 - q2) * Math.pow(o && o.depth != null ? clamp(o.depth, IPH * IPH, 1) : 1, q2) }; }
-    var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0]; if (st === 6) st = 1 + Math.floor(Math.random() * (STY.length - 1));   // random: any of the five, by chance
-    var S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
+    var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0], set = st === STY.length ? members(pickSet(Math.random, 0)) : !sw && tmask() ? members(tmask()) : [st];   // random: a set by chance; a hand set as picked
+    var S = (set.length && mixSty(set)) || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
     var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     if (dk && o.bars > 0) nB = o.bars;                                   // DESK CHANGES (Danny 18:59 AWST 27 Oct: 'build it as dials'): his own build length, no phrase snap
@@ -279,7 +298,7 @@
     var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth
     try {
     var td = ts + (bd - bs) * bar, T = td - ts, tail = bar, s8 = Math.pow(PHI, -6);
-    txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: st, bars: bd - bs, start: ts, drop: td, now: now, dp: dp };   // dp: the pumped depth (the voice's light-build bump reads it)
+    txBusy = true; TXu = td + tail + PHI; lastTx = { style: S.n, idx: set[0], set: set, bars: bd - bs, start: ts, drop: td, now: now, dp: dp };   // dp: the pumped depth (the voice's light-build bump reads it)
     [lp.frequency, hp.frequency, eSend.gain, eFb.gain, wSend.gain, flW.gain, flFb.gain, flL.frequency, nzG.gain, nzBP.frequency].forEach(function (p) { hold(p, now); });
     var w;
     if ((w = wt(S, 'hp'))) { hp.frequency.setValueAtTime(Math.max(FLO, hp.frequency.value), ts); hp.frequency.exponentialRampToValueAtTime(FLO * Math.pow(PHI, SPB + PHI * PHI * w), td);   // phi: HP sweep up to FLO PHI^(4+PHI^2 w)
@@ -329,7 +348,7 @@
       f.names.forEach(function (nm, i) {
         var l = document.createElement('label'), r = document.createElement('input'), s = document.createElement('span');
         r.type = 'radio'; r.name = 'djfx-' + f.k; r.value = i; s.textContent = nm;
-        r.addEventListener('change', function () { if (!r.checked) return; var li = liveIdx(f, energy()); nudge[f.k] = f.kind === 'pick' ? i : i - li; apply(); save(); });
+        r.addEventListener('change', function () { if (!r.checked) return; var li = liveIdx(f, energy()); nudge[f.k] = f.kind === 'pick' ? i : i - li; if (f.k === 'trans') tset = 0; apply(); save(); });
         l.appendChild(r); l.appendChild(s); fs.appendChild(l); els[f.k].push([i, r, l]);
       });
       ndl[f.k] = document.createElement('i'); ndl[f.k].className = 'dj-needle'; ndl[f.k].setAttribute('aria-hidden', 'true'); fs.appendChild(ndl[f.k]);
@@ -357,13 +376,14 @@
     nd.style.transform = 'translate(' + cx.toFixed(1) + 'px,' + (a.offsetTop + a.offsetHeight).toFixed(1) + 'px)';
   }
   function reroll(f) {                                                    // one effect: a random rung + fresh coupling weights, gliding in
-    var sd = Math.floor(Math.random() * Math.pow(2, 32)); wseed[f.k] = sd; uOf(f.k);   // unit: 2^32 seeds
+    var sd = Math.floor(Math.random() * Math.pow(2, 32)); wseed[f.k] = sd; uOf(f.k); if (f.k === 'trans') tset = 0;   // unit: 2^32 seeds
     nudge[f.k] = Math.floor(frac(sd * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, energy())); apply(PHI); save();
   }
   // ---------- random effects (golden-angle genome), hold = live ----------
   function draw(s) {
     var u = energy(); seed = s; if (s == null) FX.forEach(function (f) { delete wseed[f.k]; });   // hold: back to live couplings too
     FX.forEach(function (f, j) { nudge[f.k] = s == null ? 0 : Math.floor(frac((s * FX.length + j) * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, u)); });
+    var t0 = nudge.trans | 0, q0 = frac((s || 0) * IPH * IPH); tset = s != null && t0 >= 1 && t0 < STY.length ? pickSet(function () { q0 = frac(q0 + IPH); return q0; }, t0) : 0;   // the dice lands on a set too
     apply(PHI); save();                                                   // rule 6: a new effects mix glides in, tau PHI s
     if (btn) { btn.classList.remove('is-mixing'); void btn.offsetWidth; btn.classList.add('is-mixing'); }
   }
@@ -379,10 +399,11 @@
   var RC = null;
   function save() { if (RC) RC.save(); }
   if (window.RhythmContinuity) RC = RhythmContinuity.register('djfx', {
-    save: function () { return { n: nudge, seed: seed, w: wseed }; },
+    save: function () { return { n: nudge, seed: seed, w: wseed, t: tset, tn: TN }; },
     catchUp: function (e, s, mode) { if (!s || mode === 'return') return; if (s.seed != null && isFinite(s.seed)) seed = s.seed; if (s.w) FX.forEach(function (f) { if (isFinite(s.w[f.k])) wseed[f.k] = s.w[f.k]; });
-      if (mode !== 'restart' && s.n) FX.forEach(function (f) { if (isFinite(s.n[f.k])) nudge[f.k] = s.n[f.k]; }); },
-    reset: function () { FX.forEach(function (f) { nudge[f.k] = 0; }); apply(); } });   // daily restart: knobs back to live, the effects seed stays
+      if (mode !== 'restart' && s.n) FX.forEach(function (f) { if (isFinite(s.n[f.k])) nudge[f.k] = s.n[f.k]; });
+      if (isFinite(s.tn)) TN = clamp(s.tn | 0, 1, STY.length - 1); if (mode !== 'restart' && isFinite(s.t)) tset = s.t | 0; },
+    reset: function () { FX.forEach(function (f) { nudge[f.k] = 0; }); tset = 0; apply(); } });   // daily restart: knobs back to live, the effects seed stays
   // ---------- in ----------
   apply(); irReady(); K.fx({ inp: inp, out: out, sends: { echo: echoIn, wash: washIn } });                                  // the start engine crossfades dry -> this chain over PHI^2 s
   var EV = K.every || setInterval;                                        // phases on the one clock (core), else timers
@@ -392,7 +413,8 @@
   build();
   D.fx = { autoSweep: autoSweep, get txN() { return txN; }, random: function (hold) { if (hold) draw(null); else fxGo(); }, kick: kick, get lastThrow() { return lastThr; }, throwDial: function (k, v) { if (TD.hasOwnProperty(k) && isFinite(v)) TD[k] = +v; return TD[k]; }, get eff() { return JSON.parse(JSON.stringify(E)); }, get nudge() { return JSON.parse(JSON.stringify(nudge)); }, get seed() { return seed; }, get rolls() { return rolls; }, back: back, get u() { return JSON.parse(JSON.stringify(uk)); }, reroll: function (k) { FX.forEach(function (f) { if (f.k === k) reroll(f); }); }, get scatter() { return { base: RB, trigHz: TRG, widthHz: TRG * PHI, ampHz: lfo.frequency.value, amp: rAmp.gain.value, lastDiv: lastF }; },
     random: function (s) { draw(s === undefined ? (seed == null ? Math.floor(Date.now() / MS) : seed + 1) : s); },
-    set: function (k, i) { FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
+    set: function (k, i) { if (k === 'trans') return setTrans(i, false); FX.forEach(function (f) { if (f.k === k) nudge[k] = f.kind === 'pick' ? i : i - liveIdx(f, energy()); }); apply(); save(); }, energy: energy, transition: transition,
+    trans: setTrans, get tset() { return members(tmask()); }, tn: function (v) { if (v != null && isFinite(v)) { TN = clamp(Math.round(v), 1, STY.length - 1); save(); } return TN; },
     pad: function (m) { PAD = m ? { filter: +m.filter || 0, echo: +m.echo || 0, wash: +m.wash || 0, crush: +m.crush || 0, flw: +m.flw || 0, r: +m.r || 0 } : null; apply(PAD ? Math.pow(PHI, -4) : IPH); },   // phi: pad glides tau PHI^-4 s, release glides home tau PHI^-1 s
     get padding() { return PAD ? JSON.parse(JSON.stringify(PAD)) : null; }, get lastTransition() { return lastTx; } };
 })();
