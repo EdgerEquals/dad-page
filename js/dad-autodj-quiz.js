@@ -155,8 +155,9 @@
     // versions'): the 808 bank plays the drums (bank: 1, js/dj-extras.js + js/vendor/driftbox-808.js), the genre keeps its own drums
     // (own: 1: no donor, no Pocket Operations anchor; alt = the odd-bar variation), tempo folded into the top octave (fold: 1).
     // Drums: the electro 808 convention (kick 1 . 7 . 11, snare + clap on 2 and 4, straight closed-hat 16ths with an open hat into the
-    // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated saw stabs over i-VI-VII.
-    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, bass: 'acid', bwave: 'square', mel: 0.12, lead: 'square',
+    // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated stabs over i-VI-VII on Ed's
+    // Jupiter (ci), Ed's Juno on the arp (ai) and a pad under it (under), the DX7 on the lead, the 303 rack on the bass (acid).
+    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx',
                    kick: 'x.....x...x.....', snare: '....x.......x...', clap: '....x.......x...', hat: 'oooooooooooooox.', cow: '...o.......o....', rev: 0.18,
                    own: 1, bank: 1, fold: 1, alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', rev: 0.4 }
@@ -271,7 +272,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=electro2';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=electro3';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -595,9 +596,11 @@
     // chords
     if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, Math.sqrt(3 / ch.length))   /* organ fix (a): equal-power chord count, the triad voiced() starts from over n notes, like voice()'s vel / sqrt(copies) */; });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
-      ch.forEach(function (n, k) { var inst = (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn) * Math.sqrt(3 / ch.length)); });   // phi: strum spread PHI^-4 of a sixteenth
+      ch.forEach(function (n, k) { var inst = (g.ci && INST[g.ci]) || (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn) * Math.sqrt(3 / ch.length)); });   // phi: strum spread PHI^-4 of a sixteenth; ci: the genre's own chord synth (electro: Ed's Jupiter)
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t); pl('chords', cb ? INST.square : INST.pluck, tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb ? IPH * IPH : IPH), cb ? 0.45 : IPH * IPH); }   // phi: blips short, the plucked ones a little longer and softer
+    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t), ai = g.ai && INST[g.ai];   // ai: the genre's own arp synth (electro: Ed's Juno), in place of the chip blips
+      pl('chords', ai || (cb ? INST.square : INST.pluck), tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb && !ai ? IPH * IPH : IPH), cb && !ai ? 0.45 : IPH); }
+    if (g.under && first && INST[g.under]) ch.forEach(function (n) { pl('chords', INST[g.under], tr.L.pad, n + 12, t, barLen, IPH * Math.sqrt(3 / ch.length)); });   // under: a pad under the stabs (electro: Ed's Juno), equal power over the chord   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
     var bn = root0 - 12;
@@ -609,7 +612,7 @@
     if (g.bass === 'acid') acidStep(tr, t, s16, bn, dur16, dyn);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' || g.lead === 'dx' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat

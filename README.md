@@ -25,3 +25,6 @@ Danny's rule (27 Oct 2026): always acknowledge anything we use, and expect the s
   One of the units in Ed's DJ 808 bank (electro); loaded only when an electro track plays.
 - **driftbox 303** (`js/vendor/driftbox-303.js`): the TB-303 voice from the same package (Louis Emmett, MIT), with its ladder
   filter after Antti Huovilainen's model. The main unit of Ed's DJ 303 rack; loaded only when an acid line plays.
+- **dx7-synth-js** (`js/vendor/dx7-worklet.js`): the DX7 FM voice by [Matt Montag](https://github.com/mmontag/dx7-synth-js),
+  MIT licence (full text in the file), run in an AudioWorklet. The patches are ours (warm bell, tine piano); no factory ROM voices.
+  Ed's Juno and Ed's Jupiter (`js/dj-extras.js`) are written from scratch.

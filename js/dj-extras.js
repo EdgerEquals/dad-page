@@ -184,6 +184,97 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     R.og.gain.setTargetAtTime(e > IPH ? A3 * ASH[2] : 0, n.t, Math.pow(PHI, -3));   // the overdrive unit joins past PHI^-1 of the arc (its share of the rack)
   }
 
+  // ---------- KEYS FOR ELECTRO (Danny 15:42-15:56 AWST 27 Oct, Claude chat: 'we need the Junos ... and the Jupiter eight ... best if you
+  // just build it from scratch because we'll get our own unique version and even if it's quirky ... that's fine'; FM: 'I absolutely love
+  // that FM synth ... that's the one I wanted you to go with' = dx7-synth-js, MIT). Each is a rack like the 808s (the same rule: units
+  // join by threshold on the track's energy arc, shares fixed on the golden ladder PHI^-k / 2, golden cents and ms between units):
+  //   DX7 (lead)      unit 0 the DX7 (dx7-synth-js by Matt Montag, MIT, js/vendor/dx7-worklet.js) on our warm 'soft bell' patch,
+  //                   unit 1 our own 2-operator FM bell (INST.bell), unit 2 the DX7 on our 'tine piano' patch past PHI^-1.
+  //                   Warm on purpose (DeepSeek's caution Danny relayed 17:09: bright FM is the 90s game sound): two operators a
+  //                   carrier, low modulation index, golden ratios, a lowpass PHI^-3 under the top after the worklet.
+  //   Ed's Juno (arp + pad)  ours: saw DCO + square sub an octave down, a fixed highpass, two lowpass stages keytracked like the
+  //                   Juno's KYBD follow, ADSR; then the layer's chorus: chorus I always (the Juno sound), the dry DCO as unit 1,
+  //                   chorus II past PHI^-1. Chorus rates and depths as commonly measured on the Juno-60 (I 0.513 Hz, II 0.863 Hz,
+  //                   delay swept 1.66-5.35 ms), stereo by sweeping the two sides in opposition.
+  //   Ed's Jupiter (stabs)   ours: two saw VCOs golden cents apart (panned apart), VCO 2 cross-modulating VCO 1 a little (its quirk),
+  //                   two lowpass stages with a fast brassy sweep; unit 1 the old saw stab (INST.stab), unit 2 a unison voice an
+  //                   octave down past PHI^-1.
+  var DXR = { u: [0, 1, 2].map(function (k) { return Math.pow(PHI, -k) / 2; }) }, dxMod = null, dxReq = false;   // phi: rack shares 0.5, 0.31, 0.19
+  function dxOp(o) { return Object.assign({ enabled: true, rates: [99, 50, 30, 60], levels: [99, 80, 0, 0], detune: 0, velocitySens: 2, lfoAmpModSens: 0, volume: 99, oscMode: 0, freqCoarse: 1, freqFine: 0, pan: 0 }, o); }
+  function dxPatch(ops, extra) { var off = { enabled: false, volume: 0 }; while (ops.length < 6) ops.push(dxOp(off));
+    return Object.assign({ algorithm: 5, feedback: 0, lfoSpeed: 30, lfoDelay: 40, lfoPitchModDepth: 0, lfoAmpModDepth: 0, lfoPitchModSens: 0, lfoWaveform: 4, lfoSync: 0,
+      pitchEnvelope: { rates: [0, 0, 0, 0], levels: [50, 50, 50, 50] }, controllerModVal: 0, aftertouchEnabled: 0, operators: ops.map(function (o, i) { o.idx = i; return o; }) }, extra || {}); }
+  // our patches (DX7 parameter ranges 0-99; algorithm 5 = three 2-operator stacks, op 1 <- op 2, op 3 <- op 4, op 5 <- op 6):
+  var DXP = {
+    bell: dxPatch([dxOp({ rates: [99, 32, 22, 45], levels: [99, 82, 0, 0], velocitySens: 2 }),                                   // carrier, a long ring
+                   dxOp({ freqCoarse: 2, freqFine: 31, volume: 62, rates: [99, 45, 30, 60], levels: [99, 55, 0, 0], velocitySens: 6 }),   // ratio 2.62 = PHI^2 (the house bell's ratio), soft index
+                   dxOp({ freqCoarse: 2, detune: 3, volume: 72, rates: [99, 38, 25, 50], levels: [99, 70, 0, 0] }),                     // an octave partial, a little sharp
+                   dxOp({ freqCoarse: 4, freqFine: 6, volume: 44, rates: [99, 60, 40, 70], levels: [99, 40, 0, 0], velocitySens: 7 })]),   // ratio 4.24 = PHI^3, quiet: a glint
+    tine: dxPatch([dxOp({ rates: [96, 28, 25, 67], levels: [99, 92, 0, 0], velocitySens: 3 }),                                   // the EP body
+                   dxOp({ volume: 58, rates: [95, 50, 35, 78], levels: [99, 72, 0, 0], velocitySens: 7 }),                               // 1:1, velocity opens it (the bark)
+                   dxOp({ detune: -3, volume: 88, rates: [95, 30, 22, 55], levels: [99, 92, 0, 0] }),                                    // a second body a few cents flat
+                   dxOp({ freqCoarse: 14, volume: 40, rates: [98, 85, 40, 80], levels: [99, 0, 0, 0], velocitySens: 6 })])               // 14:1, the tine, gone in a moment
+  };
+  function dxLoad(c) { if (dxMod || dxReq || !c.audioWorklet) return; dxReq = true; c.audioWorklet.addModule('js/vendor/dx7-worklet.js?v=dx7a').then(function () { dxMod = true; }).catch(function () {}); }
+  function dxRack(L) { var c = C(); if (L.dx && !L.dx.dead) return L.dx; if (!dxMod) { dxLoad(c); return null; }
+    var cents = function (u) { return (((u * IPH) % 1) - 1 / 2) * Math.pow(PHI, 5) / 100; };   // phi: golden cents per unit, in semitones
+    var msgs = [{ k: 'patch', id: 'bell', p: DXP.bell, b: cents(0) }, { k: 'patch', id: 'tine', p: DXP.tine, b: cents(2) }];
+    try { var n = new AudioWorkletNode(c, 'ed-dx7', { numberOfInputs: 0, outputChannelCount: [2], processorOptions: { msgs: msgs } }), lp = c.createBiquadFilter(); } catch (er) { return null; }
+    lp.type = 'lowpass'; lp.frequency.value = FHI * Math.pow(IPH, 3); lp.Q.value = 0; n.connect(lp); lp.connect(L.out);   // phi: warmth, PHI^-3 under the top
+    return (L.dx = { n: n, lp: lp });
+  }
+  function dxIdle(L, t) { var R = L.dx; if (!R) return; clearTimeout(R.idle); R.idle = setTimeout(function () { R.dead = true; try { R.n.port.postMessage({ k: 'end' }); setTimeout(function () { R.n.disconnect(); R.lp.disconnect(); }, Math.pow(PHI, 4) * 1e3); } catch (er) {} }, (Math.max(0, t - C().currentTime) + Math.pow(PHI, 4)) * 1e3); }   // phi: retire PHI^4 s after the last note; unit: ms per s
+  INST.dx = function (tr, f, t, d, v) {
+    var L = tr, tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, m = Math.round(69 + 12 * Math.log(f / 440) / Math.LN2), R = dxRack(L), g = v * IPH;   // our bell peaks near the DX7's 2-op level at gain PHI^-1 (offline renders)
+    if (INST.bell) INST.bell(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
+    if (!R) return;
+    R.n.port.postMessage({ k: 'on', id: 'bell', note: m, vel: v, t: t, d: d, g: g * DXR.u[0] * 2 });
+    if (e > IPH) R.n.port.postMessage({ k: 'on', id: 'tine', note: m, vel: v, t: t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d: d, g: g * DXR.u[2] * 2 });   // the tine piano joins past PHI^-1
+    dxIdle(L, t + d);
+  };
+  // ----- Ed's Juno -----
+  var JCH = [{ hz: 0.513, lo: 1.66e-3, hi: 5.35e-3 }, { hz: 0.863, lo: 1.66e-3, hi: 5.35e-3 }];   // cite: Juno-60 chorus I / II LFO rates and delay sweep as commonly measured
+  function junoBus(L) { if (L.ju && !L.ju.dead) return L.ju; var c = C(), inp = c.createGain(), dry = c.createGain(), mk = function (k) {
+      var lfo = c.createOscillator(), dl = c.createDelay(0.02), dr = c.createDelay(0.02), gl = c.createGain(), gr = c.createGain(), pl = c.createStereoPanner ? c.createStereoPanner() : null, pr = c.createStereoPanner ? c.createStereoPanner() : null, out = c.createGain(), J = JCH[k], mid = (J.lo + J.hi) / 2, dep = (J.hi - J.lo) / 2;
+      lfo.type = 'triangle'; lfo.frequency.value = J.hz; dl.delayTime.value = dr.delayTime.value = mid; gl.gain.value = dep; gr.gain.value = -dep; lfo.connect(gl); lfo.connect(gr); gl.connect(dl.delayTime); gr.connect(dr.delayTime);
+      inp.connect(dl); inp.connect(dr); if (pl) { pl.pan.value = -1; pr.pan.value = 1; dl.connect(pl); dr.connect(pr); pl.connect(out); pr.connect(out); } else { dl.connect(out); dr.connect(out); }
+      out.gain.value = k ? 0 : DXR.u[0]; out.connect(L.out); lfo.start(); return { lfo: lfo, out: out }; };
+    dry.gain.value = DXR.u[1]; inp.connect(dry); dry.connect(L.out);
+    return (L.ju = { inp: inp, dry: dry, ch: [mk(0), mk(1)] });
+  }
+  function junoIdle(L, t) { var J = L.ju; if (!J) return; clearTimeout(J.idle); J.idle = setTimeout(function () { J.dead = true; try { J.ch.forEach(function (x) { x.lfo.stop(); x.out.disconnect(); }); J.dry.disconnect(); J.inp.disconnect(); } catch (er) {} }, (Math.max(0, t - C().currentTime) + Math.pow(PHI, 4)) * 1e3); }
+  function juno(tr, f, t, d, v, pad) {
+    var c = C(), tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, J = junoBus(tr), o = c.createOscillator(), sub = c.createOscillator(), sg = c.createGain(), hp = c.createBiquadFilter(), l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain();
+    var at = pad ? IPH : Math.pow(PHI, -8), rel = pad ? IPH : Math.pow(PHI, -4), sus = pad ? IPH : IPH * IPH, end = t + d + rel * 4;   // phi: pad PHI^-1 s attack / release, arp PHI^-8 / PHI^-4
+    var base = Math.min(FHI * Math.pow(IPH, 3), f * Math.pow(PHI, (pad ? 1 : PHI) + e * IPH)), pk = Math.min(FHI * IPH * IPH, base * Math.pow(PHI, pad ? IPH : PHI));   // keytracked cutoff, a rung up with the arc; the arp sweeps more
+    o.type = 'sawtooth'; o.frequency.value = f; sub.type = 'square'; sub.frequency.value = f / 2; sg.gain.value = IPH * IPH;   // sub oscillator PHI^-2
+    hp.type = 'highpass'; hp.frequency.value = FLO * Math.pow(PHI, pad ? 3 : 4); l1.type = l2.type = 'lowpass'; l1.Q.value = 0; l2.Q.value = Math.pow(PHI, 2);   // phi: HPF rung, resonance PHI^2 dB
+    [l1, l2].forEach(function (q) { q.frequency.setValueAtTime(pk, t); q.frequency.exponentialRampToValueAtTime(base, t + (pad ? PHI : Math.pow(PHI, -3))); });
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + at); a.gain.setTargetAtTime(v * sus, t + at, Math.pow(PHI, pad ? 0 : -4)); a.gain.setTargetAtTime(0, t + d, rel / 3);
+    o.connect(hp); sub.connect(sg); sg.connect(hp); hp.connect(l1); l1.connect(l2); l2.connect(a); a.connect(J.inp); o.start(t); sub.start(t); o.stop(end); sub.stop(end);
+    J.ch[1].out.gain.setTargetAtTime(e > IPH ? DXR.u[2] : 0, t, IPH);    // chorus II joins past PHI^-1
+    junoIdle(tr, end);
+  }
+  INST.juno = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.07, false); };          // the arp: a rung over the old chip blips (0.045)
+  INST.junopad = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.05, true); };       // the pad under the stabs
+  // ----- Ed's Jupiter -----
+  function jup(tr, f, t, d, v, oct) {
+    var c = C(), o1 = c.createOscillator(), o2 = c.createOscillator(), xm = c.createGain(), p1 = c.createStereoPanner ? c.createStereoPanner() : null, p2 = c.createStereoPanner ? c.createStereoPanner() : null,
+        l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain(), end = t + d + 1;
+    f = f * (oct ? 1 / 2 : 1); o1.type = o2.type = 'sawtooth'; o1.frequency.value = f; o2.frequency.value = f * Math.pow(2, Math.pow(PHI, 3) / 1200);   // phi: VCO 2 PHI^3 cents sharp
+    xm.gain.value = f * Math.pow(IPH, 4); o2.connect(xm); xm.connect(o1.frequency);                     // phi: the cross-mod quirk, PHI^-4 of the pitch
+    l1.type = l2.type = 'lowpass'; l1.Q.value = 0; l2.Q.value = PHI;
+    var pk = Math.min(FHI * IPH * IPH, f * Math.pow(PHI, PHI * PHI + PHI)), base = f * Math.pow(PHI, PHI);   // phi: the brassy sweep from PHI^(PHI^2+PHI) down to PHI^PHI over the note
+    [l1, l2].forEach(function (q) { q.frequency.setValueAtTime(pk, t); q.frequency.exponentialRampToValueAtTime(base, t + Math.pow(PHI, -3)); });
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + Math.pow(PHI, -9)); a.gain.setTargetAtTime(v * IPH, t + Math.pow(PHI, -9), Math.pow(PHI, -4)); a.gain.setTargetAtTime(0, t + d, Math.pow(PHI, -5));   // phi: attack, decay, release
+    if (p1) { p1.pan.value = -Math.pow(IPH, 3); p2.pan.value = Math.pow(IPH, 3); o1.connect(p1); o2.connect(p2); p1.connect(l1); p2.connect(l1); } else { o1.connect(l1); o2.connect(l1); }
+    l1.connect(l2); l2.connect(a); a.connect(tr.out); o1.start(t); o2.start(t); o1.stop(end); o2.stop(end);
+  }
+  INST.jup = function (tr, f, t, d, v) { var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, g = v * 0.07;   // the old stab's level (0.07)
+    jup(tr, f, t, d, g * DXR.u[0] * 2, false);
+    if (MORE.stab) MORE.stab(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
+    if (e > IPH) jup(tr, f, t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d, g * DXR.u[2] * 2, true); };   // unison an octave down past PHI^-1
+
   // ---------- reverb: impulse built once, send glides up from silence ----------
   var conv = null;
   function reverb(c, revIn, bus, G) {
