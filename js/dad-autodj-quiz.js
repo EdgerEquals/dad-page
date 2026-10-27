@@ -162,7 +162,7 @@
     // Drums: the electro 808 convention (kick 1 . 7 . 11, snare + clap on 2 and 4, straight closed-hat 16ths with an open hat into the
     // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated stabs over i-VI-VII on Ed's
     // Jupiter (ci), Ed's Juno on the arp (ai) and a pad under it (under), the DX7 on the lead, the 303 rack on the bass (acid).
-    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx', resp: 'jup', ro: -12,
+    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, arpModel: 'electro', ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx', resp: 'jup', ro: -12,
                    kick: 'x.....x...x.....', snare: '....x.......x...', clap: '....x.......x...', hat: 'oooooooooooooox.', cow: '...o.......o....', rev: 0.18,
                    own: 1, bank: 1, fold: 1, alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', resp: 'piano', ro: -12, rev: 0.4 }
@@ -460,7 +460,10 @@
     var mp = clamp(modePos(g.scale) + (dm.brightness - 1 / 2) * DIAL.modeR, DIAL.modeLo, 1), mlo = Math.floor(mp), mf = mp - mlo, scLo = modeScale(mlo), scHi = modeScale(Math.min(1, mlo + 1));   // brightness -> mode
     for (var i = 0; i < 32; i++) {                                // a 2-bar motif, repeated with small variations
       var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density + 2 * dm.density - 1);   // mix: density rung; data: density
-      if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13); mel.push(deg); } else mel.push(null);
+      if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13);
+        var lq = frac(((seed | 0) >>> 0) * IPH * IPH + i * IPH), lp = Math.pow(IPH, 3) * (1 + dm.tension);   // MELODY RANGE (Danny 19:11 AWST 27 Oct, 'not finding enough variation or range in the lead melodies'): a leap now and then
+        if (lq < lp) { var LP = [-4, -3, 3, 4, 5, 7], lj = LP[Math.floor(frac(lq * PHI * PHI * PHI) * LP.length)]; deg = clamp(deg + lj, 2, 16); }   // phi: PHI^-3 (calm) .. 2 PHI^-3 (tense) of notes leap a 4th..an octave; range wider (2..16)
+        mel.push(deg); } else mel.push(null);
     }
     // MOTIF MEMORY (below): a reload rebuilds the same call (mo0); a new track may take a remembered theme's contour onto its own rhythm
     var mo = mo0 && mo0.length === 32 ? mo0.map(function (x) { return x == null ? null : clamp(Math.round(+x) || 0, 2, 16); }) : recall(mel, seed);
@@ -642,7 +645,8 @@
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
       ch.forEach(function (n, k) { var inst = (g.ci && INST[g.ci]) || (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr.L.chords || tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn) * Math.sqrt(3 / ch.length)); });   // phi: strum spread PHI^-4 of a sixteenth; ci: the genre's own chord synth (electro: Ed's Jupiter)
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr.L.chords || tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
-    if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t), ai = g.ai && INST[g.ai];   // ai: the genre's own arp synth (electro: Ed's Juno), in place of the chip blips
+    if (g.arp && g.arpModel === 'electro' && INST[g.ai]) eArp(tr, t, s16, st, ch, dur16, room);
+    else if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t), ai = g.ai && INST[g.ai];   // ai: the genre's own arp synth (electro: Ed's Juno), in place of the chip blips
       if (!(room && s16 % SPB)) pl('chords', ai || (cb ? INST.square : INST.pluck), tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb && !ai ? IPH * IPH : IPH), cb && !ai ? 0.45 : IPH); }
     if (g.under && first && INST[g.under]) ch.forEach(function (n) { pl('chords', INST[g.under], tr.L.pad, n + 12, t, barLen, IPH * Math.sqrt(3 / ch.length)); });   // under: a pad under the stabs (electro: Ed's Juno), equal power over the chord   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
@@ -655,10 +659,11 @@
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     if (g.bass === 'acid') acidStep(tr, t, s16, bn, dur16, dyn);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
-    var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
+    var dv = melDev(tr, st), md = tr.mel[dv.i]; if (md != null) md += rise + dv.add; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
+    if (md != null && dv.oct) md += dv.oct * ln; if (md != null) md = clamp(md, 0, 3 * ln);   // the lift is an octave of this scale; at most three octaves up
     if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead], lk = g.lead, lo = 0;
       if (ans) { li = INST[g.resp]; lk = g.resp; lo = g.ro || 0; }                        // the answer goes to the responding voice, in its own register
-      pl('lead', li, ans ? tr.L.answer : tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12 + lo, t, dur16 * (lk === 'horn' || lk === 'bell' || lk === 'dx' ? 6 : 2), 0.8); }
+      pl('lead', li, ans ? tr.L.answer : tr.L.lead, fold(tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12) + lo, t, dur16 * (lk === 'horn' || lk === 'bell' || lk === 'dx' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
@@ -720,6 +725,43 @@
   // downbeat always plays. Rests and stops come from the rhythm plan (p.rest.bass, p.stop) but not its density gate, so the pattern
   // keeps its shape. Played by the 303 rack in js/dj-extras.js (X.acid); before that lands, by the plain bass voice, same line.
   var ACID_IV = [0, 0, 0, 12, 12, 7, 3, 10, 5, -2];                       // unit: semitones over the chord root (root-heavy acid idiom)
+  // MELODY DEVELOPMENT (Danny 19:11 AWST 27 Oct, Claude chat: 'not finding enough variation or range to lead melodies generally'): each
+  // 4-bar phrase of the 64-step call + answer gets one development, a golden draw per phrase (the track's random stream untouched):
+  //   PHI^-2 as written | PHI^-3 sequence (each phrase's second bar a third higher) | PHI^-4 fragment (the second bar repeats the first)
+  //   | PHI^-5 displaced an eighth | the rest: the answer an octave up when the arc is past PHI^-1 (otherwise a sequence down a step)
+  // so the same tune keeps its identity while its shape and register move; with the leaps in the motif the line now spans up to three octaves.
+  function melDev(tr, st) { var i = st % 64, ph = Math.floor(st / 64), op = gold(tr, ph, 70), b2 = i % 32 >= 16, e = tr.e == null ? 1 : tr.e, n = tr.mel.length || 64;
+    if (op < IPH * IPH) return { i: st % n, add: 0, oct: 0 };
+    if (op < IPH * IPH + Math.pow(IPH, 3)) return { i: st % n, add: b2 ? 2 : 0, oct: 0 };
+    if (op < IPH * IPH + Math.pow(IPH, 3) + Math.pow(IPH, 4)) return { i: (b2 ? st - 16 : st) % n, add: 0, oct: 0 };
+    if (op < IPH * IPH + Math.pow(IPH, 3) + Math.pow(IPH, 4) + Math.pow(IPH, 5)) return { i: (st + 2) % n, add: 0, oct: 0 };
+    return i >= 32 ? (e > IPH ? { i: st % n, add: 0, oct: 1 } : { i: st % n, add: -1, oct: 0 }) : { i: st % n, add: 0, oct: 0 }; }
+  // ELECTRO ARP (Danny 19:11 AWST 27 Oct: 'electronic arpeggiators uniquely ... a unique way to model that ... specific to electro'): a
+  // programmed arpeggiator as on the Juno / SH-101, not a chord cycled up: each track draws a MODE (up, down, up-down, broken 1-3-2-4, pedal
+  // on the root, skip 1-3-5-2-4-6) and a 16-step GATE (density PHI^-1 .. 1 with the arc; the downbeat always on); every phrase may switch
+  // mode (PHI^-1) and rotates the gate (variation without losing the groove). RANGE = 1 + round(2 e) octaves of chord tones (energy opens
+  // the arp, a count, not a gain). ACCENTS fall every third note (3 against 4, the electro tug), and at the peak an accent RATCHETS (two
+  // 32nds). Low in the arc it drops to 8ths; in a breakdown, an octave down. The note order runs on its own counter, so rests don't reset it.
+  var ARPM = ['up', 'down', 'updown', 'broken', 'pedal', 'skip'], TOPM = 96;   // unit: MIDI 96 = C7 (~2.1 kHz), the highest note a lead or arp reaches; above it folds down an octave
+  function fold(m) { while (m > TOPM) m -= 12; return m; }
+  function arpSeq(mode, pool, k) { var n = pool.length; if (!n) return null; var u = n > 1 ? 2 * n - 2 : 1;
+    if (mode === 'down') return pool[n - 1 - k % n];
+    if (mode === 'updown') { var j = k % u; return pool[j < n ? j : u - j]; }
+    if (mode === 'broken') { var b = k % (2 * n), q = Math.floor(b / 2) + (b % 2) * 2; return pool[q % n]; }
+    if (mode === 'pedal') return k % 2 ? pool[1 + Math.floor(k / 2) % Math.max(1, n - 1)] || pool[0] : pool[0];
+    if (mode === 'skip') { var h = Math.ceil(n / 2), m = k % n; return pool[m < h ? 2 * m : 2 * (m - h) + 1] != null ? pool[m < h ? 2 * m : 2 * (m - h) + 1] : pool[m]; }
+    return pool[k % n]; }
+  function eArp(tr, t, s16, st, ch, dur16, room) {
+    var ph = Math.floor(st / 64), e = tr.e == null ? 1 : tr.e, base = Math.floor(gold(tr, 7, 60) * ARPM.length), mi = (base + (gold(tr, ph, 61) < IPH ? ph : 0)) % ARPM.length;
+    var rot = Math.floor(gold(tr, ph, 62) * 16), dens = IPH + (1 - IPH) * e, eighth = e < IPH * IPH;
+    if (s16 !== 0 && gold(tr, (s16 + rot) % 16, 63) >= dens) return;   // the gate
+    if (eighth && s16 % 2) return; if (room && s16 % SPB) return;
+    var srt = ch.slice().sort(function (a, b) { return a - b; }), O = 1 + Math.round(2 * e), pool = [], o, j;
+    for (o = 0; o < O; o++) for (j = 0; j < srt.length; j++) pool.push(srt[j] + 12 * o);
+    var k = tr.ak = (tr.ak || 0) + 1, n = arpSeq(ARPM[mi], pool, k), acc = k % 3 === 0, reg = tr.bd ? 0 : 12 + 12 * (O < 3 ? 1 : 0), v = acc ? Math.pow(PHI, IPH) * IPH : IPH * IPH * PHI, inst = INST[tr.g.ai] || INST.pluck;   // phi: accent PHI^0.618 x PHI^-1, others PHI^-1; the register sits an octave (two when the range is narrow) above the chord, folded under C7
+    if (n == null) return; n = fold(n + reg) - reg; pl('chords', inst, tr.x, n + reg, t, dur16 * (acc ? IPH : IPH * IPH), v);
+    if (acc && tr.e > 1 - Math.pow(PHI, -3)) pl('chords', inst, tr.x, fold(arpSeq(ARPM[mi], pool, k + 1) + reg), t + dur16 / 2, dur16 * IPH * IPH, v * IPH);   // the ratchet at the peak
+  }
   function acidPat(tr) {
     if (tr.ac) return tr.ac; var A = [];
     for (var i = 0; i < 16; i++) { var a = gold(tr, i, 42);
