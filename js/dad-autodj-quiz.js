@@ -885,16 +885,18 @@
   function keepTap() { if (!TAPB) return; var p = pumps(), X1 = dimX(M.W[1], p.z); TAPR = TAPB / baseBpm(-X1.drive); }   // re-aim the ratio at the tapped BPM (after a new mix)
   function wireMix() {
     mixBtn = document.getElementById('dj-mix'); if (!mixBtn) return;
-    var held = 0, longDone = false, taps = [], one = 0, TAPMAX = SPM * MS / BPM_LO;   // a tap within one beat of the slowest tempo carries the run on
-    mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; clearTimeout(one); one = 0; taps = []; headRandom(true); }, IPH * MS); });   // phi: hold PHI^-1 s
+    var held = 0, longDone = false, taps = [], one = 0, went = false, TAPMAX = SPM * MS / BPM_LO;   // a tap within one beat of the slowest tempo carries the run on
+    mixBtn.addEventListener('pointerdown', function () { longDone = false; clearTimeout(held); held = setTimeout(function () { longDone = true; clearTimeout(one); one = 0; taps = []; went = false; headRandom(true); }, IPH * MS); });   // phi: hold PHI^-1 s
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { mixBtn.addEventListener(n, function () { clearTimeout(held); }); });
     mixBtn.addEventListener('click', function (e) { e.stopPropagation(); if (longDone) { longDone = false; return; } if (e.shiftKey) { headRandom(true); return; }
-      var now = performance.now(), last = taps[taps.length - 1]; kick();
-      if (!taps.length || now - last > TAPMAX) { taps = [now]; clearTimeout(one); one = setTimeout(function () { one = 0; headRandom(false); }, TAPMAX); return; }   // a lone tap: Random, as before, once no second tap has come (the mix lands on the bar grid anyway)
-      clearTimeout(one); one = 0;                                         // a second tap in time: this is tempo, not a new mix (his mood stays)
+      // THIRD TAP (Danny 17:30 AWST 27 Oct, 'Yea' to: the tempo changes only on the 3rd tap in time, so a stray double tap can't move it)
+      var now = performance.now(), last = taps[taps.length - 1], arm = function () { clearTimeout(one); one = setTimeout(function () { one = 0; headRandom(false); }, TAPMAX); }; kick();
+      if (!taps.length || now - last > TAPMAX) { taps = [now]; went = false; arm(); return; }   // a lone tap: Random, as before, once no more taps come (the mix lands on the bar grid anyway)
       var n = taps.length, mean = n > 1 ? (last - taps[0]) / (n - 1) : now - last;
-      if (n > 1 && Math.abs((now - last) - mean) > mean * Math.pow(PHI, -2)) { taps = [now]; return; }   // phi: off the run's beat by more than PHI^-2: a new run starts at this tap
+      if (n > 1 && Math.abs((now - last) - mean) > mean * Math.pow(PHI, -2)) { taps = [now]; if (!went) arm(); return; }   // phi: off the run's beat by more than PHI^-2: a new run starts at this tap (no Random once a tempo has been set)
       taps.push(now); if (taps.length > 8) taps.shift();                  // unit: the last 8 taps (7 beats) set the tempo
+      if (taps.length < 3) { if (!went) arm(); return; }                  // a double tap is still one Random; the tempo waits for two intervals
+      clearTimeout(one); one = 0; went = true;                            // a tempo run: no new mix (his mood stays)
       tapTempo(SPM * MS * (taps.length - 1) / (now - taps[0])); });
     function kick() { mixBtn.classList.remove('is-tapping'); void mixBtn.offsetWidth; mixBtn.classList.add('is-tapping'); }
     mixBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
