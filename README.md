@@ -28,3 +28,7 @@ Danny's rule (27 Oct 2026): always acknowledge anything we use, and expect the s
 - **dx7-synth-js** (`js/vendor/dx7-worklet.js`): the DX7 FM voice by [Matt Montag](https://github.com/mmontag/dx7-synth-js),
   MIT licence (full text in the file), run in an AudioWorklet. The patches are ours (warm bell, tine piano); no factory ROM voices.
   Ed's Juno and Ed's Jupiter (`js/dj-extras.js`) are written from scratch.
+- **audiojs/dynamics** (`js/dj-bus-worklet.js`): the master bus compressor's four topologies (VCA / SSL-bus class, FET / 1176
+  class, opto / LA-2A class, vari-mu / Fairchild class) and the soft-knee gain computer are adapted from
+  [@audio/dynamics](https://github.com/audiojs/dynamics) by Dmitry Iv., MIT licence (notice in the file). Ours adds a linked
+  stereo detector, auto make-up from the average gain reduction, a parallel mix and a level-riding saturation stage.

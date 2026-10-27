@@ -193,6 +193,28 @@
     fb.addEventListener('click', function () { var F = d && d.fx; if (F && F.random) F.random(); log('fx.roll', 1); setTimeout(paintAll, 60); });
     fbk.addEventListener('click', function () { var F = d && d.fx; if (F && F.back) F.back(); log('fx.live', 1); setTimeout(paintAll, 60); });
     fxr.appendChild(fb); fxr.appendChild(fbk); ef.appendChild(fxr);
+    // MASTER BUS (Danny 22:06 AWST 27 Oct: 'it's really really missing Master bus compression' ... 'and distortion the same way' ...
+    // 'however it goes, I'll work with it'): its own strip after the effects, since it sits after everything. Model switches, then the
+    // compressor's faders (threshold in dB over the running level; ratio, attack, release, knee in rungs from the model's own; parallel
+    // mix; energy follow), then saturation. The threshold fader's meter is the compressor's gain reduction (its control voltage, the
+    // circuit's own state; no output level is measured).
+    var mbs = strip(host, 'master', 'Master bus', 'compressor · saturation · after everything');
+    var MBN = [['off', 0], ['VCA', 1], ['FET', 2], ['opto', 3], ['vari-mu', 4]], mbw = E('div', 'dk-sws');
+    MBN.forEach(function (x) { mbw.appendChild(sw(x[0], function () { return (D.dial('mbM') | 0) === x[1]; }, function () { D.dial('mbM', x[1]); log('dial.mbM', x[1]); mbw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
+    mbs.appendChild(E('div', 'dk-sub', 'compressor · SSL-, 1176-, LA-2A-, Fairchild-style')); mbs.appendChild(mbw);
+    var MBL = E('div', 'dk-hint dk-txl'); mbs.appendChild(MBL);
+    var mbAv = 0, mbPk = 0; MBLF = function () { var b = D.bus && D.bus(); if (b && b.on) { mbAv += ((+b.av || 0) - mbAv) * IPH; mbPk = Math.min(b.gr, mbPk * IPH + b.gr * (1 - IPH)); }   // phi: the readout settles over a few beats
+      var t = !b || !b.on ? 'loading…' : (D.dial('mbM') | 0) ? 'squeezing ' + (-mbAv).toFixed(1) + ' dB on average, ' + (-mbPk).toFixed(1) + ' dB on the hits' : 'off'; if (MBL.textContent !== t) MBL.textContent = t; };
+    var db1 = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB'; }, pct = function (v) { return Math.round(v * 100) + '%'; };
+    var mfl = bank(mbs, [Object.assign(dial('mbT', 'threshold', 'V', -Math.pow(PHI, 3), Math.pow(PHI, 3), 0, db1), { live: function () { var b = D.bus && D.bus(); return b && b.on && (D.dial('mbM') | 0) ? clamp(-b.gr / Math.pow(PHI, 4), 0, 1) : null; } }),
+      dial('mbR', 'ratio', 'R', -2, 3, 0, rg), dial('mbA', 'attack', 'R', -3, 3, 0, rg), dial('mbRl', 'release', 'R', -3, 3, 0, rg), dial('mbK', 'knee', 'R', -3, 3, 0, rg),
+      { id: 'dial.mbX', name: 'mix', k: 'C', L: [0, Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1], def: 1, lab: pct, get: function () { return D.dial('mbX'); }, set: function (v) { D.dial('mbX', v); } },
+      { id: 'dial.mbE', name: 'energy follow', k: 'C', L: CPL, def: IPH, lab: cplLab, get: function () { return D.dial('mbE'); }, set: function (v) { D.dial('mbE', v); } }]);
+    tools(mbs, mfl);
+    mbs.appendChild(E('div', 'dk-sub', 'saturation'));
+    var sfl = bank(mbs, [{ id: 'dial.mbS', name: 'saturate', k: 'V', L: [0, 1, 2, 3, 4, 5], def: 0, lab: function (v) { return v > 0 ? 'bends +' + (20 * Math.log10(Math.pow(PHI, 5 - v))).toFixed(1) + ' dB' : 'off'; }, get: function () { return D.dial('mbS'); }, set: function (v) { D.dial('mbS', v); } },
+      { id: 'dial.mbH', name: 'even harmonics', k: 'C', L: [0, Math.pow(IPH, 4), Math.pow(IPH, 3), IPH * IPH], def: 0, lab: pct, get: function () { return D.dial('mbH'); }, set: function (v) { D.dial('mbH', v); } }]);
+    tools(mbs, sfl);
     // VOICE
     var vo = strip(host, 'voice', 'Voice', null, ['voice']);
     var vd = function (k, name, kind, lo, hi, def) { return { id: 'voice.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return Math.abs(v - def) < 1e-9 ? 'mid' : num(v); }, get: function () { var V = d && d.voice; return V && V.dial ? V.dial(k) : null; }, set: function (v) { var V = d && d.voice; if (V && V.dial) { V.dial(k, v); var R = root.RhythmContinuity; if (R && R.save) try { R.save(); } catch (e) {} } } }; };
@@ -273,7 +295,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null;
+  var TXL = null, BSLF = null, MBLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -286,7 +308,7 @@
       m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

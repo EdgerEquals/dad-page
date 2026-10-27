@@ -205,7 +205,8 @@
     dkBars: 1, dkFade: PHI, dkDepth: -1, dkNow: 1,
     padM: 0, padA: 0, padD: 0, padS: 0, padR: 0, padF: 0, padG: 0, padO: IPH,
     bLib: IPH, bMut: 2, bSl: 1, bAc: 1, bShp: 0,
-    mRh: IPH * IPH };   // THEME RHYTHM (Danny 20:15): the share of a recalled theme's steps that keep its own rhythm (a coupling, 0 = the new track's)   // BASS SHAPES (Danny 20:10 AWST 27 Oct): library share (a coupling), steps changed per track (a count), slides and accents (couplings, 1 = as written), the shapes switched on (a set, 0 = all)   // PAD SHAPES (Danny 19:58 AWST 27 Oct, Claude chat: stab, pluck or gated pad? 'All'): padM 0 auto, -1 random, else a set (1 swell, 2 stab, 4 pluck, 8 gate); the rest are rungs from each shape's own (padO: the gate's open share, a threshold)                     // desk changes (Danny 18:59 AWST 27 Oct): build bars (0 = the DJ's own), fade s (0 = the style's), sweep depth (-1 = auto), harmony / melody faders rebuild now (1) or wait for the next track (0)                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+    mRh: IPH * IPH,
+    mbM: 1, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0 };   // MASTER BUS (Danny 22:06 AWST 27 Oct): model (0 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), threshold dB from the running level (plus the model's own offset), ratio / attack / release / knee in rungs from the model's own, parallel mix and energy follow (couplings), saturation (0 off .. 5, how close to the level it bends), even harmonics (a coupling)   // THEME RHYTHM (Danny 20:15): the share of a recalled theme's steps that keep its own rhythm (a coupling, 0 = the new track's)   // BASS SHAPES (Danny 20:10 AWST 27 Oct): library share (a coupling), steps changed per track (a count), slides and accents (couplings, 1 = as written), the shapes switched on (a set, 0 = all)   // PAD SHAPES (Danny 19:58 AWST 27 Oct, Claude chat: stab, pluck or gated pad? 'All'): padM 0 auto, -1 random, else a set (1 swell, 2 stab, 4 pluck, 8 gate); the rest are rungs from each shape's own (padO: the gate's open share, a threshold)                     // desk changes (Danny 18:59 AWST 27 Oct): build bars (0 = the DJ's own), fade s (0 = the style's), sweep depth (-1 = auto), harmony / melody faders rebuild now (1) or wait for the next track (0)                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -341,6 +342,7 @@
       meter = ctx.createAnalyser(); meter.fftSize = 2048; ceilN.connect(meter);             // level check for tests only (what passes the ceiling, undipped)
       kMeter = ctx.createAnalyser(); kw(ctx, glueT).connect(kMeter);                         // undipped, K-weighted: the level the logos follow
       kPre = ctx.createAnalyser(); kw(ctx, master).connect(kPre);                            // the same reading before the glue: its threshold and trim
+      busLoad(ctx, master, comp);                                                            // MASTER BUS (Danny 22:06): master -> the bus worklet -> the glue, once it loads
     } catch (e) { ctx = null; }
     return ctx;
   }
@@ -1008,7 +1010,7 @@
   function rebuild() {                                                    // js/rhythm-continuity.js: a closed or stuck context gets a fresh graph at the same track position (dry path)
     var sp = spec(), was = playing, old = ctx; tracks.forEach(function (tr) { tr.dead = true; }); tracks = [];
     if (el) { try { el.pause(); el.srcObject = null; } catch (e) {} } el = null; direct = true; fxC = null; ctx = null; playing = false; stalled = false; pend = null; disarm();
-    X = null; XL = 0; xReq = false; if (chips) chips.textContent = '';    // js/dj-extras.js holds the old context: it reloads onto the new one after the first sound
+    X = null; XL = 0; xReq = false; busNode = null; if (chips) chips.textContent = '';    // js/dj-extras.js holds the old context: it reloads onto the new one after the first sound
     try { if (old && old.state !== 'closed') old.close(); } catch (e) {}
     if (was) start(sp); return ctx;
   }
@@ -1227,6 +1229,30 @@
   // Every move glides over one beat (rule 6). Before the first level reading it keeps today's values.
   var CEIL = IPH, ceilN = null, glueC = null, glueT = null, kPre = null, preS = 0, postS = 0, glueG = null;   // phi: rail (full scale) x PHI^-1
   function ceilCurve(c) { var n = 4097, cv = new Float32Array(n); for (var i = 0; i < n; i++) { var x = 2 * i / (n - 1) - 1; cv[i] = c * Math.tanh(x / c); } return cv; }   // unit: 2^12 + 1 points over -1..1
+  // MASTER BUS (Danny 22:06 AWST 27 Oct, Claude chat: 'loving the radio at the minute but it's really really missing Master bus
+  // compression'; 'distortion the same way'): js/dj-bus-worklet.js between the master and the glue (master -> bus -> glue -> trim ->
+  // ceiling -> duck). Four models (topologies adapted from audiojs/dynamics, MIT, credited in that file and the README), each with its own
+  // detector, attack, release, knee and ratio as golden rungs in ms / dB; the desk's faders move them in rungs from the model's own. The
+  // threshold sits DIAL.mbT dB over the running K-weighted level going in (the glue's own reading), so it follows the music, and moves
+  // with the energy arc by DIAL.mbE x PHI^3 dB (squash at the drops, open in the breakdowns). Make-up follows the average gain reduction
+  // inside the worklet (no gain dial), and the glue's trim still keeps the output level at or under the input level. Saturation: a soft
+  // clip whose threshold sits PHI^(5 - mbS) x the running level (0 = off), mbH of the threshold's asymmetry for even harmonics.
+  var BUSURL = 'js/dj-bus-worklet.js?v=bus1', busNode = null, busGR = 0, busMK = 0, busAv = 0, busCtx = null, busP = null;
+  var MBM = [null, { det: 'peak', a: 5, r: 10.5, k: 0, q: 3, t: 0 }, { det: 'peak', a: -3, r: 10, k: 2, q: 4, t: PHI * PHI }, { det: 'rms', a: 5, r: 12, k: 5, q: 2, t: 0, opto: 1 }, { det: 'rms', a: 7, r: 12.5, k: 6, q: 1, t: -PHI, mu: 1 }];   // t: the model's own threshold offset in dB (the FET sits PHI^2 dB higher, it bites hard; the vari-mu PHI dB lower, it is gentle)   // phi exponents: attack / release ms, knee dB, ratio (VCA ~11 ms / 157 ms / 1 dB / 4.2:1; FET 0.24 ms / 123 ms / 2.6 dB / 6.9:1; opto 11 ms / 322 ms / 11 dB / 2.6:1; vari-mu 29 ms / 408 ms / 18 dB / 1.6:1 rising)
+  function busLoad(c, from, to) {
+    if (!c.audioWorklet || !window.AudioWorkletNode) return; busCtx = c;
+    c.audioWorklet.addModule(BUSURL).then(function () { if (c !== ctx || busNode) return;
+      var n = new AudioWorkletNode(c, 'ed-bus', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+      n.port.onmessage = function (e) { var d = e.data; if (d && isFinite(d.gr)) { busGR = d.gr; busMK = d.mk; busAv = d.av; } };
+      busNode = n; busSet(); try { from.disconnect(to); } catch (er) {} from.connect(n); n.connect(to); }).catch(function () {});
+  }
+  function busSet() {
+    if (!busNode) return; var M = MBM[DIAL.mbM | 0];
+    if (!M) { busNode.port.postMessage({ k: 'p', p: { model: 0 } }); return; }
+    var lv = preS > 0 ? 20 * Math.log10(preS) : -PHI * PHI * PHI * PHI * PHI * PHI, u = energy(), thr = lv + M.t + DIAL.mbT - DIAL.mbE * Math.pow(PHI, 3) * (u - IPH);   // phi: before the first reading, about -18 dB
+    busP = { lv: lv, thr: thr }; busNode.port.postMessage({ k: 'p', p: { model: DIAL.mbM | 0, det: M.det, opto: !!M.opto, mu: !!M.mu, thr: thr, ratio: Math.max(1, Math.pow(PHI, M.q + DIAL.mbR)), atk: Math.pow(PHI, M.a + DIAL.mbA), rel: Math.pow(PHI, M.r + DIAL.mbRl), knee: Math.pow(PHI, M.k + DIAL.mbK),
+      mix: clamp(DIAL.mbX, 0, 1), satT: DIAL.mbS > 0 ? Math.pow(PHI, 5 - DIAL.mbS) : 0, asym: clamp(DIAL.mbH, 0, IPH * IPH) } });
+  }
   function glue() {
     if (!glueC || !ctx || ctx.state !== 'running') return; var g = grid(); if (!g) return;
     var a = rmsOf(kPre), b = rmsOf(kMeter) / Math.max(glueT.gain.value, Math.pow(PHI, -8)), k = 1 - Math.exp(-1 / PHI);   // b: the glue's own output, before the trim; phi: tau PHI s at one reading per PHI s
@@ -1235,7 +1261,7 @@
     var th = Math.max(-100, Math.min(0, 20 * Math.log10(preS) + Math.pow(PHI, 2 - G)));   // unit: dB
     glueT.gain.setTargetAtTime(Math.min(1, preS / postS), t, beat);
     glueC.ratio.setTargetAtTime(Math.pow(PHI, PHI * G), t, beat); glueC.knee.setTargetAtTime(KNEE * Math.pow(PHI, -G), t, beat); glueC.threshold.setTargetAtTime(th, t, beat);
-    glueC.attack.setTargetAtTime(g.d16 * Math.pow(PHI, -2 - G), t, beat); glueC.release.setTargetAtTime(beat * Math.pow(PHI, -G), t, beat); glueG = G;
+    glueC.attack.setTargetAtTime(g.d16 * Math.pow(PHI, -2 - G), t, beat); glueC.release.setTargetAtTime(beat * Math.pow(PHI, -G), t, beat); glueG = G; busSet();
   }
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
   var MIDIURL = 'js/dj-midi.js?v=barline1', midiP = null;
@@ -1264,7 +1290,8 @@
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
     get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); },
-    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
+    bus: function () { return { on: !!busNode, gr: busGR, av: busAv, mk: busMK, p: busP }; },
+    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0) busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
     live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr ? { e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
