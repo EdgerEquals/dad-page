@@ -1253,8 +1253,8 @@
     if (!playing || !ctx) return;
     var p = null; try { p = ctx.resume && ctx.resume(); } catch (e) {}
     elPlay(); jump(); tick();
-    var check = function () { if (playing && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
-    if (p && p.then) p.then(check, check); else check();
+    var c0 = ctx, check = function () { if (playing && ctx === c0 && ctx.state !== 'running') { stalled = true; arm(); paint(compute()); } };
+    if (p && p.then) { p.then(check, check); setTimeout(check, Math.pow(PHI, 0) * MS); } else check();   // audioresume / resume3: WebKit can leave resume() pending for ever; PHI^0 s with no answer = stalled, so the switch shows 'tap to resume' // phi: PHI^0 s (Danny 09:09 AWST 30 Oct 'Yes, rebase and test the resume fix first, then show me')
   }
   function rebuild() {                                                    // js/rhythm-continuity.js: a closed or stuck context gets a fresh graph at the same track position (dry path)
     var sp = spec(), was = playing, old = ctx; tracks.forEach(function (tr) { tr.dead = true; }); tracks = [];
@@ -1325,6 +1325,7 @@
   }
   function resumeTap() {
     disarm(); if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }
+    if (stalled && playing && ctx && ctx.state !== 'running' && (ctx.__hung || ctx.state === 'interrupted')) { rebuild(); return; }   // audioresume / resume3: a hung / interrupted context never comes back; a fresh one, inside this tap, at the same track position (Danny 09:09 AWST 30 Oct 'Yes, rebase and test the resume fix first, then show me')
     if (stalled && playing && ctx) { stalled = false; try { ctx.resume(); } catch (e) {} elPlay(); jump(); tick(); session('playing'); paint(compute()); return; }
     if (pend) start(pend);
   }
