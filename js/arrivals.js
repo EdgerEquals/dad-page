@@ -49,7 +49,8 @@
     if (!el.getAnimations) return; var start = performance.now() + at, step = MS * Math.pow(IP, 7), list = null, n = 0;   // phi: PHI^-7 s steps
     var id = setInterval(function () { var u = (performance.now() - start) / D; if (u < 0) u = 0; var r = u >= 1 ? 1 : Math.pow(PHI, -N0 * (1 - u));
       if (!list || ++n % 13 === 0) { try { list = el.getAnimations({ subtree: true }); } catch (e) { list = []; } }   // loadfirst: re-query every Fibonacci 13th step, not every step (each query forced a style recalc)
-      list.forEach(function (a) { if (a.effect && a.effect.getTiming && a.effect.getTiming().duration === 'auto') return; try { if (a.updatePlaybackRate) a.updatePlaybackRate(r); else a.playbackRate = r; } catch (e) {} });
+      list.forEach(function (a) { if (a.effect && a.effect.getTiming && a.effect.getTiming().duration === 'auto') return; var RP = root.RatioPump, w = RP && RP.want ? RP.want(a) : null, q = r * (w > 0 ? w : 1);   // ONE WRITER (desk1 fix, 27 Oct): the sweep rides on the ratio pump's rate (site dial x feeds x the desk's speed rung) instead of ending at 1 over it
+        try { if (a.updatePlaybackRate) a.updatePlaybackRate(q); else a.playbackRate = q; } catch (e) {} });
       if (u >= 1) clearInterval(id); }, step);
   }
   function check(n) { if (n.nodeType !== 1) return; for (var i = 0; i < REG.length; i++) { try { if (n.matches(REG[i][0])) return land(n, REG[i][1], REG[i][2]); } catch (e) {} } }

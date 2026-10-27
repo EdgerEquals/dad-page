@@ -186,7 +186,7 @@ W.Assemble={info:function(){return {start:N0,speed:SP,gap:GAP,assembled:log.slic
 })(typeof window !== "undefined" ? window : this);
 </script>
 <script src="js/load-tiers.js?v=5"></script><script>LoadTiers.script("js/phi-adapt.js?v=1",2,{first:true,id:"phi-adapt"})</script><!-- page pump root + entity registry (tiny, idle; only the Rebella zoom sound reads it for now) --><style>.lt-wait *,.lt-wait *::before,.lt-wait *::after{animation-play-state:paused!important}</style><!-- load tiers 0-3 (Danny t715u 25 Oct): see the comment at the top of js/load-tiers.js -->
-<script src="js/ratio-pump.js?v=2" data-site="dad" data-freq="0.75" data-lite="1"></script><script src="js/rhythm-continuity.js?v=desk1"></script><!-- rhythm continuity: every rhythm saves on the device, restores after a reload or iOS discard, catches up on return, restarts together at local solar midnight (Danny 13:47-13:51 AWST 26 Oct) --><!-- ratio pump + Dad's palette frequency dial 0.75 (all motion 25% slower; Danny 12:15 AWST 24 Oct) -->
+<script src="js/ratio-pump.js?v=onewriter1" data-site="dad" data-freq="0.75" data-lite="1"></script><script src="js/rhythm-continuity.js?v=desk1"></script><!-- rhythm continuity: every rhythm saves on the device, restores after a reload or iOS discard, catches up on return, restarts together at local solar midnight (Danny 13:47-13:51 AWST 26 Oct) --><!-- ratio pump + Dad's palette frequency dial 0.75 (all motion 25% slower; Danny 12:15 AWST 24 Oct) -->
 <script>
 /* ALL wording for this page lives here. Curated for a reader aged 13 (age dial ~/.config/rebella-age-dial.json, field "age").
    To regenerate older/younger, rewrite these strings only. {n} {total} {a} {b} {x} are filled in by the page. */
@@ -589,7 +589,7 @@ body.paused .home-code::before{animation-play-state:paused}
   </div></div>
   <!-- "Questions for Bonnie" row removed from the home screen (Danny 11:25 AWST 26 Oct): it lives only on the questionnaire page -->
 </div>
-<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=edname2",1,{id:"dad-mark"});LoadTiers.script("js/home-windows.js?v=desk1",1,{id:"home-windows"});LoadTiers.script("js/anim-tiles.js?v=desk1",1,{id:"anim-tiles"})</script><!-- animation tiles (Danny 10:08 AWST 27 Oct, t270u): logo card to the left, one label tile per background animation beside it; a tap (or #anim=<key>) fetches js/anim-solo.js and shows that animation alone, full screen --><!-- home windows: six peeks into what the header and footer already run (Danny 15:47 AWST 26 Oct) --><!-- first content: Dad's logo card, tap opens his logo view (Danny 15:24 AWST 26 Oct) --><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
+<main class="wrap" id="home-main"><div class="home-code" aria-hidden="true"></div></main><script>LoadTiers.script("js/first-content.js?v=edname2",1,{id:"dad-mark"});LoadTiers.script("js/home-windows.js?v=desk1",1,{id:"home-windows"});LoadTiers.script("js/anim-tiles.js?v=onewriter1",1,{id:"anim-tiles"})</script><!-- animation tiles (Danny 10:08 AWST 27 Oct, t270u): logo card to the left, one label tile per background animation beside it; a tap (or #anim=<key>) fetches js/anim-solo.js and shows that animation alone, full screen --><!-- home windows: six peeks into what the header and footer already run (Danny 15:47 AWST 26 Oct) --><!-- first content: Dad's logo card, tap opens his logo view (Danny 15:24 AWST 26 Oct) --><!-- home screen left blank (Danny pt18u 11:19 AWST 26 Oct): the questionnaire moved to its own unlinked page -->
 <div class="foot" id="foot">
   <div class="row1"><div class="lane" id="laneF" aria-hidden="true"></div>
   <div class="strip" aria-label="Page status">
@@ -1094,7 +1094,7 @@ body.paused .home-code::before{animation-play-state:paused}
   reset();if(!document.getElementById('home-main'))theme('teen');SIM_LIGHTS();readout();   // home: the middle layer is js/emoji-scene.js now (no rainbows; Danny 12:06 / 12:17 AWST 26 Oct)
 })();
 </script>
-<script src="js/quiz-dj-pill.js?v=desk1" defer></script>
+<script src="js/quiz-dj-pill.js?v=desk3" defer></script>
 <script>/* pinned header: compacts once the page scrolls (dashboard sticky-head.js thresholds 72 / 8 px) */
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
 function f(){r=0;var y=window.scrollY||document.documentElement.scrollTop||0,w=c?y>8:y>72;if(w!==c){c=w;h.classList.toggle('is-scrolled',c);}}
@@ -1104,7 +1104,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
-<script src="js/arrivals.js?v=loadfix1" defer></script><!-- rule 14 arrivals (Danny 26 Oct) --><script>LoadTiers.script("js/foot-push.js?v=footspeeds1",2,{id:"footpush",w:3.2})</script><!-- footpush critters: wider, faster, tug-of-war with the bottom line (Danny 26 Oct) -->
+<script src="js/arrivals.js?v=onewriter1" defer></script><!-- rule 14 arrivals (Danny 26 Oct) --><script>LoadTiers.script("js/foot-push.js?v=footspeeds1",2,{id:"footpush",w:3.2})</script><!-- footpush critters: wider, faster, tug-of-war with the bottom line (Danny 26 Oct) -->
 <script>addEventListener("DOMContentLoaded",function(){ if(window.FootLine) FootLine.init(document.getElementById("footLine"), {tz:"Australia/Perth", rate:2, bounce:true}); });</script>
 <script src="js/quiz-popups.js?v=edname1" defer></script>
 <script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"});LoadTiers.script("js/vortex-stars.js?v=1",2,{last:true,id:"vortex"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->

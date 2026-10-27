@@ -81,3 +81,13 @@ html[data-theme="light"] #dj-desk .dk-ar,html[data-theme="light"] #dj-desk .dk-m
 html[data-theme="light"] #dj-desk .dk-sw[aria-pressed="true"]{background:#c9f3ea;border-color:#1fa98f;color:#0b3d33}
 html[data-theme="light"] #dj-desk .dk-sw.dk-m[aria-pressed="true"]{background:#ffd9c9;border-color:#e2551d;color:#5a1d05}
 html[data-theme="light"] #dj-desk .dk-sw.dk-so[aria-pressed="true"]{background:#ffe8bf;border-color:#c98314;color:#4d3300}
+/* FULL SCREEN (Danny 18:44 AWST 27 Oct: double tap on the desk's background): the main area covers the whole screen, over the header and
+   footer, and a floating X (top right, inside the safe area) brings it back */
+html[data-desk-full] #home-main{top:0!important;height:100%!important;z-index:60!important;background:#040E19}
+html[data-desk-full][data-theme="light"] #home-main{background:#f0f6fa}
+html[data-desk-full] #dj-desk{padding-top:max(env(safe-area-inset-top,0px),.5rem)}
+.dk-fx{display:none;position:fixed;z-index:2;top:max(env(safe-area-inset-top,0px),.6rem);right:max(env(safe-area-inset-right,0px),.6rem);width:2.6rem;height:2.6rem;border-radius:50%;
+  border:1px solid var(--dk-a);background:rgba(4,14,25,.82);color:var(--dk-a);font-size:1.3rem;line-height:1;box-shadow:0 0 10px rgba(10,242,255,.25)}
+html[data-desk-full] .dk-fx{display:block}
+#dj-desk .dk-ttl,#dj-desk .dk-read{display:none}
+html[data-desk-full] #dj-desk .dk-tabs{padding-right:3.2rem}                 /* room for the floating X */

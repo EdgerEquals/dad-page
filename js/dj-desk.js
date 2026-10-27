@@ -3,7 +3,7 @@
    else except the animation'; 'Remember I want the panel to open as a page on the main content window'). Loaded on the first tap of the
    faders button (#dj-edit) or the DJ booth tile, never at page load.
    A PAGE in the main content area (#home-main scrolls it; header and footer stay), two tabs: SOUND (this file) and VISUAL (the same desk
-   for the animations, see VISUAL below). Close: the X, Esc, or the faders button again. Nothing on it drags (Danny avoids drag and
+   for the animations, see VISUAL below). Close: the faders button again or Esc (no title bar since Danny 18:43 'Remove this part'). Nothing on it drags (Danny avoids drag and
    double-tap on touch): a fader moves one step per tap on its arrows, or jumps to the step under a tap on its track; switches are taps.
    THE RULE (docs/electrical-model.md): no fader multiplies a node's amplitude. Every fader is one of the five parts and says so with a
    letter: R rung, C coupling, V threshold (strike voltage), L loss, N pump count. No channel volume faders. The three amount dials that
@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=desk1';
+  var CSS = 'css/dj-desk.css?v=desk3';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -228,16 +228,23 @@
     if (el) return; var main = doc.getElementById('home-main'); if (!main) return;
     if (!doc.querySelector('link[data-desk]')) { var l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = CSS; l.setAttribute('data-desk', '1'); doc.head.appendChild(l); }
     el = E('section', 'dk'); el.id = 'dj-desk'; el.setAttribute('aria-label', 'Ed’s desk'); el.setAttribute('data-guard', 'dj-desk');
-    var top = E('div', 'dk-top'), tl = E('div', 'dk-ttl'), h = E('h2', null, 'Ed’s desk'), x = E('button', 'dk-x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close the desk');
-    x.addEventListener('click', function () { close(true); }); tl.appendChild(h); tl.appendChild(x); top.appendChild(tl);
-    readEl = E('div', 'dk-read'); top.appendChild(readEl);
+    var top = E('div', 'dk-top');                                          // no title, close or readout line (Danny 18:43 AWST 27 Oct: 'Remove this part'); the faders button, Esc, or the floating X in full screen
     var tb = E('div', 'dk-tabs'); tb.setAttribute('role', 'tablist');
     [['sound', 'Sound 🎛️'], ['visual', 'Visual 🌠']].forEach(function (a) { var b = E('button', 'dk-tab', a[1]), p = E('div', 'dk-page'); b.type = 'button'; b.setAttribute('role', 'tab');
       b.addEventListener('click', function () { show(a[0]); log('tab', a[0]); }); tb.appendChild(b); tabs[a[0]] = { b: b, p: p }; });
     top.appendChild(tb); el.appendChild(top); body = E('div', 'dk-body'); body.appendChild(tabs.sound.p); body.appendChild(tabs.visual.p); el.appendChild(body);
     soundPage(tabs.sound.p);
     main.insertBefore(el, main.firstChild);
-    doc.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && isOpen()) { e.preventDefault(); close(true); } });
+    // FULL SCREEN (Danny 18:44 AWST 27 Oct: 'if I double click on the background of the panel, it goes full screen with same x in top corner
+    // floating'): two taps on the desk's background (not a button, fader or switch) within PHI^-1 s and PHI^-3 of a rem-ish slop take the
+    // desk over the header and footer; the floating X brings it back. His own ask, so the double tap is his on purpose here.
+    var fx = E('button', 'dk-fx', '\u00D7'); fx.type = 'button'; fx.setAttribute('aria-label', 'Leave full screen'); fx.addEventListener('click', function (e) { e.stopPropagation(); full(false); }); el.appendChild(fx);
+    var lastT = 0, lastX = 0, lastY = 0;
+    el.addEventListener('click', function (e) { var t = e.target; if (t && t.closest && t.closest('button,.dk-trk,.dk-sw,a,input')) { lastT = 0; return; }
+      var now = performance.now(), near2 = Math.abs(e.clientX - lastX) < 40 && Math.abs(e.clientY - lastY) < 40;   // unit: px of slop between the two taps
+      if (lastT && now - lastT < IPH * MS && near2) { lastT = 0; full(!de.hasAttribute('data-desk-full')); log('fullscreen', de.hasAttribute('data-desk-full') ? 1 : 0); return; }
+      lastT = now; lastX = e.clientX; lastY = e.clientY; });
+    doc.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && isOpen()) { e.preventDefault(); if (de.hasAttribute('data-desk-full')) full(false); else close(true); } });
   }
   function isOpen() { return de.hasAttribute('data-desk'); }
   var keep = 0;
@@ -246,7 +253,8 @@
     build(); if (!el) return; var main = doc.getElementById('home-main'); keep = main ? main.scrollTop : 0; lastFocus = doc.activeElement;
     de.setAttribute('data-desk', '1'); if (main) main.scrollTop = 0; show(UI.tab === 'visual' ? 'visual' : 'sound'); tick(); sync(true);
   }
-  function close(refocus) { if (!isOpen()) return; de.removeAttribute('data-desk'); clearTimeout(mT); var main = doc.getElementById('home-main'); if (main) main.scrollTop = keep; sync(false);
+  function full(on) { if (on) de.setAttribute('data-desk-full', '1'); else de.removeAttribute('data-desk-full'); }
+  function close(refocus) { if (!isOpen()) return; full(false); de.removeAttribute('data-desk'); clearTimeout(mT); var main = doc.getElementById('home-main'); if (main) main.scrollTop = keep; sync(false);
     if (refocus) { var b = doc.getElementById('dj-edit'); if (b) b.focus({ preventScroll: true }); } }
   function sync(o) { var b = doc.getElementById('dj-edit'); if (b) b.setAttribute('aria-expanded', o ? 'true' : 'false'); }
   root.DjDesk = { open: open, close: close, toggle: function () { isOpen() ? close(false) : open(); }, get isOpen() { return isOpen(); }, history: function () { return ld(KH, []); }, paint: paintAll };

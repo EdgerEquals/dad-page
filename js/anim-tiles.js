@@ -23,6 +23,7 @@
   // hidden by visibility, so every clock and path keeps running and the collision engine skips them, as js/anim-solo.js does) and SPEED (a
   // rung PHI^r on its CSS animations through js/ratio-pump.js's per-element factors). Saved on this device ('dadDesk.visual.v1') and applied
   // here at every load. Pieces are each animation's own (anim-solo's map without the borrowed backdrops).
+  // TODO: paused on mute once the shared clock lands (Phase 1): a muted animation is hidden but still runs, unlike 'asleep costs nothing'.
   var KV = 'dadDesk.visual.v1', PIECES = { rain: ['.rain'], comet: ['.es-comet'], rocket: ['#rk1', '.rb-l'], critters: ['#foot .note'], sun: ['.pl-sun', '.pl-small', '.sm-n', '.sm-b', '.tsl-layer'],
     earth: ['.pl-big', '.pl-moon', '.pl-sat', '.pl-ast'], ping: ['.pl-scope', '.pl-dish'], sky: ['.es-layer'], ring: ['.qs-layer'], matrix: ['#mxrain'], code: ['.home-code'], loop: ['#bgloop', '.bgloop-still'] };
   var vSt = null, vSp = {};

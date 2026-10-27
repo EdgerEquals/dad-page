@@ -115,6 +115,8 @@
     master: function () { return { feed: masterFeed, ratio: master }; }, feeds: feeds,
     info: function () { return { site: SITE, dial: SITE_FREQ, pumpOn: pumpOn && !RM.matches, feeds: feeds(), master: masterFeed, masterRatio: master, pump: rate / SITE_FREQ, rate: rate, slow: slow }; },
     refresh: refresh,
+    // want(a): the rate this pump gives CSS animation a (null = not one of its own), so another writer (js/arrivals.js) can compose with it
+    want: function (a) { return want(a); },
     // subscribe: fn(info) is called after every pump/feed change (and once now); returns an unsubscribe function
     on: function (fn) { subs.push(fn); try { fn(api.info()); } catch (e) {} return function () { subs = subs.filter(function (x) { return x !== fn; }); }; }
   };
