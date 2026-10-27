@@ -112,8 +112,18 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   function load808() { if (d8Req) return; d8Req = true; var sc = document.createElement('script'); sc.src = D8URL; sc.async = true;
     sc.onload = function () { var W = window.Driftbox808; if (!W || !W.voices) return; W.voices.forEach(function (x) { B8V[x.id] = x; }); D8 = W; }; document.head.appendChild(sc); }
   function retune(spec, r) { spec.sources.forEach(function (s) { if (s.kind !== 'osc') return; s.frequency *= r; if (s.pitch) s.pitch = s.pitch.map(function (q) { return { to: q.to * r, at: q.at, curve: q.curve }; }); }); return spec; }
+  // 808 CHARACTER (Danny 17:30-17:36 AWST 27 Oct, Claude chat: 'Yea' to each track getting its own 808 character, 'its own character
+  // each with a character dial that lessens or exaggerates'): each track rolls its rack's set-up from its seed, a point on a smooth
+  // range (not presets), fixed for the whole track: thickness (how far apart the boxes are tuned and timed, and how long they ring),
+  // brightness (tone and click), the kit's pitch, and which box sits where in the golden spread. The character dial (DIAL c808, the
+  // panel's '808 character' row) is a rung on the depth of that departure from the stock rack: off 0, less PHI^-1, normal 1, more
+  // PHI, max PHI^2. It moves set-up, never level (THE RULE). Our own kit (unit 1) keeps its sound.
+  function fr(x) { return x - Math.floor(x); }
+  function char808(tk) { if (tk.c8) return tk.c8; var sd = (tk.seed | 0) >>> 0, g = function (k) { return fr(sd * IPH + k * IPH * IPH) - 1 / 2; };   // phi: golden draws on the track seed, -1/2..1/2
+    return (tk.c8 = { th: g(1), br: g(2), pt: g(3), rot: g(4) + 1 / 2 }); }
+  function depth808() { var D = window.DadAutoDJ, d = D && D.dial ? +D.dial('c808') : 1; return isFinite(d) && d >= 0 ? d : 1; }
   function bank(tr, kind, t, v, a) {
-    var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, c = C(), now = c.currentTime;
+    var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, c = C(), now = c.currentTime, ch = char808(tk), dp = depth808(), cl = function (x) { return Math.max(0, Math.min(1, x)); };
     if (!D8) { load808(); house(tr, kind, t, v); return; }
     var id = kind === 'hat' && a === 'x' ? '808.oh' : kind === 'tom' && tk.step % 16 >= 16 - 2 ? '808.mt' : B8[kind], V = B8V[id];   // the fill's last toms step up to the mid tom
     house(tr, kind, t, v * SHARE[1]);
@@ -124,9 +134,10 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     var acc = Math.max(0, Math.min(1, (v - IPH) / (1 - IPH)));             // x hits (v >= 1) are accented, o hits (v = PHI^-1) not
     if (kind === 'hat' && a !== 'x' && tr.oh) { tr.oh.forEach(function (o) { try { o.gain.cancelScheduledValues(t); o.gain.setTargetAtTime(0, t, Math.pow(PHI, -12)); } catch (er) {} }); tr.oh = null; }   // phi: choke over PHI^-12 s
     on.forEach(function (u) {
-      var R = ROLE[u], k = (u * IPH) % 1, cents = (k - 1 / 2) * Math.pow(PHI, 5), dt = k * Math.pow(PHI, -11);   // phi: golden cents and ms per unit
+      var R = ROLE[u], k = fr(u * IPH + Math.min(dp, 1) * ch.rot), sp = Math.pow(PHI, 2 * dp * ch.th), cents = (k - 1 / 2) * Math.pow(PHI, 5) * sp, dt = k * Math.pow(PHI, -11) * sp;   // phi: golden cents and ms per unit, spread a rung wider (thick) or narrower (tight) per track
+      var kn = { tune: cl(R.tune + dp * ch.pt * IPH * IPH), decay: cl(R.decay + dp * ch.th * IPH * IPH), tone: cl(R.tone + dp * ch.br * IPH * IPH), colour: cl(R.colour + dp * ch.br * IPH * IPH) };   // phi: each knob moves up to PHI^-2 x depth / 2
       var pan = kind === 'hat' || kind === 'cow' || kind === 'shaker' ? (u % 2 ? -1 : 1) * Math.pow(IPH, 3) : 0;   // phi: hats a little wide, the rest centred
-      var spec = retune(V.build({ tune: R.tune, decay: R.decay, tone: R.tone, colour: R.colour, level: 1, pan: (1 + pan) / 2 }, acc), Math.pow(2, cents / 1200));
+      var spec = retune(V.build({ tune: kn.tune, decay: kn.decay, tone: kn.tone, colour: kn.colour, level: 1, pan: (1 + pan) / 2 }, acc), Math.pow(2, cents / 1200));
       spec.trim = V.trim * KM * v * SHARE[u];
       try { var o = D8.renderVoice(c, spec, tr.out, t + dt); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
     });

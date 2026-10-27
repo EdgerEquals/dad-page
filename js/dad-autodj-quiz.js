@@ -190,7 +190,8 @@
     hrLo: (-1 + 0) / 2, hrHi: (1 + 2) / 2,                               // open range 5 (log2 bars per chord): fastest 1/2..1, slowest 2..4
     rho0: (1 + 1 / 2) / 2, rho1: (-1 - 1 / 2) / 2,
     balD: PHI, balC: IPH,                                             // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
-    colD: IPH, colT: Math.pow(PHI, 5), colW: 1, colF: IPH };             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+    colD: IPH, colT: Math.pow(PHI, 5), colW: 1, colF: IPH,
+    c808: 1 };                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -272,7 +273,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=electro3';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=char808';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -985,12 +986,21 @@
       i.type = 'radio'; i.name = 'dj-gen'; i.value = k; sp.textContent = k; l.appendChild(i); l.appendChild(sp); genEl.appendChild(l); });
     genEl.addEventListener('change', function (e) { var v = e.target && e.target.value; if (!v) return; GPICK = v === 'auto' || !GEN[v] ? null : v; glide(); });
     syncGen(); }
-  function syncGen() { if (!genEl) return; var w = GPICK || 'auto', i = genEl.querySelector('input[value="' + w + '"]'); if (i && !i.checked) i.checked = true; }
+  function syncGen() { if (!genEl) return; var w = GPICK || 'auto', i = genEl.querySelector('input[value="' + w + '"]'); if (i && !i.checked) i.checked = true; syncC8(); }
+  // 808 CHARACTER ROW (Danny 17:36 AWST 27 Oct: 'its own character each with a character dial that lessens or exaggerates'): five rungs
+  // of how far each track's 808 rack departs from stock; heard on the next hit, saved with the dials
+  var C8 = [['off', 0], ['less', IPH], ['normal', 1], ['more', PHI], ['max', PHI * PHI]], c8El = null;
+  function c8Row() { c8El = $('dj-c808'); if (!c8El || c8El.childNodes.length > 1) return;
+    C8.forEach(function (o, j) { var l = document.createElement('label'), i = document.createElement('input'), sp = document.createElement('span');
+      i.type = 'radio'; i.name = 'dj-c808'; i.value = String(j); sp.textContent = o[0]; l.appendChild(i); l.appendChild(sp); c8El.appendChild(l); });
+    c8El.addEventListener('change', function (e) { var j = +(e.target && e.target.value); if (C8[j]) { DIAL.c808 = C8[j][1]; save(); } });
+    syncC8(); }
+  function syncC8() { if (!c8El) return; var b = 0; C8.forEach(function (o, j) { if (Math.abs(o[1] - DIAL.c808) < Math.abs(C8[b][1] - DIAL.c808)) b = j; }); var i = c8El.querySelector('input[value="' + b + '"]'); if (i && !i.checked) i.checked = true; }
   function liveLine() { return X && X.live ? X.live() : ''; }
   function boot() {
     btn = $('dj-play'); vol = $('dj-vol'); read = $('dj-read'); readP = $('dj-pumps'); chips = $('dj-chips'); led = btn && btn.querySelector('.dj-led');
     if (!btn || !read) return;
-    genRow();
+    genRow(); c8Row();
     btn.addEventListener('click', function () {
       if (pend || stalled) { resumeTap(); return; }
       if (playing) { stop(); return; }
