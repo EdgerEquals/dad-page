@@ -136,20 +136,20 @@
   var COLOUR = { penta: [0, 2, 4, 7, 9], penta_m: [0, 3, 5, 7, 10], whole: [0, 2, 4, 6, 8, 10] };   // cite: 12-TET pentatonic (major/minor) and whole-tone sets (en.wikipedia.org/wiki/Pentatonic_scale, /Whole-tone_scale)
   //  chords: pad | strum | stab | ep | arp ; bass: hold | roots | walk | eighths | octave ; drums: 16-step strings (x loud, o soft)
   var GEN = {
-    ambient:     { scale: 'lydian', root: 50, progs: [[0, 4, 5, 3], [0, 5, 3, 4]], bars: 2, chords: 'pad', wave: 'sine', cut: 1500, bass: 'hold', bwave: 'sine', mel: 0.10, lead: 'bell', rev: 0.55 },
-    acoustic:    { scale: 'major', root: 55, progs: [[0, 4, 5, 3], [0, 3, 4, 4]], bars: 1, chords: 'strum', steps: [0, 6, 8, 14], wave: 'triangle', cut: 2400, bass: 'roots', bwave: 'triangle', mel: 0.22, lead: 'pluck',
+    ambient:     { scale: 'lydian', root: 50, progs: [[0, 4, 5, 3], [0, 5, 3, 4]], bars: 2, chords: 'pad', wave: 'sine', cut: 1500, bass: 'hold', bwave: 'sine', mel: 0.10, lead: 'bell', resp: 'reed', ro: -12, rev: 0.55 },
+    acoustic:    { scale: 'major', root: 55, progs: [[0, 4, 5, 3], [0, 3, 4, 4]], bars: 1, chords: 'strum', steps: [0, 6, 8, 14], wave: 'triangle', cut: 2400, bass: 'roots', bwave: 'triangle', mel: 0.22, lead: 'pluck', resp: 'piano', ro: -12,
                    kick: 'x.......o.......', shaker: '..o...o...o...o.', rev: 0.3 },
-    soul:        { scale: 'dorian', root: 50, progs: [[1, 4, 0, 5], [0, 3, 1, 4]], bars: 1, sev: 1, chords: 'ep', steps: [0, 6, 10], bass: 'walk', bwave: 'triangle', mel: 0.18, lead: 'ep',
+    soul:        { scale: 'dorian', root: 50, progs: [[1, 4, 0, 5], [0, 3, 1, 4]], bars: 1, sev: 1, chords: 'ep', steps: [0, 6, 10], bass: 'walk', bwave: 'triangle', mel: 0.18, lead: 'ep', resp: 'horn', ro: 0,
                    kick: 'x......o..x.....', snare: '....x.......x...', hat: 'o.o.o.o.o.o.o.o.', swing: 0.12, rev: 0.25 },
-    folk:        { scale: 'major', root: 52, progs: [[0, 3, 0, 4], [0, 5, 3, 4]], bars: 1, chords: 'strum', steps: [0, 4, 8, 12], wave: 'triangle', cut: 2000, bass: 'roots', bwave: 'triangle', mel: 0.28, lead: 'pluck',
+    folk:        { scale: 'major', root: 52, progs: [[0, 3, 0, 4], [0, 5, 3, 4]], bars: 1, chords: 'strum', steps: [0, 4, 8, 12], wave: 'triangle', cut: 2000, bass: 'roots', bwave: 'triangle', mel: 0.28, lead: 'pluck', resp: 'reed', ro: 0,
                    tom: 'x.......x.......', shaker: 'o.o.o.o.o.o.o.o.', rev: 0.3 },
-    cinematic:   { scale: 'minor', root: 45, progs: [[0, 5, 2, 6], [0, 3, 5, 4]], bars: 2, chords: 'pad', wave: 'sawtooth', cut: 900, ost: 1, bass: 'hold', bwave: 'sawtooth', mel: 0.08, lead: 'horn',
+    cinematic:   { scale: 'minor', root: 45, progs: [[0, 5, 2, 6], [0, 3, 5, 4]], bars: 2, chords: 'pad', wave: 'sawtooth', cut: 900, ost: 1, bass: 'hold', bwave: 'sawtooth', mel: 0.08, lead: 'horn', resp: 'bell', ro: 12,
                    tom: 'x...........o...', rev: 0.55 },
-    'indie-pop': { scale: 'major', root: 52, progs: [[0, 4, 5, 3], [5, 3, 0, 4]], bars: 1, chords: 'stab', steps: [0, 3, 6, 10, 12], wave: 'square', cut: 1800, bass: 'eighths', bwave: 'triangle', mel: 0.28, lead: 'square',
+    'indie-pop': { scale: 'major', root: 52, progs: [[0, 4, 5, 3], [5, 3, 0, 4]], bars: 1, chords: 'stab', steps: [0, 3, 6, 10, 12], wave: 'square', cut: 1800, bass: 'eighths', bwave: 'triangle', mel: 0.28, lead: 'square', resp: 'pluck', ro: -12,
                    kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.o.x.o.x.o.x.o.', rev: 0.2 },
-    'upbeat-pop':{ scale: 'major', root: 53, progs: [[0, 4, 5, 3], [3, 4, 0, 5]], bars: 1, chords: 'stab', steps: [2, 6, 10, 14], wave: 'sawtooth', cut: 2600, bass: 'octave', bwave: 'sawtooth', mel: 0.32, lead: 'saw',
+    'upbeat-pop':{ scale: 'major', root: 53, progs: [[0, 4, 5, 3], [3, 4, 0, 5]], bars: 1, chords: 'stab', steps: [2, 6, 10, 14], wave: 'sawtooth', cut: 2600, bass: 'octave', bwave: 'sawtooth', mel: 0.32, lead: 'saw', resp: 'pluck', ro: 0,
                    kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.', rev: 0.2 },
-    electronic:  { scale: 'minor', root: 45, progs: [[0, 5, 3, 4], [0, 6, 5, 4]], bars: 1, chords: 'pad', wave: 'sawtooth', cut: 1200, arp: 1, bass: 'eighths', bwave: 'square', mel: 0.12, lead: 'square',
+    electronic:  { scale: 'minor', root: 45, progs: [[0, 5, 3, 4], [0, 6, 5, 4]], bars: 1, chords: 'pad', wave: 'sawtooth', cut: 1200, arp: 1, bass: 'eighths', bwave: 'square', mel: 0.12, lead: 'square', resp: 'bell', ro: 12,
                    kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'oxoxoxoxoxoxoxox', rev: 0.25 },
     // ELECTRO (Danny 15:2x-15:42 AWST 27 Oct, Claude chat: 'I'm gonna start with electro ... build an 808 straight away ... the two
     // versions'): the 808 bank plays the drums (bank: 1, js/dj-extras.js + js/vendor/driftbox-808.js), the genre keeps its own drums
@@ -157,10 +157,10 @@
     // Drums: the electro 808 convention (kick 1 . 7 . 11, snare + clap on 2 and 4, straight closed-hat 16ths with an open hat into the
     // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated stabs over i-VI-VII on Ed's
     // Jupiter (ci), Ed's Juno on the arp (ai) and a pad under it (under), the DX7 on the lead, the 303 rack on the bass (acid).
-    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx',
+    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx', resp: 'jup', ro: -12,
                    kick: 'x.....x...x.....', snare: '....x.......x...', clap: '....x.......x...', hat: 'oooooooooooooox.', cow: '...o.......o....', rev: 0.18,
                    own: 1, bank: 1, fold: 1, alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
-    piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', rev: 0.4 }
+    piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', resp: 'piano', ro: -12, rev: 0.4 }
   };
   // NEUTRAL USES EVERY STYLE (MIDI Bot scales + harmony plan P0, Danny 17:49 AWST 26 Oct): with the mood on neutral (its live value) the
   // genre draw takes all nine genres, each weighted by how near its own home sits to the live dimensions, w = PHI^(-PHI^2 k / D) with
@@ -191,7 +191,8 @@
     rho0: (1 + 1 / 2) / 2, rho1: (-1 - 1 / 2) / 2,
     balD: PHI, balC: IPH,                                             // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
     colD: IPH, colT: Math.pow(PHI, 5), colW: 1, colF: IPH,
-    c808: 1 };                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+    c808: 1,
+    recall: IPH, resp: IPH };                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -417,7 +418,28 @@
     for (var o = -6; o < 6; o++) { var w = Math.pow(PHI, -PHI * PHI * fifths(keySig(sc, base + o), ks) / D); opt.push([o, w]); sum += w; }   // unit: the twelve roots around the genre's own
     var x = pick * sum; for (var i = 0; i < opt.length; i++) { x -= opt[i][1]; if (x <= 0) return base + opt[i][0]; } return base;
   }
-  function makeTrack(genre, bpm, seed, prev, root0, dm0) {
+  // MOTIF MEMORY (Danny 17:43 AWST 27 Oct, Claude chat: 'Go' to motif memory and call and response, 'so the lead remembers its phrases
+  // and the parts answer each other'). The DJ keeps the contours (scale-step moves between successive notes) of its last MEMN themes,
+  // saved with the DJ (mm), so over hours and days the radio grows its own recurring themes. A new track recalls one with probability
+  // DIAL.recall (a coupling between the memory and the generator, default PHI^-1), recent ones weighted PHI^-age; the remembered
+  // contour goes onto the NEW track's own rhythm (the genre's density), starting from its own first note, so a theme comes back
+  // re-rhythmed in another style. One development each time (almost-repeat): PHI^-1 of recalls move one interval a step, PHI^-3
+  // invert the contour, the rest keep it. Draws are golden draws on the seed, not the track's random stream, so everything else in
+  // the track is exactly as before. Fresh themes (and developed ones) join the memory.
+  var MEMO = [], MEMN = 8;                                               // unit: the last 8 themes (a Fibonacci count)
+  function contour(m) { var d = [], last = null; m.forEach(function (x) { if (x == null) return; if (last != null) d.push(x - last); last = x; }); return d; }
+  function remember(m) { var c = contour(m); if (c.length < 2) return; MEMO.push(c); while (MEMO.length > MEMN) MEMO.shift(); }
+  function recall(fresh, seed) {
+    var sd = (seed | 0) >>> 0, gd = function (k) { return frac(sd * Math.pow(IPH, k) + k * IPH); }, first = fresh.filter(function (x) { return x != null; })[0];
+    if (!MEMO.length || first == null || !(gd(2) < DIAL.recall)) return fresh.slice();
+    var w = MEMO.map(function (_, j) { return Math.pow(PHI, -(MEMO.length - 1 - j)); }), x = gd(3) * w.reduce(function (a, b) { return a + b; }, 0), j = MEMO.length - 1;
+    for (var i = 0; i < w.length; i++) { x -= w[i]; if (x <= 0) { j = i; break; } }
+    var dl = MEMO[j].slice(), op = gd(4);
+    if (op < IPH) { var q = Math.floor(gd(5) * dl.length); dl[q] += dl[q] > 0 ? -1 : 1; } else if (op < IPH + Math.pow(IPH, 3)) dl = dl.map(function (v) { return -v; });   // phi: the development shares
+    var cur = first, n = 0;
+    return fresh.map(function (y) { if (y == null) return null; if (n > 0) cur = clamp(cur + dl[(n - 1) % dl.length], 4, 13); n++; return cur; });   // unit: the fresh motif's degree range
+  }
+  function makeTrack(genre, bpm, seed, prev, root0, dm0, mo0) {
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
     if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
@@ -429,6 +451,9 @@
       var strong = i % 4 === 0, p = (strong ? g.mel * 2.2 : (i % 2 ? g.mel * 0.6 : g.mel)) * Math.pow(PHI, M.density + 2 * dm.density - 1);   // mix: density rung; data: density
       if (r() < p) { deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2, 3][Math.floor(r() * 8)], 4, 13); mel.push(deg); } else mel.push(null);
     }
+    // MOTIF MEMORY (below): a reload rebuilds the same call (mo0); a new track may take a remembered theme's contour onto its own rhythm
+    var mo = mo0 && mo0.length === 32 ? mo0.map(function (x) { return x == null ? null : clamp(Math.round(+x) || 0, 2, 16); }) : recall(mel, seed);
+    mel = mo.slice(); if (!mo0) remember(mo);
     // CALL AND RESPONSE (MIDI Bot directions): the motif is 64 steps; the answer is the call inverted around its first note
     var piv = mel.filter(function (x) { return x != null; })[0] || deg; for (var i2 = 0; i2 < 32; i2++) mel.push(mel[i2] == null ? null : clamp(2 * piv - mel[i2], 2, 16));   // unit: scale-degree range
     var u = energy(), gx = Object.create(g); gx.cut = mtof(root + 12) * Math.pow(PHI, PHI * PHI + 2 * dm.brightness - 1);   // phi: brightness = PHI^(PHI^2 +- 1 rung) over the root (rule 8: no fixed cut); data: the brightness dimension
@@ -440,7 +465,7 @@
     var lay = function (to) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); return { g: gx, out: n, rev: rv }; };   // energy-arc layers (setTarget ramps, never gates)
     var dk = ctx.createGain(); dk.gain.value = 1; dk.connect(out); var L = { drums: lay(xo), lead: lay(xo), bass: lay(dk), pad: lay(dk) };
     var hb0 = phoneBass(L.bass.out, dk, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
-    var T = { dk: dk, dr: M.donor && !g.own ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
+    var T = { dk: dk, dr: M.donor && !g.own ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: { g: gx, out: xo, rev: rv }, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; }); return T;   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
   // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
@@ -590,6 +615,10 @@
     var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
     if (first) tr.ax = peak && !tr.bridge && !tr.leaving && ci % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
+    // CALL AND RESPONSE BETWEEN PARTS (Danny 17:43 AWST 27 Oct, 'Go'): the lead's 64-step motif is a 2-bar call and its 2-bar answer
+    // (the call inverted); in PHI^-1 of phrases (DIAL.resp, a coupling; golden draw per phrase) another voice gives the answer in its
+    // own register (the genre's resp / ro), and the arp drops to the beat while it does, to leave it room. Otherwise the lead answers itself.
+    var ans = st % 64 >= 32 && g.resp && INST[g.resp] && gold(tr, Math.floor(st / 64), 50) < DIAL.resp;
     var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
     if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
     if (first && !bs && tr.scHi) tr.scNow = frac((ci + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
@@ -600,7 +629,7 @@
       ch.forEach(function (n, k) { var inst = (g.ci && INST[g.ci]) || (g.chords === 'ep' ? INST.ep : g.chords === 'stab' ? INST.stab : null) || INST.pluck; pl('chords', inst, tr, n + 12, t + (g.chords === 'strum' ? k * dur16 * Math.pow(PHI, -4) : 0), dur16 * (g.chords === 'ep' ? 5 : 2), vl(s16, dyn) * Math.sqrt(3 / ch.length)); });   // phi: strum spread PHI^-4 of a sixteenth; ci: the genre's own chord synth (electro: Ed's Jupiter)
     if (g.chords === 'arp' && s16 % 2 === 0) { var an = ch.concat([ch[0] + 12]); pl('chords', INST.piano || INST.pluck, tr, an[(s16 / 2) % an.length] + 12, t, dur16 * 2, vl(s16, dyn)); }
     if (g.arp && INST.square) { var a2 = ch.concat([ch[0] + 12, ch[1] + 12]), cb = chipNote(tr, t), ai = g.ai && INST[g.ai];   // ai: the genre's own arp synth (electro: Ed's Juno), in place of the chip blips
-      pl('chords', ai || (cb ? INST.square : INST.pluck), tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb && !ai ? IPH * IPH : IPH), cb && !ai ? 0.45 : IPH); }
+      if (!(ans && s16 % SPB)) pl('chords', ai || (cb ? INST.square : INST.pluck), tr.x, a2[s16 % a2.length] + 24, t, dur16 * (cb && !ai ? IPH * IPH : IPH), cb && !ai ? 0.45 : IPH); }
     if (g.under && first && INST[g.under]) ch.forEach(function (n) { pl('chords', INST[g.under], tr.L.pad, n + 12, t, barLen, IPH * Math.sqrt(3 / ch.length)); });   // under: a pad under the stabs (electro: Ed's Juno), equal power over the chord   // phi: blips short, the plucked ones a little longer and softer
     if (g.ost && s16 % 2 === 0 && INST.stab) pl('chords', INST.stab, tr.x, ch[s16 % 4 === 0 ? 0 : 2] + 12, t, dur16 * 1.6, 0.7);
     // bass
@@ -613,7 +642,9 @@
     if (g.bass === 'acid') acidStep(tr, t, s16, bn, dur16, dyn);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' || g.lead === 'dx' ? 6 : 2), 0.8); }
+    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead], lk = g.lead, lo = 0;
+      if (ans) { li = INST[g.resp]; lk = g.resp; lo = g.ro || 0; }                        // the answer goes to the responding voice, in its own register
+      pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12 + lo, t, dur16 * (lk === 'horn' || lk === 'bell' || lk === 'dx' ? 6 : 2), 0.8); }
     // drums
     if (X && X.hit && peak && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
@@ -705,7 +736,7 @@
     var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] && c.genres.indexOf(ox.pre.genre) >= 0 ? ox.pre : null;   // the bridge already chose the next genre, seed and key (unless a style pick since rules it out)
     var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : pickG(c, genreFlip++), t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
-    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : gBpm(genre, c.bpm), sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null, sp && sp.dm);
+    var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : gBpm(genre, c.bpm), sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null, sp && sp.dm, sp && sp.mo);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
     if (ox && ox.at) { tr.next = t; if (!sp) tr.born = Date.now() + (t - ctx.currentTime) * MS; }   // the new track's first bar (and its arc) lands on the drop   // pick up the arrangement where wall-clock time has it
     var old = tracks.filter(function (x) { return !x.dead && !x.leaving; }), len = fade || c.fade;
@@ -796,7 +827,7 @@
   var pend = null, stalled = false, held = null, GA = 0x9E3779B9, SEEDS = 4294967296;   // phi: golden-ratio hash (2^32 / PHI) steps the seed per skipped track; unit: 2^32 seeds
   function stepsIn(sec, bpm) { return Math.max(0, Math.floor(sec * bpm / SPM * SPB)); }
   function spec() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0];
-    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root, dm: tr.dm } : (pend || held); }
+    return tr ? { genre: tr.genre, bpm: tr.bpm, seed: tr.seed, born: tr.born, len: tr.trackLen, root: tr.root, dm: tr.dm, mo: tr.mo } : (pend || held); }
   function advance(sp, c) {                                               // whole track lengths that passed while away, then the remainder
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
@@ -917,7 +948,7 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; if (JSON.stringify(DIAL) !== DIAL0) o.dl = DIAL; if (TAPR !== 1) o.tt = TAPR; if (TAPB) o.tb = TAPB; if (GPICK) o.gp = GPICK; return o; }
+  function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; if (JSON.stringify(DIAL) !== DIAL0) o.dl = DIAL; if (TAPR !== 1) o.tt = TAPR; if (TAPB) o.tb = TAPB; if (GPICK) o.gp = GPICK; if (MEMO.length) o.mm = MEMO; return o; }
   // RELOAD FADE (MIDI Bot rhythm study section 4, Danny 19:18 AWST): what a reload or logo tap restores (the first track's birth dims
   // since 060ba87, and the rotation phase T0) fades toward the live readings with the gap: saved weight w = PHI^-(gap / (B PHI^k)),
   // B = PHI^5 s (the breath slot), k = the resume dial (open range 3..7, mid 5: about two minutes per rung) plus its own phi pump
@@ -934,6 +965,7 @@
     if (s.sg) Object.keys(sign).forEach(function (k) { var a = s.sg[k]; if (a && a.length === DIMS.length && a.every(function (v) { return v === -1 || v === 0 || v === 1; })) sign[k] = a.slice(); });   // the signs dial is a choice: it carries                             // learned level per unit of nominal volume (a calibration, kept)
     if (s.ks) Object.keys(KP).forEach(function (k) { if (isFinite(s.ks[k])) kseed[k] = s.ks[k]; });   // knob seeds are choices: they carry like the mix
     if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
+    if (Array.isArray(s.mm)) MEMO = s.mm.filter(function (c) { return Array.isArray(c) && c.length >= 2 && c.length <= 32 && c.every(function (v) { return Math.abs(v) <= 12 && v === Math.round(v); }); }).slice(-MEMN);   // the themes carry like the mix
     TAPR = s.tt > 0 && isFinite(s.tt) ? +s.tt : 1; TAPB = s.tb > 0 && isFinite(s.tb) ? +s.tb : 0; GPICK = s.gp && GEN[s.gp] ? s.gp : null;   // tapped tempo + genre pick carry like the mix
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
