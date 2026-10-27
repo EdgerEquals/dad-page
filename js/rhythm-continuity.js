@@ -197,7 +197,7 @@
   // Tap-rung beat: quick feedback = B x PHI^-10 (shared.md timing table), with the dashboard's breath slot B = PHI^5 (rule 3 loop slot)
   // -> PHI^-5 s, the first phi rung inside the 0.1 s tap rail.
   var TAP = Math.pow(PHI, 5) * Math.pow(PHI, -10), TOP = 5, LOGK = 'dadRhythm.audiolog.v1', LOGN = 89;   // phi: B x PHI^-10, B = PHI^5; ladder to PHI^5 beats; Fibonacci log
-  var AU = { ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
+  var AU = { bgInt: false, ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
   try { AU.log = JSON.parse(root.localStorage.getItem(LOGK) || '[]') || []; } catch (e) { AU.log = []; }
   function kit() { var D = root.DadAutoDJ; return D && D._kit ? D : null; }
   function wanted() { var D = kit(); return !!(D && D.playing); }
@@ -289,11 +289,21 @@
     var D = kit(); if (!D) return; var c = D._kit.ctx, a = D._kit.el;
     if (c && c !== AU.ctx) { AU.ctx = c; if (!c.__djResume) { c.__djResume = 1;   // one listener per context
       c.addEventListener('statechange', function () { if (c !== AU.ctx) return; note('state: ' + c.state);
+        if (c.state !== 'running') { if (doc.hidden) AU.bgInt = true; } else if (AU.bgInt) { AU.bgInt = false; endInt('context running'); }
         if (c.state === 'running') { if (AU.down) attempt('state'); } else if (wanted()) later('state'); }); } }
     if (a && a !== AU.el) { AU.el = a; if (!a.__djResume) { a.__djResume = 1;
       a.addEventListener('pause', function () { if (a !== AU.el || !wanted()) return; note('bridge: pause'); later('bridge-pause'); });
       a.addEventListener('play', function () { if (a !== AU.el) return; if (wanted() && AU.down) { note('bridge: play'); later('bridge-play'); } }); } }
   }
+  // DICTATION (Danny 20:59 / 21:01 AWST 27 Oct: 'when I come out of a different app where I press the microphone to enter the text ... it
+  // stops when I'm speaking ... when I stop it doesn't resume'; 'not happening all the time just sometimes'): the mic in another app
+  // interrupts the page's audio while it sits in the background; the bridge (the <audio> element that carries the sound in the background)
+  // is paused, and the ladder then finds the context running on the direct path and stops, which is silent while the page is hidden. Now,
+  // when that interruption ENDS (the context back to running, or the audio session out of 'interrupted', while hidden), the bridge gets
+  // ONE play: never a timer, so nothing pushes at the session while he is still speaking (the 17:40 26 Oct lesson).
+  function endInt(why) { if (!doc.hidden || !wanted() || !AU.el || !AU.el.paused) return; note('interruption over (' + why + '), hidden: bridge play once'); playEl(); }
+  try { var ASn = navigator.audioSession; if (ASn && 'state' in ASn && ASn.addEventListener) ASn.addEventListener('statechange', function () { note('session: ' + ASn.state);
+    if (ASn.state === 'interrupted') { if (doc.hidden) AU.bgInt = true; } else if (AU.bgInt) { AU.bgInt = false; endInt('session ' + ASn.state); } }); } catch (e) {}
   function poke(why) { return function () { hook(); if (!wanted()) { drop(); return; } if (AU.down || !done()) later(why); }; }
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden) poke('visible')(); });
   root.addEventListener('pageshow', poke('pageshow'));

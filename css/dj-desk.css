@@ -23,6 +23,8 @@ html[data-desk] #home-main{z-index:4}                                   /* the d
 .dk-sh small{flex:1;color:var(--dk-dim);font-size:.66rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dk-fold{margin-left:auto;color:var(--dk-a);transition:transform .236s ease}
 .dk-s.is-folded .dk-fold{transform:rotate(-90deg)}
+.dk-shw{display:flex;align-items:center;gap:.35rem;padding-right:.5rem}.dk-shw .dk-sh{flex:1;min-width:0}
+.dk-shms{flex:none;width:5.2rem}.dk-shms .dk-sw{padding:.26rem 0;font-size:.7rem}   /* strip M + S (Danny 21:02) */
 .dk-s.is-folded .dk-sb{display:none}
 .dk-sb{padding:0 .5rem .6rem}
 .dk-sub{margin:.45rem .1rem .3rem;font:600 .62rem/1 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--dk-dim)}

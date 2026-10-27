@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=multi1';
+  var CSS = 'css/dj-desk.css?v=ms1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -64,12 +64,22 @@
 
   // ---------- strips ----------
   var SW = [];
-  function strip(host, id, title, note) {
+  // STRIP MUTE + SOLO (Danny 20:58 / 21:02 AWST 27 Oct: 'I need a mute and solo button' ... 'I need mute and solo in the harmony panel'): a
+  // strip that plays its own channels gets M and S beside its name, driving the mixer's own mute / solo for all of them (the mixer shows
+  // the same state). M: all of its channels muted (or all back); S: all of them soloed (or all back). chs = the mixer channels it plays.
+  function stripMS(s, h, id, chs) {
+    var w = E('div', 'dk-shw'), ms = E('div', 'dk-ms dk-shms'), D = DK(); s.insertBefore(w, h); w.appendChild(h); w.appendChild(ms);
+    var all = function (k) { return chs.every(function (ch) { return !!D.mx[k][ch]; }); };
+    ms.appendChild(sw('M', function () { return all('m'); }, function () { var v = !all('m'); chs.forEach(function (ch) { D.mute(ch, v); }); log('mute.' + id, v ? 1 : 0); paintAll(); }, 'dk-m'));
+    ms.appendChild(sw('S', function () { return all('s'); }, function () { var v = !all('s'); chs.forEach(function (ch) { D.solo(ch, v); }); log('solo.' + id, v ? 1 : 0); paintAll(); }, 'dk-so'));
+    FD.push({ el: ms, paint: function () { ms.querySelectorAll('.dk-sw').forEach(function (q) { if (q._sync) q._sync(); }); }, meter: null, f: { id: 'ms.' + id } });
+  }
+  function strip(host, id, title, note, chs) {
     var s = E('section', 'dk-s'), h = E('button', 'dk-sh'), b = E('div', 'dk-sb'); h.type = 'button';
     var t = E('b', null, title); h.appendChild(t); if (note) h.appendChild(E('small', null, note)); h.appendChild(E('span', 'dk-fold', '▾'));
     s.setAttribute('data-strip', id); if (folded(id)) s.classList.add('is-folded'); h.setAttribute('aria-expanded', folded(id) ? 'false' : 'true');
     h.addEventListener('click', function () { var f = !s.classList.contains('is-folded'); s.classList.toggle('is-folded', f); h.setAttribute('aria-expanded', f ? 'false' : 'true'); UI.fold[id] = f ? 1 : 0; sv(KUI, UI); });
-    s.appendChild(h); s.appendChild(b); host.appendChild(s); return b;
+    s.appendChild(h); s.appendChild(b); host.appendChild(s); if (chs && chs.length && DK()) stripMS(s, h, id, chs); return b;
   }
   function tools(host, list) {                                            // reset + dice for a bank of faders
     var row = E('div', 'dk-tools'), rs = E('button', 'dk-mini', 'reset'), dc = E('button', 'dk-mini', '🎲'); rs.type = dc.type = 'button';
@@ -119,15 +129,29 @@
     // DRUMS
     var rd = function (k, name, kind, lo, hi, def, live) { return { id: 'rd.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return v === def ? 'mid' : num(v); }, get: function () { return D.rd(k); }, set: function (v) { D.rd(k, v); }, live: live }; };
     var lv = function () { return D.live() || {}; }, rp = function (k) { return function () { var r = lv().rp; return r && r[k] != null ? r[k] : null; }; };
-    var dr = strip(host, 'drums', 'Drums');
+    var dr = strip(host, 'drums', 'Drums', null, ['drums']);
     var dl = bank(dr, [rd('energy', 'energy', 'V', -1, 1, 0, function () { var e = lv().e; return e == null ? null : e; }), rd('vary', 'vary', 'C', 0, 1, 1 / 2), rd('reach', 'reach', 'C', 0, 1, 1 / 2),
       rd('rest', 'rests', 'L', 0, 1, 1 / 2, rp('spc')), rd('stop', 'stops', 'V', 0, 1, 1 / 2), rd('contrast', 'contrast', 'R', 0, 1, 1 / 2), rd('roll', 'rolls', 'N', 0, 1, 1 / 2),
       rd('laid', 'laid back', 'R', 0, 1, 1 / 2), rd('ghost', 'ghosts', 'N', 0, 1, 1 / 2, rp('ghost')),
       { id: 'dial.c808', name: '808 character', k: 'R', L: [0, IPH, 1, PHI, PHI * PHI], def: 1, lab: function (v) { return ['off', 'less', 'normal', 'more', 'max'][near([0, IPH, 1, PHI, PHI * PHI], v)]; }, get: function () { return D.dial('c808'); }, set: function (v) { D.dial('c808', v); } }]);
     tools(dr, dl);
+    // BASS (Danny 20:10 AWST 27 Oct, Claude chat: the bass shapes aimed at 'Kraftwerk, Anthony Rother and Detroit like Aux 88'): the shapes
+    // are switches (any set; all = every shape), the faders are the library share and slide / accent couplings, and the steps each track changes.
+    var bs = strip(host, 'bass', 'Bass', 'the 303 line · our own electro shapes', ['bass']);
+    var BSN = ['octave pump', 'machine 8ths', 'sequence', 'funk', 'kick-lock', 'dark walk', 'gallop', 'approach', 'bounce', 'deep sea', 'cold machine', 'synth-pop', 'stutter'], bsw = E('div', 'dk-sws');
+    var bsOn = function (j) { var m = D.dial('bShp') | 0; return j < 0 ? !(m > 0) : m > 0 && !!(m & (1 << j)); };
+    [-1].concat(BSN.map(function (_, j) { return j; })).forEach(function (j) { bsw.appendChild(sw(j < 0 ? 'all' : BSN[j], function () { return bsOn(j); }, function () { var m = D.dial('bShp') | 0; m = j < 0 ? 0 : (m > 0 ? m : 0) ^ (1 << j); D.dial('bShp', m); log('dial.bShp', m); bsw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
+    bs.appendChild(E('div', 'dk-sub', 'shape · pick any set')); bs.appendChild(bsw);
+    var BSL = E('div', 'dk-hint dk-txl'); bs.appendChild(BSL); BSLF = function () { var l = D.live && D.live(), t = l && l.bass ? 'playing: ' + l.bass : ''; if (BSL.textContent !== t) BSL.textContent = t; BSL.hidden = !t; };
+    var pc = function (v) { return Math.round(v * 100) + '%'; };
+    var bfl = bank(bs, [{ id: 'dial.bLib', name: 'library share', k: 'C', L: [0, Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1], def: IPH, lab: pc, get: function () { return D.dial('bLib'); }, set: function (v) { D.dial('bLib', v); } },
+      { id: 'dial.bMut', name: 'notes changed', k: 'N', L: [0, 1, 2, 3, 5, 8], def: 2, lab: function (v) { return String(v); }, get: function () { return D.dial('bMut'); }, set: function (v) { D.dial('bMut', v); } },
+      { id: 'dial.bSl', name: 'slides', k: 'C', L: CPL, def: 1, lab: cplLab, get: function () { return D.dial('bSl'); }, set: function (v) { D.dial('bSl', v); } },
+      { id: 'dial.bAc', name: 'accents', k: 'C', L: CPL, def: 1, lab: cplLab, get: function () { return D.dial('bAc'); }, set: function (v) { D.dial('bAc', v); } }]);
+    tools(bs, bfl);
     // HARMONY
     var dial = function (k, name, kind, lo, hi, def, lab) { return { id: 'dial.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: lab || function (v) { return Math.abs(v - def) < 1e-9 ? 'mid' : num(v); }, get: function () { return D.dial(k); }, set: function (v) { D.dial(k, v); } }; };
-    var hm = strip(host, 'harmony', 'Harmony');
+    var hm = strip(host, 'harmony', 'Harmony', 'chords · arp · pad', ['chords', 'arp', 'pad']);
     var hl = bank(hm, [dial('modeR', 'mode range', 'R', 1 / 2, 3, (1 / 2 + 3) / 2), dial('modeLo', 'dark end', 'V', -5, -4, (-4 - 5) / 2, function (v) { return v <= -5 + 1e-9 ? 'locrian' : v >= -4 - 1e-9 ? 'phrygian' : num(v); }),
       dial('loopLo', 'shortest loop', 'R', 0, 1, 1 / 2, function (v) { return Math.pow(2, v).toFixed(1) + ' ch'; }), dial('loopHi', 'longest loop', 'R', 2, 3, 5 / 2, function (v) { return Math.pow(2, v).toFixed(1) + ' ch'; }),
       dial('hrLo', 'fastest chord', 'R', -1, 0, -1 / 2, function (v) { return Math.pow(2, v).toFixed(2) + ' bar'; }), dial('hrHi', 'slowest chord', 'R', 1, 2, 3 / 2, function (v) { return Math.pow(2, v).toFixed(1) + ' bar'; }),
@@ -136,7 +160,7 @@
     // PAD (Danny 19:58 AWST 27 Oct, Claude chat: the electro pad as a stab, a pluck or a gated pad? 'All'): the shapes are switches, any set
     // layers (as the transitions); auto lets the energy pick, random draws one or two per track. The faders move every shape in rungs from
     // its own; gate rate in powers of two (1/32 .. 1/4), gate open the share of each chop (a threshold).
-    var pd = strip(host, 'pad', 'Pad', "electro's Juno pad · steps are rungs from each shape's own");
+    var pd = strip(host, 'pad', 'Pad', "electro's Juno pad · steps are rungs from each shape's own", ['pad']);
     var PMS = [['auto', 0], ['swell', 1], ['stab', 2], ['pluck', 4], ['gate', 8], ['random', -1]], pmw = E('div', 'dk-sws');
     var pmOn = function (b) { var m = D.dial('padM') | 0; return b <= 0 ? m === b : m > 0 && !!(m & b); };
     PMS.forEach(function (x) { pmw.appendChild(sw(x[0], function () { return pmOn(x[1]); }, function () { var m = D.dial('padM') | 0, b = x[1]; m = b <= 0 ? b : m > 0 ? m ^ b : b; D.dial('padM', m); log('dial.padM', m); pmw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
@@ -147,8 +171,8 @@
       { id: 'dial.padO', name: 'gate open', k: 'V', L: [Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1 - Math.pow(IPH, 4)], def: IPH, lab: function (v) { return Math.round(v * 100) + '%'; }, get: function () { return D.dial('padO'); }, set: function (v) { D.dial('padO', v); } }]);
     tools(pd, pfl);
     // MELODY
-    var me = strip(host, 'melody', 'Melody', 'motif memory · call and response');
-    var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; })]);
+    var me = strip(host, 'melody', 'Melody', 'motif memory · call and response', ['lead', 'answer']);
+    var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('mRh', 'own rhythm', 'C', 0, 1, IPH * IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; })]);   // own rhythm: Danny 20:15 'Dial for now'
     tools(me, ml);
     // EFFECTS (the returns; the knobs of js/dj-fx.js: a step is a nudge from the live value, as the old chips)
     var ef = strip(host, 'effects', 'Effects', 'returns · the bar = where the pumps have it');
@@ -170,7 +194,7 @@
     fbk.addEventListener('click', function () { var F = d && d.fx; if (F && F.back) F.back(); log('fx.live', 1); setTimeout(paintAll, 60); });
     fxr.appendChild(fb); fxr.appendChild(fbk); ef.appendChild(fxr);
     // VOICE
-    var vo = strip(host, 'voice', 'Voice');
+    var vo = strip(host, 'voice', 'Voice', null, ['voice']);
     var vd = function (k, name, kind, lo, hi, def) { return { id: 'voice.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return Math.abs(v - def) < 1e-9 ? 'mid' : num(v); }, get: function () { var V = d && d.voice; return V && V.dial ? V.dial(k) : null; }, set: function (v) { var V = d && d.voice; if (V && V.dial) { V.dial(k, v); var R = root.RhythmContinuity; if (R && R.save) try { R.save(); } catch (e) {} } } }; };
     var vl = bank(vo, [vd('floor', 'floor', 'V', P(-4), P(-2), P(-3)), vd('club', 'club', 'C', 1, PHI * PHI, PHI), vd('tc', 'timing', 'R', 1 / 3, 2 / 3, 1 / 2), vd('nw', 'width', 'C', 0, IPH, IPH / 2), vd('soar', 'soar', 'R', IPH, PHI, 1), vd('vib', 'vibrato', 'R', IPH, PHI, 1)]);
     tools(vo, vl);
@@ -249,7 +273,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null;
+  var TXL = null, BSLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -262,7 +286,7 @@
       m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {
@@ -280,11 +304,16 @@
     // floating'): two taps on the desk's background (not a button, fader or switch) within PHI^-1 s and PHI^-3 of a rem-ish slop take the
     // desk over the header and footer; the floating X brings it back. His own ask, so the double tap is his on purpose here.
     var fx = E('button', 'dk-fx', '\u00D7'); fx.type = 'button'; fx.setAttribute('aria-label', 'Leave full screen'); fx.addEventListener('click', function (e) { e.stopPropagation(); full(false); }); el.appendChild(fx);
-    var lastT = 0, lastX = 0, lastY = 0;
+    var lastT = 0, lastX = 0, lastY = 0, foldT = 0;
     el.addEventListener('click', function (e) { var t = e.target; if (t && t.closest && t.closest('button,.dk-trk,.dk-sw,a,input')) { lastT = 0; return; }
       var now = performance.now(), near2 = Math.abs(e.clientX - lastX) < 40 && Math.abs(e.clientY - lastY) < 40;   // unit: px of slop between the two taps
-      if (lastT && now - lastT < IPH * MS && near2) { lastT = 0; full(!de.hasAttribute('data-desk-full')); log('fullscreen', de.hasAttribute('data-desk-full') ? 1 : 0); return; }
-      lastT = now; lastX = e.clientX; lastY = e.clientY; });
+      if (lastT && now - lastT < IPH * MS && near2) { lastT = 0; clearTimeout(foldT); full(!de.hasAttribute('data-desk-full')); log('fullscreen', de.hasAttribute('data-desk-full') ? 1 : 0); return; }
+      lastT = now; lastX = e.clientX; lastY = e.clientY;
+      // TAP TO FOLD (Danny 21:01 AWST 27 Oct: 'press anywhere in the background of the menu that I'm in and it shrinks down'): one tap on
+      // an open strip's background (not a fader, button or switch) folds it, once the double-tap window (PHI^-1 s) has passed with no
+      // second tap; two taps still mean full screen.
+      var sx = t && t.closest && t.closest('.dk-s'); clearTimeout(foldT);
+      if (sx && !sx.classList.contains('is-folded') && t.closest('.dk-sb') && !t.closest('.dk-f,.dk-ch')) foldT = setTimeout(function () { var hb = sx.querySelector('.dk-sh'); if (hb && !sx.classList.contains('is-folded')) { hb.click(); log('fold.tap', sx.getAttribute('data-strip')); } }, IPH * MS); });
     doc.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && isOpen()) { e.preventDefault(); if (de.hasAttribute('data-desk-full')) full(false); else close(true); } });
   }
   function isOpen() { return de.hasAttribute('data-desk'); }

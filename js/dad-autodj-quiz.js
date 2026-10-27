@@ -162,7 +162,7 @@
     // Drums: the electro 808 convention (kick 1 . 7 . 11, snare + clap on 2 and 4, straight closed-hat 16ths with an open hat into the
     // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated stabs over i-VI-VII on Ed's
     // Jupiter (ci), Ed's Juno on the arp (ai) and a pad under it (under), the DX7 on the lead, the 303 rack on the bass (acid).
-    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, arpModel: 'electro', ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx', resp: 'jup', ro: -12,
+    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6], [0, 0, 0, 0], [0, 6, 0, 6], [0, 3, 0, 3], [0, 0, 6, 5], [0, 4, 0, 6], [0, 5, 6, 0]],   /* BASS SHAPES (Danny 20:10 AWST 27 Oct): eight progressions, Fibonacci; the one-chord vamp Detroit electro lives on, i-VII, i-iv, i-i-VII-VI, i-v-i-VII, i-VI-VII-i */ bars: 1, chords: 'stab', ci: 'jup', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, arpModel: 'electro', ai: 'juno', under: 'junopad', bass: 'acid', bwave: 'square', mel: 0.12, lead: 'dx', resp: 'jup', ro: -12,
                    kick: 'x.....x...x.....', snare: '....x.......x...', clap: '....x.......x...', hat: 'oooooooooooooox.', cow: '...o.......o....', rev: 0.18,
                    own: 1, bank: 1, fold: 1, alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', resp: 'piano', ro: -12, rev: 0.4 }
@@ -203,7 +203,9 @@
     recall: IPH, resp: IPH,
     cpTime: 1, cpSky: 1, cpUrg: 1, cpMood: 1, cpCol: 1,
     dkBars: 1, dkFade: PHI, dkDepth: -1, dkNow: 1,
-    padM: 0, padA: 0, padD: 0, padS: 0, padR: 0, padF: 0, padG: 0, padO: IPH };   // PAD SHAPES (Danny 19:58 AWST 27 Oct, Claude chat: stab, pluck or gated pad? 'All'): padM 0 auto, -1 random, else a set (1 swell, 2 stab, 4 pluck, 8 gate); the rest are rungs from each shape's own (padO: the gate's open share, a threshold)                     // desk changes (Danny 18:59 AWST 27 Oct): build bars (0 = the DJ's own), fade s (0 = the style's), sweep depth (-1 = auto), harmony / melody faders rebuild now (1) or wait for the next track (0)                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+    padM: 0, padA: 0, padD: 0, padS: 0, padR: 0, padF: 0, padG: 0, padO: IPH,
+    bLib: IPH, bMut: 2, bSl: 1, bAc: 1, bShp: 0,
+    mRh: IPH * IPH };   // THEME RHYTHM (Danny 20:15): the share of a recalled theme's steps that keep its own rhythm (a coupling, 0 = the new track's)   // BASS SHAPES (Danny 20:10 AWST 27 Oct): library share (a coupling), steps changed per track (a count), slides and accents (couplings, 1 = as written), the shapes switched on (a set, 0 = all)   // PAD SHAPES (Danny 19:58 AWST 27 Oct, Claude chat: stab, pluck or gated pad? 'All'): padM 0 auto, -1 random, else a set (1 swell, 2 stab, 4 pluck, 8 gate); the rest are rungs from each shape's own (padO: the gate's open share, a threshold)                     // desk changes (Danny 18:59 AWST 27 Oct): build bars (0 = the DJ's own), fade s (0 = the style's), sweep depth (-1 = auto), harmony / melody faders rebuild now (1) or wait for the next track (0)                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -285,7 +287,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=pad1';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=bass1';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -438,9 +440,14 @@
   // re-rhythmed in another style. One development each time (almost-repeat): PHI^-1 of recalls move one interval a step, PHI^-3
   // invert the contour, the rest keep it. Draws are golden draws on the seed, not the track's random stream, so everything else in
   // the track is exactly as before. Fresh themes (and developed ones) join the memory.
-  var MEMO = [], MEMN = 8;                                               // unit: the last 8 themes (a Fibonacci count)
+  // THEME RHYTHM (Danny 20:15 AWST 27 Oct, Claude chat: a remembered tune comes back with its own rhythm, the new track's, or a dial between:
+  // 'Dial for now'): each theme now keeps its rhythm too (MEMR: which of its 32 steps sound, a bit mask beside MEMO). On recall every step
+  // takes the theme's own onset on DIAL.mRh of the steps (a golden draw per step) and the new track's on the rest, so 0 = the new track's
+  // rhythm (as before), 1 = the theme's own, between = a blend; the remembered contour is then laid on whatever onsets result.
+  var MEMO = [], MEMN = 8, MEMR = [];                                    // unit: the last 8 themes (a Fibonacci count); MEMR: their rhythms (32-bit masks, null = not kept)
   function contour(m) { var d = [], last = null; m.forEach(function (x) { if (x == null) return; if (last != null) d.push(x - last); last = x; }); return d; }
-  function remember(m) { var c = contour(m); if (c.length < 2) return; MEMO.push(c); while (MEMO.length > MEMN) MEMO.shift(); }
+  function onsets(m) { var k = 0; for (var i = 0; i < 32 && i < m.length; i++) if (m[i] != null) k = (k | (1 << i)) >>> 0; return k; }   // unit: bit i = step i sounds
+  function remember(m) { var c = contour(m); if (c.length < 2) return; while (MEMR.length < MEMO.length) MEMR.unshift(null); MEMO.push(c); MEMR.push(onsets(m)); while (MEMO.length > MEMN) { MEMO.shift(); MEMR.shift(); } }
   function recall(fresh, seed) {
     var sd = (seed | 0) >>> 0, gd = function (k) { return frac(sd * Math.pow(IPH, k) + k * IPH); }, first = fresh.filter(function (x) { return x != null; })[0];
     if (!MEMO.length || first == null || !(gd(2) < DIAL.recall)) return fresh.slice();
@@ -448,8 +455,9 @@
     for (var i = 0; i < w.length; i++) { x -= w[i]; if (x <= 0) { j = i; break; } }
     var dl = MEMO[j].slice(), op = gd(4);
     if (op < IPH) { var q = Math.floor(gd(5) * dl.length); dl[q] += dl[q] > 0 ? -1 : 1; } else if (op < IPH + Math.pow(IPH, 3)) dl = dl.map(function (v) { return -v; });   // phi: the development shares
-    var cur = first, n = 0;
-    return fresh.map(function (y) { if (y == null) return null; if (n > 0) cur = clamp(cur + dl[(n - 1) % dl.length], 4, 13); n++; return cur; });   // unit: the fresh motif's degree range
+    var cur = first, n = 0, rk = MEMR[j], mix = rk == null ? 0 : clamp(DIAL.mRh, 0, 1), on = fresh.map(function (y, i) { var own = i < 32 && ((rk >>> i) & 1) === 1; return mix > 0 && gd(10 + i) < mix ? own : y != null; });
+    if (!on.some(function (b) { return b; })) on = fresh.map(function (y) { return y != null; });   // never an empty theme
+    return fresh.map(function (y, i) { if (!on[i]) return null; if (n > 0) cur = clamp(cur + dl[(n - 1) % dl.length], 4, 13); n++; return cur; });   // unit: the fresh motif's degree range
   }
   function makeTrack(genre, bpm, seed, prev, root0, dm0, mo0) {
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
@@ -764,20 +772,55 @@
     if (n == null) return; n = fold(n + reg) - reg; pl('chords', inst, tr.x, n + reg, t, dur16 * (acc ? IPH : IPH * IPH), v);
     if (acc && tr.e > 1 - Math.pow(PHI, -3)) pl('chords', inst, tr.x, fold(arpSeq(ARPM[mi], pool, k + 1) + reg), t + dur16 / 2, dur16 * IPH * IPH, v * IPH);   // the ratchet at the peak
   }
+  // BASS SHAPES (Danny 19:38 AWST 27 Oct, Claude chat: basslines 'too similar'; 20:10, the electro in his head: 'Kraftwerk, Anthony Rother
+  // and Detroit like Aux 88 etc'): our own library of electro bass shapes (thirteen, below), written from the idioms of those records (octave pumps,
+  // machine 8ths, root-fifth-octave sequences, syncopated funk with held notes, 808-style subs locked to the kick, minor climbs, gallops,
+  // chromatic lead-ins), not copied from any one record. Letters are semitones over the chord root: r 0, o +12, f +7, d -5, m +3, q +5,
+  // s +10, l -2, c -1, t +2; upper case = an accent; '-' holds the note before; '.' rests; sl = the steps that slide into the next note.
+  // A track takes a library shape on DIAL.bLib of tracks (else the old random line), from the shapes switched on (DIAL.bShp, 0 = all),
+  // then changes DIAL.bMut of its steps (a note to a neighbour, a rest to a soft extra note); the B bar changes two more, as before. The
+  // downbeat and the beat hits play from the floor of the arc, the rest fill in with energy, as the random line does. Slides and accents
+  // scale by DIAL.bSl / DIAL.bAc (couplings: 0 none, 1 as written, above 1 extra ones on PHI^-4 x (k - 1) of the steps). Any of these
+  // dials rebuilds the playing track's line at once (the line is cached against them).
+  var BSH = [{ n: 'octave pump', p: 'R.oor.oRr.oor.Oo', sl: [3] }, { n: 'machine 8ths', p: 'R.r.r.r.R.r.f.s.', sl: [] }, { n: 'sequence', p: 'R.f.o.f.R.f.o.F.', sl: [] },
+    { n: 'funk', p: 'R--r..o.R--r.Om.', sl: [13] }, { n: 'kick-lock', p: 'R-----R---R--o-.', sl: [] }, { n: 'dark walk', p: 'R.rmR.rqR.rfR.sO', sl: [3, 11] },
+    { n: 'gallop', p: 'R.rrO.ooR.rrF.ff', sl: [] }, { n: 'approach', p: 'R---o.r.R-.r.o.c', sl: [15] },
+    // 20:14 ('it's all of those ones that you mentioned'): five more for the rest of the list, to thirteen (Fibonacci): the LA/New York 808
+    // bounce (Egyptian Lover, Mantronix), Drexciya's deep held sub, Dopplereffekt's cold minor 16ths, DMX Krew's synth-pop octave pedal,
+    // and the Mantronix-style stutter
+    { n: 'bounce', p: 'R..r..R..r.Rr.o.', sl: [] }, { n: 'deep sea', p: 'R------.o..m--..', sl: [8] }, { n: 'cold machine', p: 'Rrm.Rrf.Rrm.Rso.', sl: [] },
+    { n: 'synth-pop', p: 'R.o.f.o.q.o.m.o.', sl: [] }, { n: 'stutter', p: 'R.RR..o.R.RR.o..', sl: [13] }];
+  var BIV = { r: 0, o: 12, f: 7, d: -5, m: 3, q: 5, s: 10, l: -2, c: -1, t: 2 }, BNB = [0, 12, 7, 3, 10, 5, -2];   // unit: semitones over the chord root; BNB: the notes a changed step moves among
+  function bSig() { return [DIAL.bLib, DIAL.bMut, DIAL.bSl, DIAL.bAc, DIAL.bShp].join(); }
+  function bMut(A, j, g1, g2) { var x = A[j];   // one change: a note moves to a neighbour, a rest (or a held step) becomes a soft extra note
+    if (x.iv == null) { x.iv = BNB[Math.floor(g1 * BNB.length)]; x.rank = IPH * IPH + g2 * (1 - IPH * IPH - Math.pow(IPH, 3)); x.acc = false; x.slide = false; x.hold = 0; }   // phi: fills in from the middle of the arc
+    else { var nb = BNB.filter(function (v) { return v !== x.iv; }); x.iv = nb[Math.floor(g1 * nb.length)]; x.acc = !x.acc; } }
+  function bHold(A) { for (var i = 0; i < 16; i++) if (A[i].hold > 0) for (var k = 1; k <= A[i].hold; k++) if (i + k >= 16 || A[i + k].iv != null) { A[i].hold = k - 1; break; } }   // a hold stops at the next note
   function acidPat(tr) {
-    if (tr.ac) return tr.ac; var A = [];
-    for (var i = 0; i < 16; i++) { var a = gold(tr, i, 42);
-      A.push({ iv: i ? ACID_IV[Math.floor(gold(tr, i, 41) * ACID_IV.length)] : 0, rank: i ? gold(tr, i, 40) : 0, acc: i % 2 ? a < IPH * IPH : a < Math.pow(IPH, 4), slide: gold(tr, i, 43) < Math.pow(IPH, 4) }); }   // phi: accents PHI^-2 off the beat, PHI^-4 on it; slides PHI^-4
-    var B = A.map(function (x) { return { iv: x.iv, rank: x.rank, acc: x.acc, slide: x.slide }; });
-    [44, 45].forEach(function (k) { var j = 1 + Math.floor(gold(tr, 0, k) * 15); B[j].iv = ACID_IV[Math.floor(gold(tr, 1, k) * ACID_IV.length)]; B[j].acc = !B[j].acc; });
-    return (tr.ac = { A: A, B: B, wave: gold(tr, 2, 46) < IPH * IPH ? 'square' : 'sawtooth' });   // phi: a square-wave line on PHI^-2 of tracks
+    var sg = bSig(); if (tr.ac && tr.ac.sig === sg) return tr.ac; var A = [], i, sh = null, slX = Math.pow(IPH, 4) * Math.max(0, DIAL.bSl - 1), acX = Math.pow(IPH, 4) * Math.max(0, DIAL.bAc - 1);
+    var pool = BSH.map(function (_, j) { return j; }).filter(function (j) { return !(DIAL.bShp > 0) || !!(DIAL.bShp & (1 << j)); });
+    if (pool.length && gold(tr, 4, 47) < DIAL.bLib) sh = pool[Math.floor(gold(tr, 3, 47) * pool.length)];
+    if (sh == null) for (i = 0; i < 16; i++) { var a = gold(tr, i, 42);
+      A.push({ iv: i ? ACID_IV[Math.floor(gold(tr, i, 41) * ACID_IV.length)] : 0, rank: i ? gold(tr, i, 40) : 0, acc: (i % 2 ? a < IPH * IPH : a < Math.pow(IPH, 4)) ? gold(tr, i, 48) < DIAL.bAc : gold(tr, i, 48) < acX, slide: gold(tr, i, 43) < Math.pow(IPH, 4) * DIAL.bSl, hold: 0 }); }   // phi: accents PHI^-2 off the beat, PHI^-4 on it; slides PHI^-4
+    else { var S = BSH[sh];
+      for (i = 0; i < 16; i++) { var ch = S.p.charAt(i), lo = ch.toLowerCase(), g = gold(tr, i, 40), k = 0;
+        if (ch === '.' || ch === '-') { A.push({ iv: null, rank: 2, acc: false, slide: false, hold: 0 }); continue; }   // unit: rank 2 never plays
+        while (i + k + 1 < 16 && S.p.charAt(i + k + 1) === '-') k++;
+        A.push({ iv: BIV[lo], rank: i === 0 ? 0 : i % 4 === 0 ? g * IPH * IPH : g * (1 - Math.pow(IPH, 3)), acc: ch !== lo ? gold(tr, i, 48) < DIAL.bAc : gold(tr, i, 48) < acX,
+          slide: S.sl.indexOf(i) >= 0 ? gold(tr, i, 43) < DIAL.bSl : gold(tr, i, 43) < slX, hold: k }); }   // beat hits under PHI^-2 (from the floor of the arc), the rest under 1 - PHI^-3 (all at the peak)
+      for (var q = 0; q < Math.round(DIAL.bMut); q++) bMut(A, 1 + Math.floor(gold(tr, q, 49) * 15), gold(tr, q, 50), gold(tr, q, 51));
+      bHold(A); }
+    var B = A.map(function (x) { return { iv: x.iv, rank: x.rank, acc: x.acc, slide: x.slide, hold: x.hold }; });
+    [44, 45].forEach(function (k) { var j = 1 + Math.floor(gold(tr, 0, k) * 15); if (sh == null) { B[j].iv = ACID_IV[Math.floor(gold(tr, 1, k) * ACID_IV.length)]; B[j].acc = !B[j].acc; } else bMut(B, j, gold(tr, 1, k), gold(tr, 2, k)); });
+    bHold(B);
+    return (tr.ac = { A: A, B: B, sig: sg, shape: sh == null ? 'random' : BSH[sh].n, wave: gold(tr, 2, 46) < IPH * IPH ? 'square' : 'sawtooth' });   // phi: a square-wave line on PHI^-2 of tracks
   }
   function acidStep(tr, t, s16, bn, dur16, dyn) {
     var P = acidPat(tr), pat = Math.floor(tr.step / 16) % 2 ? P.B : P.A, st = pat[s16], p = tr.rp, e = tr.e == null ? 1 : tr.e;
     var dn = IPH * IPH + (1 - IPH * IPH - Math.pow(IPH, 3)) * e, nx = pat[(s16 + 1) % 16];
-    if (st.rank >= dn || !chOn('bass') || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16)))) { tr.acFrom = null; return; }
-    var m = bn + st.iv, v = vl(s16, dyn) * (st.acc ? 1 : IPH), slide = st.slide && nx.rank < dn, d = dur16 * (slide ? 1 + Math.pow(IPH, 6) : IPH);   // phi: a held slide just outlasts its step, a plain note is PHI^-1 of it
-    act('bass', t, v, tr); if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
+    if (st.rank >= dn || st.iv == null || !chOn('bass') || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16)))) { tr.acFrom = null; return; }
+    var m = bn + st.iv, v = vl(s16, dyn) * (st.acc ? 1 : IPH), slide = st.slide && nx.rank < dn && nx.iv != null, hd = st.hold > 0 ? dur16 * (st.hold + IPH) : 0, d = hd || dur16 * (slide ? 1 + Math.pow(IPH, 6) : IPH);   // a held note: its steps plus PHI^-1 of one   // phi: a held slide just outlasts its step, a plain note is PHI^-1 of it
+    act('bass', t, v, tr); if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, hold: hd, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
     else INST.bass(tr.L.bass, mtof(m), t, d, v);
     tr.acFrom = slide ? m : null;
     if (VH) try { VH('bass', tr.L.bass, m, t, d, v); } catch (er) {}
@@ -1044,7 +1087,7 @@
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
   function save() { if (RC) RC.save(); }
-  function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; if (JSON.stringify(DIAL) !== DIAL0) o.dl = DIAL; if (TAPR !== 1) o.tt = TAPR; if (TAPB) o.tb = TAPB; if (GPICK) o.gp = GPICK; if (MEMO.length) o.mm = MEMO; if (JSON.stringify(MX) !== MX0) o.mx = MX; return o; }
+  function snapshot() { var o = { on: playing || !!pend || stalled, nudge: nudge, flip: genreFlip, T0: T0, tr: spec(), mix: mixSeed, k: kRef, ks: kseed }; if (JSON.stringify(sign) !== JSON.stringify(SIGN0)) o.sg = sign; if (JSON.stringify(DIAL) !== DIAL0) o.dl = DIAL; if (TAPR !== 1) o.tt = TAPR; if (TAPB) o.tb = TAPB; if (GPICK) o.gp = GPICK; if (MEMO.length) o.mm = MEMO; o.mr = MEMR; if (JSON.stringify(MX) !== MX0) o.mx = MX; return o; }
   // RELOAD FADE (MIDI Bot rhythm study section 4, Danny 19:18 AWST): what a reload or logo tap restores (the first track's birth dims
   // since 060ba87, and the rotation phase T0) fades toward the live readings with the gap: saved weight w = PHI^-(gap / (B PHI^k)),
   // B = PHI^5 s (the breath slot), k = the resume dial (open range 3..7, mid 5: about two minutes per rung) plus its own phi pump
@@ -1063,7 +1106,7 @@
     if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
     if (s.mx && typeof s.mx === 'object') ['m', 's', 'e', 'w'].forEach(function (k) { var o = s.mx[k]; MX[k] = {}; if (o) CHS.forEach(function (c) { if (o[c] != null) MX[k][c] = k === 'm' || k === 's' ? !!o[c] : clamp(o[c] | 0, 0, SENDL.length - 1); }); });
     if (s.mx && s.mx.b && typeof s.mx.b === 'object') { MX.b = {}; Object.keys(s.mx.b).forEach(function (r) { var b = s.mx.b[r]; if (b && Array.isArray(b.m) && Array.isArray(b.s)) MX.b[r] = { m: b.m.map(Boolean).slice(0, 8), s: b.s.map(Boolean).slice(0, 8) }; }); }   // the desk's mutes, solos and sends carry like the dials
-    if (Array.isArray(s.mm)) MEMO = s.mm.filter(function (c) { return Array.isArray(c) && c.length >= 2 && c.length <= 32 && c.every(function (v) { return Math.abs(v) <= 12 && v === Math.round(v); }); }).slice(-MEMN);   // the themes carry like the mix
+    if (Array.isArray(s.mm)) { var mr0 = Array.isArray(s.mr) && s.mr.length === s.mm.length ? s.mr : s.mm.map(function () { return null; }), keep = s.mm.map(function (c, q) { return Array.isArray(c) && c.length >= 2 && c.length <= 32 && c.every(function (v) { return Math.abs(v) <= 12 && v === Math.round(v); }) ? q : -1; }).filter(function (q) { return q >= 0; }).slice(-MEMN); MEMO = keep.map(function (q) { return s.mm[q]; }); MEMR = keep.map(function (q) { var r = mr0[q]; return isFinite(r) && r >= 0 && r < 4294967296 ? r >>> 0 : null; }); }   // the themes carry like the mix
     TAPR = s.tt > 0 && isFinite(s.tt) ? +s.tt : 1; TAPB = s.tb > 0 && isFinite(s.tb) ? +s.tb : 0; GPICK = s.gp && (GEN[s.gp] || s.gp === 'random') ? s.gp : null;   // tapped tempo + genre pick carry like the mix
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
@@ -1212,7 +1255,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
-  var REBUILD = ['modeR', 'modeLo', 'loopLo', 'loopHi', 'hrLo', 'hrHi', 'rho0', 'rho1', 'recall'], rbT = 0;   // faders only a new track hears
+  var REBUILD = ['modeR', 'modeLo', 'loopLo', 'loopHi', 'hrLo', 'hrHi', 'rho0', 'rho1', 'recall', 'mRh'], rbT = 0;   // faders only a new track hears
   // the desk's handle (js/dj-desk.js): read and set everything it shows, through the same paths the old panel used
   var DESK = { CHS: CHS, SENDL: SENDL, on: chOn, box: boxOn, meter: chMeter, act: function (ch, t, v) { act(ch, t, v); },
     get mx() { return JSON.parse(JSON.stringify(MX)); },
@@ -1224,7 +1267,7 @@
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
-    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr ? { e: tr.e, genre: tr.genre, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
+    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr ? { e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
     get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
   window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,

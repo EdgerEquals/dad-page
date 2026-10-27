@@ -189,12 +189,12 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
       R.bus.connect(R.od); R.od.connect(R.lp); R.lp.connect(R.og); R.og.connect(L.out); R.ed = edUnit(c, R.bus); }
     clearTimeout(R.idle); R.idle = setTimeout(function () { R.dead = true; try { R.ed.o.stop(); R.ed.o.disconnect(); if (R.db) R.db.dispose(); R.bus.disconnect(); R.og.disconnect(); } catch (er) {} }, (Math.max(0, n.t - c.currentTime) + n.step * 2 + Math.pow(PHI, 3)) * 1e3);   // phi: stop PHI^3 s after the last note sounds; unit: ms per s
     if (!D3) load303(); else if (!R.db && !R.dbReq) { R.dbReq = true; D3.Bassline.create(c).then(function (r) { if (R.dead) { r.bassline.dispose(); return; } R.db = r.bassline; R.db.output.connect(R.bus); }).catch(function () {}); }
-    var f = 440 * Math.pow(2, (n.m - 69) / 12), from = n.from != null ? 440 * Math.pow(2, (n.from - 69) / 12) : null, gate = n.step * (n.slide ? 1 + Math.pow(IPH, 6) : IPH);
+    var f = 440 * Math.pow(2, (n.m - 69) / 12), from = n.from != null ? 440 * Math.pow(2, (n.from - 69) / 12) : null, gate = n.hold > 0 ? n.hold : n.step * (n.slide ? 1 + Math.pow(IPH, 6) : IPH);   // hold: a bass shape's held note (Danny 20:10)
     var det = function (u) { var k = (u * IPH) % 1; return { r: Math.pow(2, (k - 1 / 2) * Math.pow(PHI, 5) / 1200), dt: k * Math.pow(PHI, -11) }; };   // phi: golden cents and ms per unit
     var d1 = det(1); if (bx('303', 1)) edNote(R.ed, n, f * d1.r, from != null ? from * d1.r : null, n.t + d1.dt, gate, A3 * ASH[1] * n.v);
     if (R.db && bx('303', 0)) { var d0 = det(0), pa = D3.params, P = { tune: 1 / 2, wave: n.wave === 'square' ? 1 : 0, cutoff: IPH * IPH + Math.pow(IPH, 3) * e, resonance: 1 - Math.pow(IPH, 3), envMod: IPH, decay: IPH * IPH, accent: pa.accent, level: Math.min(1, A3 * ASH[0] * n.v) };   // phi: knobs on golden fractions; cutoff a rung brighter with the arc
       var nt = D3.bassNote(P, { note: n.m - 33, accent: n.acc, slide: n.slide }, n.from != null ? { note: n.from - 33, slide: true } : { note: null, slide: false }, n.step);   // unit: MIDI 33 = A1 = driftbox's 55 Hz root at tune 0.5
-      if (nt) { nt.frequency *= d0.r; if (nt.glideFrom) nt.glideFrom *= d0.r; try { R.db.play(nt, n.t + d0.dt); } catch (er) {} } }
+      if (nt) { if (n.hold > 0) nt.gate = n.hold; nt.frequency *= d0.r; if (nt.glideFrom) nt.glideFrom *= d0.r; try { R.db.play(nt, n.t + d0.dt); } catch (er) {} } }
     R.og.gain.setTargetAtTime(e > IPH && bx('303', 2) ? A3 * ASH[2] : 0, n.t, Math.pow(PHI, -3));   // the overdrive unit joins past PHI^-1 of the arc (its share of the rack)
   }
 
