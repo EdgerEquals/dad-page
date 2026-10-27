@@ -179,7 +179,7 @@
   // track draws any style but the one playing, by chance (Math.random, not the golden sequence), so it is truly unpredictable
   function rndG(c) { var lv = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], gs = c.genres.filter(function (g) { return !lv || g !== lv.genre; }); return gs.length ? gs[Math.floor(Math.random() * gs.length)] : c.genres[0]; }
   function pickG(c, n) {                                                  // the n-th genre of c.genres
-    var F = window.DadAutoDJ && DadAutoDJ.fx; if (F && F.autoSweep && F.autoSweep() && c.dims) {   // auto sweep (Danny 20:03): any genre in GEN can come next; weather and a set mood only tilt the odds
+    var F = window.DadAutoDJ && DadAutoDJ.fx; if (!GPICK && F && F.autoSweep && F.autoSweep() && c.dims) {   // auto sweep (Danny 20:03): any genre in GEN can come next; weather and a set mood only tilt the odds. Not when he has picked a style (fast1 fix: the sweep ignored his pick, so a pick only landed by chance)
       var all = Object.keys(GEN), d0 = c.dims, D0 = Math.pow(PHI, PHI * PHI * d0.tension), ml = c.genres.length < all.length ? c.genres : [];
       var w0 = all.map(function (k) { var h = home(k); return Math.pow(PHI, -(Math.abs(d0.drive - h.drive) + Math.abs(d0.brightness - h.brightness)) / D0) * (ml.indexOf(k) >= 0 ? PHI : 1); });   // phi: the closeness weight flattened by PHI^2; mood list x PHI
       var x0 = frac((n + 1) * IPH) * w0.reduce(function (a, b) { return a + b; }, 0); for (var i0 = 0; i0 < all.length; i0++) { x0 -= w0[i0]; if (x0 <= 0) return all[i0]; } return all[all.length - 1];
@@ -201,7 +201,8 @@
     colD: IPH, colT: Math.pow(PHI, 5), colW: 1, colF: IPH,
     c808: 1,
     recall: IPH, resp: IPH,
-    cpTime: 1, cpSky: 1, cpUrg: 1, cpMood: 1, cpCol: 1 };                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
+    cpTime: 1, cpSky: 1, cpUrg: 1, cpMood: 1, cpCol: 1,
+    dkBars: 1, dkFade: PHI, dkDepth: -1, dkNow: 1 };                     // desk changes (Danny 18:59 AWST 27 Oct): build bars (0 = the DJ's own), fade s (0 = the style's), sweep depth (-1 = auto), harmony / melody faders rebuild now (1) or wait for the next track (0)                 // System strip couplings (Danny 18:19 AWST 27 Oct): 1 = as before                                            // motif memory + call and response (Danny 17:43 AWST 27 Oct): couplings, PHI^-1 of new themes recall one, PHI^-1 of phrases answered by another voice                                                           // 808 character depth (Danny 17:36 AWST 27 Oct): off 0, less PHI^-1, normal 1, more PHI, max PHI^2 (js/dj-extras.js char808)             // djcollide: crash amount PHI^-2..1, swell PHI^4..PHI^6 s, booms vs debris PHI^-1..PHI, fill-out 0..1 (mid defaults)                                              // organ fix (MIDI Bot amplitude sweep V2): balance depth D in phi rungs, open range 1..PHI^2, default PHI; sustain centre, open range PHI^-2..1, default PHI^-1 (the golden split)
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -293,7 +294,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=random1', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=fast1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
   var VURL = 'js/dj-voice.js?v=meter1', vReq = false, VH = null;
@@ -836,11 +837,18 @@
   // 0 = the next bar .. 1 = a phrase (dj-fx BARS 1..8), from calm pumps and sophistication: calm, sophisticated tracks take their time.
   function waitAuto() { var tr = tracks.filter(function (x) { return !x.leaving && !x.dead; })[0], u = energy(), s = tr && tr.s != null ? tr.s : IPH;
     return clamp(IPH * (1 - u) + IPH * IPH * s, 0, 1); }
-  function routed(fn, live) {
+  // DESK CHANGES (Danny 18:55-18:59 AWST 27 Oct, Claude chat: 'Can the transition happen faster when I change a parameter?' ... 'Yes but can
+  // you build it as dials so that I can adjust it ... from my usage data ... where I generally land'): a change made on the desk takes his
+  // own route - build bars (Fibonacci 1..8, or the DJ's own wait), fade (golden seconds, or the style's), sweep depth (or auto) - and lands
+  // on the next bar line without the phrase snap; the DJ's own changes keep the radio pacing. keep: rebuild the playing track (same style,
+  // seed and key) so harmony / melody faders are heard now.
+  function deskTx() { var o = { depth: DIAL.dkDepth >= 0 ? DIAL.dkDepth : depthAuto(), wait: waitAuto() };
+    if (DIAL.dkBars > 0 || DIAL.dkFade > 0) { o.desk = true; o.bars = DIAL.dkBars > 0 ? DIAL.dkBars : 0; o.fade = DIAL.dkFade > 0 ? DIAL.dkFade : 0; } return o; }
+  function routed(fn, live, dk, keep) {
     live = live || tracks.filter(function (x) { return !x.leaving && !x.dead; })[0]; if (!live || !playing || !ctx) return false;
-    var F = window.DadAutoDJ && DadAutoDJ.fx, pre = preNext(live), go = function (ox) { if (!pendX || !playing) return; pendX = false; ox = ox || {}; ox.pre = pre; fn(ox); };
+    var F = window.DadAutoDJ && DadAutoDJ.fx, pre = keep ? { genre: live.genre, seed: live.seed, root: live.root, prog: preProg(live.genre, live.seed) } : preNext(live), go = function (ox) { if (!pendX || !playing) return; pendX = false; ox = ox || {}; ox.pre = pre; if (dk && DIAL.dkFade > 0) ox.fade = DIAL.dkFade; fn(ox); };
     pendX = true; live.bridge = true;
-    if (F && F.transition && F.transition(go, { depth: depthAuto(), wait: waitAuto() })) { var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); return true; }
+    if (F && F.transition && F.transition(go, dk ? deskTx() : { depth: depthAuto(), wait: waitAuto() })) { var L = F.lastTransition; if (L) planBridge(live, pre, L.start, L.drop); return true; }
     var G = grid(); if (!G) { pendX = false; return false; }
     var S16 = SPB * SPB, k = Math.ceil(G.step / S16) * S16, at = G.t + (k - G.step) * G.d16;
     while (at < ctx.currentTime + Math.pow(PHI, -2)) { at += G.d16 * S16; }   // phi: the next bar line at least PHI^-2 s out
@@ -917,8 +925,8 @@
     try { if (old && old.state !== 'closed') old.close(); } catch (e) {}
     if (was) start(sp); return ctx;
   }
-  function glide(ox) {                                                   // a change glides in over a PHI^3 s crossfade (rule 6), never a cut (or the transition's own fade)
-    if (!ox && playing && ctx && (pendX || routed(function (o) { glide(o || { fade: Math.pow(PHI, 3) }); }))) { paint(compute()); save(); return; }   // dial changes wait for the bar grid too (a change already planned picks them up)
+  function glide(ox, dk, keep) {                                         // a change glides in over a PHI^3 s crossfade (rule 6), never a cut (or the transition's own fade); dk: from the desk
+    if (!ox && playing && ctx && (pendX || routed(function (o) { glide(o || { fade: dk && DIAL.dkFade > 0 ? DIAL.dkFade : Math.pow(PHI, 3) }); }, null, dk, keep))) { paint(compute()); save(); return; }   // dial changes wait for the bar grid too (a change already planned picks them up)
     var c = compute();
     if (playing && ctx) { var tr = startTrack(c, ox && ox.fade || Math.pow(PHI, 3), null, ox); tr.trackLen = c.trackLen; applyVol(c, Math.pow(PHI, 3)); cur = c; cur.genre = tr.genre; }
     else cur = c;
@@ -1160,6 +1168,7 @@
       midiLib().then(function (L) { L.save(ev, bpm, cur && cur.genre, TL.slice()); }).catch(function () {}); });
   }
   function grid() { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr && tr.ga ? { t: tr.ga[0], step: tr.ga[1], d16: SPM / tr.bpm / SPB, bpm: tr.bpm } : null; }
+  var REBUILD = ['modeR', 'modeLo', 'loopLo', 'loopHi', 'hrLo', 'hrHi', 'rho0', 'rho1', 'recall'], rbT = 0;   // faders only a new track hears
   // the desk's handle (js/dj-desk.js): read and set everything it shows, through the same paths the old panel used
   var DESK = { CHS: CHS, SENDL: SENDL, on: chOn, box: boxOn, meter: chMeter, act: function (ch, t, v) { act(ch, t, v); },
     get mx() { return JSON.parse(JSON.stringify(MX)); },
@@ -1167,12 +1176,12 @@
     solo: function (ch, v) { if (CHS.indexOf(ch) < 0) return; MX.s[ch] = !!v; save(); },
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
-    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(); save(); syncGen(); }, get genres() { return Object.keys(GEN); },
-    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); } return DIAL[k]; },
+    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); },
+    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
     live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return tr ? { e: tr.e, genre: tr.genre, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
-    get read() { return read ? read.textContent : ''; }, get colc() { return colC(); },
+    get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
   window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,

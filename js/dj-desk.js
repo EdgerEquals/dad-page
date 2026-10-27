@@ -14,8 +14,8 @@
 (function (root, doc) {
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
-  var de = doc.documentElement, KUI = 'dadDesk.ui.v1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=meter1';
+  var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
+  var CSS = 'css/dj-desk.css?v=fast1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -23,7 +23,8 @@
   function E(tag, cls, txt) { var n = doc.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
   function DJ() { return root.DadAutoDJ; }
   function DK() { var d = DJ(); return d && d.desk; }
-  var UI = ld(KUI, { fold: { melody: 1, sky: 1, memory: 1, racks: 1, varrive: 1 }, tab: 'sound' });
+  var UI = ld(KUI, { fold: {}, tab: 'sound' });                         // every strip starts closed (Danny 19:06 AWST 27 Oct: 'By default have all of them closed and I will open as I need'); v2 drops the old saved state once
+  function folded(id) { return UI.fold[id] == null ? true : !!UI.fold[id]; }
   function log(id, v) { var h = ld(KH, []); h.push([Date.now(), id, typeof v === 'number' ? +v.toFixed(4) : v]); if (h.length > HMAX) h.splice(0, h.length - HMAX); sv(KH, h); }
 
   // ---------- ladders: golden steps over an open range, the default always a step ----------
@@ -66,7 +67,7 @@
   function strip(host, id, title, note) {
     var s = E('section', 'dk-s'), h = E('button', 'dk-sh'), b = E('div', 'dk-sb'); h.type = 'button';
     var t = E('b', null, title); h.appendChild(t); if (note) h.appendChild(E('small', null, note)); h.appendChild(E('span', 'dk-fold', '▾'));
-    s.setAttribute('data-strip', id); if (UI.fold[id]) s.classList.add('is-folded'); h.setAttribute('aria-expanded', UI.fold[id] ? 'false' : 'true');
+    s.setAttribute('data-strip', id); if (folded(id)) s.classList.add('is-folded'); h.setAttribute('aria-expanded', folded(id) ? 'false' : 'true');
     h.addEventListener('click', function () { var f = !s.classList.contains('is-folded'); s.classList.toggle('is-folded', f); h.setAttribute('aria-expanded', f ? 'false' : 'true'); UI.fold[id] = f ? 1 : 0; sv(KUI, UI); });
     s.appendChild(h); s.appendChild(b); host.appendChild(s); return b;
   }
@@ -105,6 +106,16 @@
     var st = strip(host, 'style', 'Style'), row = E('div', 'dk-sws');
     ['auto', 'random'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });   // auto = the pumps choose; random = chance, each new track (Danny 18:53)
     st.appendChild(row);
+    // CHANGES (Danny 18:55-18:59 AWST 27 Oct: 'Can the transition happen faster when I change a parameter?' ... 'build it as dials so that I
+    // can adjust it ... from my usage data ... where I generally land'): how a change made here lands; the DJ's own changes keep the radio pacing
+    var cg = strip(host, 'changes', 'Changes', 'how fast your changes land');
+    var BB = [1, 2, 3, 5, 8, 0], FDL = [IPH, 1, PHI, PHI * PHI, PHI * PHI * PHI, PHI * PHI * PHI * PHI, 0], DPL = [0, P(-4), P(-3), P(-2), IPH, 1, -1];
+    var cl = bank(cg, [{ id: 'dial.dkBars', name: 'build', k: 'R', L: BB, def: 1, lab: function (v) { return v === 0 ? 'radio' : v + (v === 1 ? ' bar' : ' bars'); }, get: function () { return D.dial('dkBars'); }, set: function (v) { D.dial('dkBars', v); } },
+      { id: 'dial.dkFade', name: 'fade', k: 'R', L: FDL, def: PHI, lab: function (v) { return v === 0 ? 'style' : v.toFixed(1) + ' s'; }, get: function () { return D.dial('dkFade'); }, set: function (v) { D.dial('dkFade', v); } },
+      { id: 'dial.dkDepth', name: 'sweep', k: 'C', L: DPL, def: -1, lab: function (v) { return v < 0 ? 'auto' : v === 0 ? 'none' : v === 1 ? 'full' : v.toFixed(2); }, get: function () { return D.dial('dkDepth'); }, set: function (v) { D.dial('dkDepth', v); } }]);
+    var nowRow = E('div', 'dk-sws'); cg.appendChild(E('div', 'dk-sub', 'harmony + melody faders'));
+    [['next track', 0], ['now', 1]].forEach(function (x) { nowRow.appendChild(sw(x[0], function () { return (D.dial('dkNow') | 0) === x[1]; }, function () { D.dial('dkNow', x[1]); log('dial.dkNow', x[1]); nowRow.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
+    cg.appendChild(nowRow); tools(cg, cl);
     // DRUMS
     var rd = function (k, name, kind, lo, hi, def, live) { return { id: 'rd.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return v === def ? 'mid' : num(v); }, get: function () { return D.rd(k); }, set: function (v) { D.rd(k, v); }, live: live }; };
     var lv = function () { return D.live() || {}; }, rp = function (k) { return function () { var r = lv().rp; return r && r[k] != null ? r[k] : null; }; };

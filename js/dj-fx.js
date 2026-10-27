@@ -267,14 +267,15 @@
     for (var j = 0; j < n; j++) { x -= w[j]; if (x <= 0) return AUTO[j]; } return AUTO[n - 1]; }
   function transition(go, o) {
     var G = K.grid && K.grid(); if (!G || !D.playing || txBusy) return false;
-    var sw = autoSweep(); if (sw) { txN++; var u0 = energy(), g2 = gdraw(2), g3 = gdraw(3), q2 = IPH * IPH;
+    var sw = autoSweep(), dk = !!(o && o.desk); if (sw && !dk) { txN++; var u0 = energy(), g2 = gdraw(2), g3 = gdraw(3), q2 = IPH * IPH;
       o = { wait: g2 * (1 - q2) + (o && o.wait != null ? clamp(o.wait, 0, 1) : u0) * q2,
             depth: Math.pow(Math.pow(PHI, -2 * (1 - g3)), 1 - q2) * Math.pow(o && o.depth != null ? clamp(o.depth, IPH * IPH, 1) : 1, q2) }; }
     var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0]; if (st === 6) st = 1 + Math.floor(Math.random() * (STY.length - 1));   // random: any of the five, by chance
     var S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
     var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
-    var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
+    if (dk && o.bars > 0) nB = o.bars;                                   // DESK CHANGES (Danny 18:59 AWST 27 Oct: 'build it as dials'): his own build length, no phrase snap
+    var bs = k / S16, bd = bs + nB; if (!dk && nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)
     var dp = o && o.depth != null ? clamp(o.depth, 0, 1) : 1, wt0 = wt; wt = function (S, k) { return wt0(S, k) * dp; };   // automatic changes: sweeps scaled by the pumped depth
     try {
     var td = ts + (bd - bs) * bar, T = td - ts, tail = bar, s8 = Math.pow(PHI, -6);
@@ -295,7 +296,7 @@
     if ((w = wt(S, 'nz'))) { var ns = c.createBufferSource(); ns.buffer = noiseBuf(); ns.loop = true; ns.connect(nzBP); ns.start(ts); ns.stop(td + tail);
       nzBP.frequency.setValueAtTime(FLO * Math.pow(PHI, PHI * PHI * PHI * PHI), ts); nzBP.frequency.exponentialRampToValueAtTime(FHI * IPH * IPH, td);   // phi: riser band PHI^PHI^4 x FLO -> PHI^-2 x FHI
       nzG.gain.setValueAtTime(0, ts); nzG.gain.linearRampToValueAtTime(w * Math.pow(PHI, -5), td); nzG.gain.setTargetAtTime(0, td, Math.pow(PHI, -4)); }   // phi: riser at most PHI^-5 (the noise stays under the music)
-    var fade = bar * Math.pow(PHI, S.fade);
+    var fade = dk && o.fade > 0 ? o.fade : bar * Math.pow(PHI, S.fade);   // a desk change: his own fade
     setTimeout(function () { go({ at: td, fade: fade, swap: true, style: S.n }); }, Math.max(0, (td - c.currentTime - Math.pow(PHI, -2)) * MS));   // phi: hand over PHI^-2 s before the drop
     setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
     // CC log for the export: brightness (LP up, HP down), flanger wet, wash, sampled on the sixteenth grid from now to the tail
