@@ -596,6 +596,7 @@
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
     if (X && X.hit) ['kick', 'snare', 'hat', 'shaker', 'tom'].forEach(function (k) { if (k === 'kick' && peak) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = RPAT(tr, k, (tr.dr || g)[k]); if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = vl(s16, dyn) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down
     ghostStep(tr, t); if (s16 % 4 === 0) beat(t, s16 === 0);
+    if (s16 === 0 && !tr.leaving) recBar(tr, t, st);                     // the live track's downbeat, for the .mid's bar lines
   }
   // ---------- note log for the MIDI export (Danny 14:48 AWST 26 Oct): the last minute of what played, pruned by wall time ----------
   // Each entry is [wall ms, part, MIDI note, velocity 0..1, seconds]; at most a minute of steps, a few KB. js/dj-midi.js writes it on tap.
@@ -607,6 +608,11 @@
     while (NL.length && NL[0][0] < w - WIN - SPM * MS / SPB) { var ex = NL.shift(); if (ex[1] === 'cc') ccOld[ex[2]] = ex; }   // keep a little over a minute (look-ahead slack)
   }
   function recCC(n, v) { NL.push([Date.now(), 'cc', n, clamp(v, 0, 1), 0]); }   // transition sweeps for the .mid (controller n, value 0..1)
+  // BAR LINES (Danny 12:20 AWST 27 Oct, Claude chat: 'Yes' to the .mid starting on the DJ's own bar line): each downbeat of the live track
+  // is logged as [wall ms, 'bar', bpm, track id, step]; js/dj-midi.js puts every one of them on a bar line of the file
+  var BID = 0;
+  function recBar(tr, t, st) { NL.push([Date.now() + (t - ctx.currentTime) * MS, 'bar', tr.bpm, tr.bid || (tr.bid = ++BID), st]); }
+  function dropBars(w) { for (var i = NL.length - 1; i >= 0; i--) if (NL[i][1] === 'bar' && NL[i][0] >= w) NL.splice(i, 1); }   // a handover: the outgoing track's look-ahead downbeats from w on give way to the new track's grid
   function pl(part, inst, tr, m, t, d, v) { var q = RQ(part, tr.tk || tr, t, v, m, d); if (!(q > 0)) return; v = q; if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
@@ -653,6 +659,7 @@
     old.forEach(function (o) { o.leaving = true; fadeTrack(o, false, t, len); if (ox && ox.swap) { o.noBass = true; o.L.bass.out.gain.cancelScheduledValues(t); o.L.bass.out.gain.setTargetAtTime(0, t, Math.pow(PHI, -6)); }   // bass swap at the drop
       setTimeout(function () { kill(o); }, (t - ctx.currentTime + len) * 1000 + 300); });
     TL.push([Date.now() + (t - ctx.currentTime) * MS + len * MS / 2, tr.bpm]); while (TL.length > 1 && TL[1][0] < Date.now() - WIN) TL.shift();   // midpoint of the fade from where it starts (the drop on a transition), not the call
+    dropBars(Date.now() + (t - ctx.currentTime) * MS);                    // from here the bar lines are the new track's
     tracks.push(tr); fadingUntil = Date.now() + len * 1000; lastMood = c.p.mood;
     return tr;
   }
@@ -967,10 +974,12 @@
     glueC.attack.setTargetAtTime(g.d16 * Math.pow(PHI, -2 - G), t, beat); glueC.release.setTargetAtTime(beat * Math.pow(PHI, -G), t, beat); glueG = G;
   }
   // ---------- export button: the last minute as a Standard MIDI File (writer js/dj-midi.js loads on first press) ----------
-  var MIDIURL = 'js/dj-midi.js?v=midifix1', midiP = null;
+  var MIDIURL = 'js/dj-midi.js?v=barline1', midiP = null;
   function midiLib() { if (!midiP) midiP = new Promise(function (ok, no) { if (window.DadMidi) return ok(window.DadMidi); var sc = document.createElement('script'); sc.src = MIDIURL; sc.async = true;
     sc.onload = function () { window.DadMidi ? ok(window.DadMidi) : no(); }; sc.onerror = function () { midiP = null; no(); }; document.head.appendChild(sc); }); return midiP; }
-  function lastMinute() { var now = Date.now(), w0 = now - WIN, cc0 = Object.assign({}, ccOld); NL.forEach(function (e) { if (e[1] === 'cc' && e[0] < w0) cc0[e[2]] = e; });
+  function lastMinute() { var now = Date.now(), w0 = now - WIN, cc0 = Object.assign({}, ccOld);
+    var wb = null; NL.forEach(function (e) { if (e[1] === 'bar' && e[0] <= w0 && (wb == null || e[0] > wb)) wb = e[0]; }); if (wb != null) w0 = wb;   // start on the bar line at or before the minute mark (Danny 12:20 AWST 27 Oct)
+    NL.forEach(function (e) { if (e[1] === 'cc' && e[0] < w0) cc0[e[2]] = e; });
     var seed = Object.keys(cc0).map(function (n) { var e = cc0[n]; return [w0, 'cc', e[2], e[3], 0]; });   // controllers start the window at the value they already had
     return seed.concat(NL.filter(function (e) { return e[0] <= now && e[0] >= w0; })); }
   function wireExport() {
