@@ -47,3 +47,7 @@
 .q-head .dj-exp.is-empty span{display:inline-block;animation:djExpNo .382s ease}
 @keyframes djExpNo{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
 @media(prefers-reduced-motion:reduce){.q-head .dj-exp.is-empty span{animation:none}}
+/* no on/off switch in the pop-up (Danny 13:44 AWST 27 Oct, Claude chat: 'I don't want it on and off switch on that panel'): the header music
+   button is the switch now. #dj-play stays in the page, unseen, as the engine's switch the button presses (js/quiz-dj-pill.js), so the
+   engine, the logo radio and 'tap to resume' keep working unchanged; the readout line beside it takes the whole row. */
+.q-head .qh-djpop #dj-play{display:none}

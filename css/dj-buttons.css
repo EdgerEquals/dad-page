@@ -24,6 +24,11 @@
   border:1px solid var(--djb-a);color:var(--djb-a);background:var(--djb-core);-webkit-tap-highlight-color:transparent;touch-action:manipulation;
   box-shadow:0 0 0 1px var(--djb-a2),0 0 8px 1px var(--djb-a3),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-a3);
   animation:djb-drift var(--djb-drift) ease-in-out infinite;transition:transform var(--djb-t) ease-out}
+/* on/off + drag left for the panel (Danny 13:44 AWST 27 Oct, js/quiz-dj-pill.js): pan-y keeps sideways moves for the drag; let go and it springs
+   back over PHI^-2 s on a golden overshoot curve (PHI^-2, 1 + PHI^-1, PHI^-1, 1); past the line (PHI button-widths) it lights like the open state */
+.q-head .dj-pill.djb{touch-action:pan-y;transition:transform var(--djb-t) ease-out,translate calc(var(--djb-2) * 1s) cubic-bezier(.382,1.618,.618,1)}
+.q-head .dj-pill.djb.is-dragging{transition:transform var(--djb-t) ease-out;z-index:1}
+.q-head .dj-pill.djb.is-armed{border-color:var(--djb-h);box-shadow:0 0 0 1px var(--djb-h2),0 0 12px 3px var(--djb-a1),0 0 24px 8px var(--djb-a2),inset 0 0 14px var(--djb-a1)}
 .q-head .dj-pill.djb .djp-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .q-head .dj-pill.djb .djp-ico{display:block;width:16px;height:16px;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px var(--djb-a3));animation:djb-ico var(--djb-drift) ease-in-out infinite}
 .q-head .dj-pill.djb .djp-ico::before{content:"";display:block;width:100%;height:100%;background:currentColor;-webkit-mask:var(--djb-note) center/contain no-repeat;mask:var(--djb-note) center/contain no-repeat}
@@ -66,7 +71,8 @@
 @media(max-width:480px){.q-head .dj-mix{width:24px;height:24px}}
 @media(prefers-reduced-motion:reduce){
   .q-head .dj-pill.djb,.q-head .dj-pill.djb::after,.q-head .dj-pill.djb .djp-ico,.q-head .dj-mix.is-mixing,.dad-dj .dj-fxr.is-mixing,.dad-dj .dj-kr.is-mixing{animation:none!important}
-  .q-head .dj-pill.djb.is-playing::after{opacity:var(--djb-3)}}
+  .q-head .dj-pill.djb.is-playing::after{opacity:var(--djb-3)}
+  .q-head .dj-pill.djb{transition:none}}
 /* light theme (footer switch): the same family on white; icons in Dad's deep blue so they read, the glow stays the accent */
 html[data-theme="light"] .q-head .dj-mix,html[data-theme="light"] .dad-dj .dj-fxr,html[data-theme="light"] .dad-dj .dj-kr{background:#FFFFFF;color:#1F5478;border-color:#85A6BB}
 html[data-theme="light"] .q-head .dj-pill.djb .djp-ico{color:#1F5478;animation:none}
