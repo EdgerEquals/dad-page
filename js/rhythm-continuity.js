@@ -256,7 +256,7 @@
   function later(why) { if (AU.wait) return; AU.wait = setTimeout(function () { AU.wait = 0; attempt(why); }, TAP * MS); }   // one tap-rung beat first
   // djbtnfix (Danny 21:0x AWST 26 Oct, 'erratic'): a press on the DJ's own controls is theirs alone. Before, a stalled DJ was resumed
   // here on the touch press and then the switch's own click saw 'playing' and stopped it again (one tap, two flips, net silence).
-  var OWN = '#dj-pill,#qh-djpop,#dj-mix,#dj-exp';
+  var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
     var tg = e && e.target; if (tg && tg.closest && tg.closest(OWN)) return;
     hook(); if (!wanted() || !AU.ctx) return;

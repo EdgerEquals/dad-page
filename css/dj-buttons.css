@@ -17,35 +17,39 @@
   --djb-note:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 17V3c1 3 6 4 6 9' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='17' r='4'/%3E%3C/svg%3E");
   --djb-die:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='18' height='18' rx='5' fill='none' stroke='%23000' stroke-width='2'/%3E%3Ccircle cx='8' cy='8' r='2'/%3E%3Ccircle cx='16' cy='8' r='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='8' cy='16' r='2'/%3E%3Ccircle cx='16' cy='16' r='2'/%3E%3C/svg%3E");
   --djb-down:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v11M7 9l5 5 5-5M4 15v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3'/%3E%3C/svg%3E");
+  --djb-faders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 4v16M12 4v16M18 4v16'/%3E%3Crect x='3.5' y='12.5' width='5' height='3' rx='1' fill='%23000'/%3E%3Crect x='9.5' y='6.5' width='5' height='3' rx='1' fill='%23000'/%3E%3Crect x='15.5' y='10' width='5' height='3' rx='1' fill='%23000'/%3E%3C/svg%3E");   /* mixer faders: the edit button */
   --djb-mix:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h3c5 0 7 10 12 10h3M3 17h3c2 0 3-1 4-3M14 9c1-1 2-2 4-2h3M18 4l3 3-3 3M18 14l3 3-3 3'/%3E%3C/svg%3E")}
 
-/* ---- the music button (was the 'DJ' text pill; same id, same pop-up, same states) ---- */
+/* ---- the music button: Ed's DJ on / off (was the 'DJ' text pill; same id, same spot, same size) ----
+   LIGHT GLOW (Danny 14:12 AWST 27 Oct, Claude chat: the efficiency pass starts with the button, 'the same effect', and 'just have it on and off
+   button and then edit button next to it'): the old drift animated the ring colour and four box-shadows, so the blurred glow was repainted
+   every frame (measured: ~10 points of main-thread time with every other motion frozen, more than any animation loop but the ping layer).
+   Now the accent look is painted once on the button and the #9DBCCE look once on a layer above it (::before, under the note); the drift is
+   that layer's opacity, the note's drift is a second note (.djp-ico2, #9DBCCE, its own glow) fading over the first, and the beat stays
+   scale / transform. Opacity + transform only: the compositor moves it, nothing is repainted. Same colours, timings and states. */
 .q-head .dj-pill.djb{position:relative;isolation:isolate;justify-content:center;gap:0;width:28px;height:28px;padding:0;border-radius:50%;
   border:1px solid var(--djb-a);color:var(--djb-a);background:var(--djb-core);-webkit-tap-highlight-color:transparent;touch-action:manipulation;
-  box-shadow:0 0 0 1px var(--djb-a2),0 0 8px 1px var(--djb-a3),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-a3);
-  animation:djb-drift var(--djb-drift) ease-in-out infinite;transition:transform var(--djb-t) ease-out}
-/* on/off + drag left for the panel (Danny 13:44 AWST 27 Oct, js/quiz-dj-pill.js): pan-y keeps sideways moves for the drag; let go and it springs
-   back over PHI^-2 s on a golden overshoot curve (PHI^-2, 1 + PHI^-1, PHI^-1, 1); past the line (PHI button-widths) it lights like the open state */
-.q-head .dj-pill.djb{touch-action:pan-y;transition:transform var(--djb-t) ease-out,translate calc(var(--djb-2) * 1s) cubic-bezier(.382,1.618,.618,1)}
-.q-head .dj-pill.djb.is-dragging{transition:transform var(--djb-t) ease-out;z-index:1}
-.q-head .dj-pill.djb.is-armed{border-color:var(--djb-h);box-shadow:0 0 0 1px var(--djb-h2),0 0 12px 3px var(--djb-a1),0 0 24px 8px var(--djb-a2),inset 0 0 14px var(--djb-a1)}
+  box-shadow:0 0 0 1px var(--djb-a2),0 0 8px 1px var(--djb-a3),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-a3);transition:transform var(--djb-t) ease-out}
+.q-head .dj-pill.djb::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:-1;border:1px solid var(--djb-h);
+  box-shadow:0 0 0 1px var(--djb-h2),0 0 8px 1px var(--djb-h4),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-h4);opacity:0;
+  animation:djb-fade var(--djb-drift) ease-in-out infinite}
 .q-head .dj-pill.djb .djp-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.q-head .dj-pill.djb .djp-ico{display:block;width:16px;height:16px;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px var(--djb-a3));animation:djb-ico var(--djb-drift) ease-in-out infinite}
+.q-head .dj-pill.djb .djp-ico{display:block;width:16px;height:16px;filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px var(--djb-a3))}
+.q-head .dj-pill.djb .djp-ico2{position:absolute;left:50%;top:50%;margin:-8px 0 0 -8px;color:var(--djb-h);opacity:0;animation:djb-fade var(--djb-drift) ease-in-out infinite}
 .q-head .dj-pill.djb .djp-ico::before{content:"";display:block;width:100%;height:100%;background:currentColor;-webkit-mask:var(--djb-note) center/contain no-repeat;mask:var(--djb-note) center/contain no-repeat}
 .q-head .dj-pill.djb::after{content:"";position:absolute;inset:-3px;border-radius:inherit;pointer-events:none;z-index:-1;opacity:0;
   background:radial-gradient(closest-side,var(--djb-a2),var(--djb-a4),transparent)}
-.q-head .dj-pill.djb.is-playing{animation:djb-drift var(--djb-drift) ease-in-out infinite,djb-beat var(--djb-beat) ease-out infinite}
+.q-head .dj-pill.djb.is-playing{animation:djb-beat var(--djb-beat) ease-out infinite}
 .q-head .dj-pill.djb.is-playing::after{animation:djb-halo var(--djb-beat) ease-out infinite}
-.q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-ico var(--djb-drift) ease-in-out infinite,djb-bob calc(var(--djb-beat) * 2) ease-in-out infinite}
-.q-head .dj-pill.djb:not(.is-playing) .djp-ico{opacity:calc(var(--djb-1) + var(--djb-3))}
-.q-head .dj-pill.djb.is-resuming .djp-ico{animation:djb-breathe calc(var(--djb-beat) / var(--djb-3)) ease-in-out infinite}
-.q-head .dj-pill.djb[aria-expanded="true"]{border-color:var(--djb-h);box-shadow:0 0 0 1px var(--djb-h2),0 0 10px 2px var(--djb-a2),0 0 22px 6px var(--djb-a3),inset 0 0 12px var(--djb-a2)}
+.q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-bob calc(var(--djb-beat) * 2) ease-in-out infinite}
+.q-head .dj-pill.djb.is-playing .djp-ico2{animation:djb-fade var(--djb-drift) ease-in-out infinite,djb-bob calc(var(--djb-beat) * 2) ease-in-out infinite}
+.q-head .dj-pill.djb:not(.is-playing){--djb-top:calc(var(--djb-1) + var(--djb-3))}
+.q-head .dj-pill.djb:not(.is-playing) .djp-ico:not(.djp-ico2){opacity:var(--djb-top)}
+.q-head .dj-pill.djb.is-resuming .djp-ico:not(.djp-ico2){animation:djb-breathe calc(var(--djb-beat) / var(--djb-3)) ease-in-out infinite}
+.q-head .dj-pill.djb.is-resuming .djp-ico2{animation:none;opacity:0}
 .q-head .dj-pill.djb:active{transform:scale(calc(1 - var(--djb-4)));box-shadow:0 0 0 1px var(--djb-a),0 0 12px 3px var(--djb-a1),inset 0 0 14px var(--djb-a1)}
 .q-head .dj-pill.djb:focus-visible{outline:2px solid var(--djb-h);outline-offset:3px}
-@keyframes djb-drift{
-  0%,100%{border-color:var(--djb-a);box-shadow:0 0 0 1px var(--djb-a2),0 0 8px 1px var(--djb-a3),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-a3)}
-  50%{border-color:var(--djb-h);box-shadow:0 0 0 1px var(--djb-h2),0 0 8px 1px var(--djb-h4),0 0 18px 4px var(--djb-a4),inset 0 0 8px var(--djb-h4)}}
-@keyframes djb-ico{0%,100%{color:var(--djb-a)}50%{color:var(--djb-h)}}
+@keyframes djb-fade{0%,100%{opacity:0}50%{opacity:var(--djb-top,1)}}
 @keyframes djb-beat{0%{scale:calc(1 + var(--djb-5))}50%,100%{scale:1}}
 @keyframes djb-halo{0%{opacity:var(--djb-1);transform:scale(calc(1 + var(--djb-4)))}50%{opacity:var(--djb-3);transform:scale(1)}100%{opacity:var(--djb-4);transform:scale(1)}}
 @keyframes djb-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
@@ -62,6 +66,8 @@
   -webkit-mask:var(--djb-die) center/contain no-repeat;mask:var(--djb-die) center/contain no-repeat}
 .q-head #dj-mix>span::before{-webkit-mask-image:var(--djb-mix);mask-image:var(--djb-mix)}
 .q-head .dj-exp>span::before{-webkit-mask-image:var(--djb-down);mask-image:var(--djb-down)}
+.q-head .dj-edit>span::before{-webkit-mask-image:var(--djb-faders);mask-image:var(--djb-faders)}
+.q-head .dj-edit[aria-expanded="true"]{color:var(--djb-a);border-color:var(--djb-a3);box-shadow:0 0 0 1px var(--djb-a3),0 0 8px 1px var(--djb-a3),inset 0 0 8px var(--djb-a3)}   /* the edit button: Ed's DJ controls open (Danny 14:12 AWST 27 Oct) */
 .q-head .dj-mix:hover,.dad-dj .dj-fxr:hover,.dad-dj .dj-kr:hover{color:var(--djb-a);border-color:var(--djb-a3)}
 .q-head .dj-mix:active,.dad-dj .dj-fxr:active,.dad-dj .dj-kr:active{transform:scale(calc(1 - var(--djb-3)));color:var(--djb-a);border-color:var(--djb-a);
   box-shadow:0 0 0 1px var(--djb-a1),0 0 10px 2px var(--djb-a2),inset 0 0 8px var(--djb-a2)}
@@ -70,10 +76,11 @@
 @keyframes djb-flash{0%{box-shadow:0 0 0 1px var(--djb-a),0 0 14px 4px var(--djb-a1),inset 0 0 10px var(--djb-a1);color:var(--djb-a)}100%{box-shadow:0 0 0 1px var(--djb-a4),0 0 6px var(--djb-a4),inset 0 0 6px var(--djb-a4)}}
 @media(max-width:480px){.q-head .dj-mix{width:24px;height:24px}}
 @media(prefers-reduced-motion:reduce){
-  .q-head .dj-pill.djb,.q-head .dj-pill.djb::after,.q-head .dj-pill.djb .djp-ico,.q-head .dj-mix.is-mixing,.dad-dj .dj-fxr.is-mixing,.dad-dj .dj-kr.is-mixing{animation:none!important}
+  .q-head .dj-pill.djb,.q-head .dj-pill.djb::before,.q-head .dj-pill.djb::after,.q-head .dj-pill.djb .djp-ico,.q-head .dj-mix.is-mixing,.dad-dj .dj-fxr.is-mixing,.dad-dj .dj-kr.is-mixing{animation:none!important}
   .q-head .dj-pill.djb.is-playing::after{opacity:var(--djb-3)}
-  .q-head .dj-pill.djb{transition:none}}
+}
 /* light theme (footer switch): the same family on white; icons in Dad's deep blue so they read, the glow stays the accent */
 html[data-theme="light"] .q-head .dj-mix,html[data-theme="light"] .dad-dj .dj-fxr,html[data-theme="light"] .dad-dj .dj-kr{background:#FFFFFF;color:#1F5478;border-color:#85A6BB}
 html[data-theme="light"] .q-head .dj-pill.djb .djp-ico{color:#1F5478;animation:none}
+html[data-theme="light"] .q-head .dj-pill.djb .djp-ico2,html[data-theme="light"] .q-head .dj-pill.djb::before{display:none}
 html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-bob calc(var(--djb-beat) * 2) ease-in-out infinite}
