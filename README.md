@@ -23,3 +23,5 @@ Danny's rule (27 Oct 2026): always acknowledge anything we use, and expect the s
 - **driftbox** (`js/vendor/driftbox-808.js`): the TR-808 voices and renderer from
   [@driftbox/engine](https://github.com/emmettl/driftbox) 0.6.0 by Louis Emmett, MIT licence (full text in the file).
   One of the units in Ed's DJ 808 bank (electro); loaded only when an electro track plays.
+- **driftbox 303** (`js/vendor/driftbox-303.js`): the TB-303 voice from the same package (Louis Emmett, MIT), with its ladder
+  filter after Antti Huovilainen's model. The main unit of Ed's DJ 303 rack; loaded only when an acid line plays.

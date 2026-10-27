@@ -156,7 +156,7 @@
     // (own: 1: no donor, no Pocket Operations anchor; alt = the odd-bar variation), tempo folded into the top octave (fold: 1).
     // Drums: the electro 808 convention (kick 1 . 7 . 11, snare + clap on 2 and 4, straight closed-hat 16ths with an open hat into the
     // bar, off-beat cowbell); x = loud (an open hat on the 808), o = soft (a closed hat). Syncopated saw stabs over i-VI-VII.
-    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, bass: 'octave', bwave: 'square', mel: 0.12, lead: 'square',
+    electro:     { scale: 'minor', root: 43, progs: [[0, 0, 5, 6], [0, 5, 3, 6]], bars: 1, chords: 'stab', steps: [0, 3, 6, 10], wave: 'sawtooth', cut: 1400, arp: 1, bass: 'acid', bwave: 'square', mel: 0.12, lead: 'square',
                    kick: 'x.....x...x.....', snare: '....x.......x...', clap: '....x.......x...', hat: 'oooooooooooooox.', cow: '...o.......o....', rev: 0.18,
                    own: 1, bank: 1, fold: 1, alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', rev: 0.4 }
@@ -271,7 +271,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=electro1';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=electro2';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -606,6 +606,7 @@
     if (g.bass === 'walk' && [0, 3, 6, 8, 11, 14].indexOf(s16) >= 0) pl('bass', INST.bass, tr.L.bass, s16 === 0 ? bn : ch[[0, 1, 2, 1, 2, 0][[0, 3, 6, 8, 11, 14].indexOf(s16)]] - 12, t, dur16 * 2, vl(s16, dyn));
     if (g.bass === 'eighths' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn, t, dur16 * 1.5, vl(s16, dyn));
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
+    if (g.bass === 'acid') acidStep(tr, t, s16, bn, dur16, dyn);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
     var md = tr.mel[st % tr.mel.length]; if (md != null) md += rise; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
     if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead]; pl('lead', li, tr.L.lead, tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12, t, dur16 * (g.lead === 'horn' || g.lead === 'bell' ? 6 : 2), 0.8); }
@@ -631,6 +632,33 @@
   var BID = 0;
   function recBar(tr, t, st) { NL.push([Date.now() + (t - ctx.currentTime) * MS, 'bar', tr.bpm, tr.bid || (tr.bid = ++BID), st]); }
   function dropBars(w) { for (var i = NL.length - 1; i >= 0; i--) if (NL[i][1] === 'bar' && NL[i][0] >= w) NL.splice(i, 1); }   // a handover: the outgoing track's look-ahead downbeats from w on give way to the new track's grid
+  // ACID LINE (Danny 15:42 AWST 27 Oct, Claude chat: the 303s 'build them both'; 16:0x DeepSeek review he relayed, my answer: a 303 needs
+  // its own step pattern, not the melody maker). The 303 idiom: one 16-step line per track from its seed (golden draws), monophonic,
+  // root-heavy with octave jumps, fifths, minor thirds and flat sevenths, slides on about PHI^-4 of the steps, accents mostly off the
+  // beat; transposed with the chord's root every bar. The odd bar is the same line with two steps changed (almost-repeat). Each step
+  // has a rank: the line fills in as the energy arc rises (PHI^-2 of the steps at the floor up to 1 - PHI^-3 at the peak); the
+  // downbeat always plays. Rests and stops come from the rhythm plan (p.rest.bass, p.stop) but not its density gate, so the pattern
+  // keeps its shape. Played by the 303 rack in js/dj-extras.js (X.acid); before that lands, by the plain bass voice, same line.
+  var ACID_IV = [0, 0, 0, 12, 12, 7, 3, 10, 5, -2];                       // unit: semitones over the chord root (root-heavy acid idiom)
+  function acidPat(tr) {
+    if (tr.ac) return tr.ac; var A = [];
+    for (var i = 0; i < 16; i++) { var a = gold(tr, i, 42);
+      A.push({ iv: i ? ACID_IV[Math.floor(gold(tr, i, 41) * ACID_IV.length)] : 0, rank: i ? gold(tr, i, 40) : 0, acc: i % 2 ? a < IPH * IPH : a < Math.pow(IPH, 4), slide: gold(tr, i, 43) < Math.pow(IPH, 4) }); }   // phi: accents PHI^-2 off the beat, PHI^-4 on it; slides PHI^-4
+    var B = A.map(function (x) { return { iv: x.iv, rank: x.rank, acc: x.acc, slide: x.slide }; });
+    [44, 45].forEach(function (k) { var j = 1 + Math.floor(gold(tr, 0, k) * 15); B[j].iv = ACID_IV[Math.floor(gold(tr, 1, k) * ACID_IV.length)]; B[j].acc = !B[j].acc; });
+    return (tr.ac = { A: A, B: B, wave: gold(tr, 2, 46) < IPH * IPH ? 'square' : 'sawtooth' });   // phi: a square-wave line on PHI^-2 of tracks
+  }
+  function acidStep(tr, t, s16, bn, dur16, dyn) {
+    var P = acidPat(tr), pat = Math.floor(tr.step / 16) % 2 ? P.B : P.A, st = pat[s16], p = tr.rp, e = tr.e == null ? 1 : tr.e;
+    var dn = IPH * IPH + (1 - IPH * IPH - Math.pow(IPH, 3)) * e, nx = pat[(s16 + 1) % 16];
+    if (st.rank >= dn || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16)))) { tr.acFrom = null; return; }
+    var m = bn + st.iv, v = vl(s16, dyn) * (st.acc ? 1 : IPH), slide = st.slide && nx.rank < dn, d = dur16 * (slide ? 1 + Math.pow(IPH, 6) : IPH);   // phi: a held slide just outlasts its step, a plain note is PHI^-1 of it
+    if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
+    else INST.bass(tr.L.bass, mtof(m), t, d, v);
+    tr.acFrom = slide ? m : null;
+    if (VH) try { VH('bass', tr.L.bass, m, t, d, v); } catch (er) {}
+    rec('bass', m, t, d, v * gAt(tr, t));
+  }
   function pl(part, inst, tr, m, t, d, v) { var q = RQ(part, tr.tk || tr, t, v, m, d); if (!(q > 0)) return; v = q; if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive

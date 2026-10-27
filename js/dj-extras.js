@@ -133,6 +133,57 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   }
   function hit(tr, kind, t, v, a) { if (tr.g && tr.g.bank) bank(tr, kind, t, v, a); else house(tr, kind, t, v); }
 
+  // ---------- 303 RACK (Danny 15:42 AWST 27 Oct, Claude chat: 'we get the 303 as well ... you can write one of those two'; the rack is
+  // how he layers hardware: 15:2x 'I just layer them up') ----------
+  // One acid line (the engine's acidStep) played by a rack of 303s on the bass layer:
+  //   unit 0  driftbox 303 (MIT, js/vendor/driftbox-303.js): Huovilainen ladder in an AudioWorklet, the squelch; loaded on the first line
+  //   unit 1  Ed's 303, ours from scratch: one running oscillator (slides glide, they never retrigger) into two lowpass stages (24 dB per
+  //           octave, the resonance on the second), an accent 'wow' that builds over successive accents (a capacitor charging, as on the
+  //           real accent circuit), a soft output stage; no keytracking, like the machine
+  //   unit 2  the overdrive pedal after the rack (tanh, then a lowpass), joining when the arc is past PHI^-1
+  // THE RULE: units join by threshold (a count), each unit's share is a fixed coupling PHI^-k / 2 (1 + PHI^-1 + PHI^-2 = 2, the rack
+  // sums to one voice), the rack's peak is the plain bass voice's square level a rung up (0.16 PHI: the 303 leads the low end in
+  // electro); the filter rises with the arc as a rung (base cutoff PHI^(2 PHI^2 + e PHI) x 20 Hz). Units are golden cents apart and
+  // golden ms late, as in the 808 rack. Nothing runs without notes: a rack stops PHI^3 s after its last note.
+  var D3 = null, d3Req = false, D3URL = 'js/vendor/driftbox-303.js?v=e303a', SLIDE = Math.pow(PHI, -6);   // phi: slide PHI^-6 s (~56 ms, the 303's fixed slide)
+  var A3 = 0.16 * PHI, ASH = [0, 1, 2].map(function (k) { return Math.pow(PHI, -k) / 2; });   // the rack peak; phi: shares 0.5, 0.31, 0.19
+  function load303() { if (d3Req) return; d3Req = true; var sc = document.createElement('script'); sc.src = D3URL; sc.async = true; sc.onload = function () { if (window.Driftbox303) D3 = window.Driftbox303; }; document.head.appendChild(sc); }
+  var TANH = {};
+  function tanhCurve(k) { if (TANH[k]) return TANH[k]; var n = 1024, a = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i / (n - 1) * 2 - 1; a[i] = Math.tanh(k * x) / Math.tanh(k); } return (TANH[k] = a); }
+  function edUnit(c, to) {
+    var o = c.createOscillator(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(), vca = c.createGain(), sh = c.createWaveShaper();
+    f1.type = f2.type = 'lowpass'; f1.Q.value = 0; f2.Q.value = Math.pow(PHI, 5); vca.gain.value = 0; sh.curve = tanhCurve(PHI);   // phi: resonance PHI^5 dB on the second stage; output stage tanh(PHI x)
+    o.type = 'sawtooth'; o.frequency.value = 55; o.connect(f1); f1.connect(f2); f2.connect(vca); vca.connect(sh); sh.connect(to); o.start();
+    return { o: o, f1: f1, f2: f2, vca: vca, sh: sh, held: 0, lg: 0, wow: 0 };
+  }
+  function edNote(u, n, f, from, t, gate, gain) {
+    var F = u.o.frequency, slideIn = from != null, peakR, base, dec;
+    if (u.o.type !== n.wave) u.o.type = n.wave;
+    F.cancelScheduledValues(t); if (slideIn) { F.setValueAtTime(from, t); F.exponentialRampToValueAtTime(f, t + SLIDE); } else F.setValueAtTime(f, t);
+    u.wow = n.acc ? u.wow * IPH + 1 : u.wow * IPH * IPH;                  // phi: the accent capacitor charges a PHI^-1 step per accent, drains PHI^-2 per plain note
+    base = FLO * Math.pow(PHI, 2 * PHI * PHI + n.e * PHI); peakR = Math.pow(PHI, PHI * PHI + (n.acc ? PHI * Math.min(u.wow, PHI) * IPH : 0)); dec = n.acc ? Math.pow(PHI, -4) : Math.pow(PHI, -3);   // phi: base, sweep and decay rungs
+    if (!slideIn) [u.f1, u.f2].forEach(function (q) { q.frequency.cancelScheduledValues(t); q.frequency.setValueAtTime(Math.min(FHI * Math.pow(IPH, 2), base * peakR), t); q.frequency.exponentialRampToValueAtTime(base, t + dec); });
+    u.f2.Q.setValueAtTime(Math.pow(PHI, 5) + (n.acc ? Math.pow(PHI, 3) : 0), t);   // phi: an accent leans on the resonance (+PHI^3 dB)
+    var G = u.vca.gain; G.cancelScheduledValues(t); G.setValueAtTime(t < u.held ? Math.max(u.lg, 1e-4) : 1e-4, t);
+    G.linearRampToValueAtTime(gain, t + (slideIn ? SLIDE : Math.pow(PHI, -12))); G.setValueAtTime(gain, t + gate); G.exponentialRampToValueAtTime(1e-4, t + gate + Math.pow(PHI, -9));   // phi: attack PHI^-12 s, release PHI^-9 s
+    u.lg = gain; u.held = t + gate;
+  }
+  function acid(L, n) {
+    var c = C(), R = L.a3, e = n.e;
+    if (!R || R.dead) { R = L.a3 = { bus: c.createGain(), od: c.createWaveShaper(), lp: c.createBiquadFilter(), og: c.createGain(), db: null, dbReq: false, prev: null };
+      R.bus.connect(L.out); R.od.curve = tanhCurve(PHI * PHI * PHI); R.lp.type = 'lowpass'; R.lp.frequency.value = FHI * Math.pow(IPH, 3); R.og.gain.value = 0;   // phi: drive tanh(PHI^3 x), then a lowpass PHI^-3 under the top
+      R.bus.connect(R.od); R.od.connect(R.lp); R.lp.connect(R.og); R.og.connect(L.out); R.ed = edUnit(c, R.bus); }
+    clearTimeout(R.idle); R.idle = setTimeout(function () { R.dead = true; try { R.ed.o.stop(); R.ed.o.disconnect(); if (R.db) R.db.dispose(); R.bus.disconnect(); R.og.disconnect(); } catch (er) {} }, (Math.max(0, n.t - c.currentTime) + n.step * 2 + Math.pow(PHI, 3)) * 1e3);   // phi: stop PHI^3 s after the last note sounds; unit: ms per s
+    if (!D3) load303(); else if (!R.db && !R.dbReq) { R.dbReq = true; D3.Bassline.create(c).then(function (r) { if (R.dead) { r.bassline.dispose(); return; } R.db = r.bassline; R.db.output.connect(R.bus); }).catch(function () {}); }
+    var f = 440 * Math.pow(2, (n.m - 69) / 12), from = n.from != null ? 440 * Math.pow(2, (n.from - 69) / 12) : null, gate = n.step * (n.slide ? 1 + Math.pow(IPH, 6) : IPH);
+    var det = function (u) { var k = (u * IPH) % 1; return { r: Math.pow(2, (k - 1 / 2) * Math.pow(PHI, 5) / 1200), dt: k * Math.pow(PHI, -11) }; };   // phi: golden cents and ms per unit
+    var d1 = det(1); edNote(R.ed, n, f * d1.r, from != null ? from * d1.r : null, n.t + d1.dt, gate, A3 * ASH[1] * n.v);
+    if (R.db) { var d0 = det(0), pa = D3.params, P = { tune: 1 / 2, wave: n.wave === 'square' ? 1 : 0, cutoff: IPH * IPH + Math.pow(IPH, 3) * e, resonance: 1 - Math.pow(IPH, 3), envMod: IPH, decay: IPH * IPH, accent: pa.accent, level: Math.min(1, A3 * ASH[0] * n.v) };   // phi: knobs on golden fractions; cutoff a rung brighter with the arc
+      var nt = D3.bassNote(P, { note: n.m - 33, accent: n.acc, slide: n.slide }, n.from != null ? { note: n.from - 33, slide: true } : { note: null, slide: false }, n.step);   // unit: MIDI 33 = A1 = driftbox's 55 Hz root at tune 0.5
+      if (nt) { nt.frequency *= d0.r; if (nt.glideFrom) nt.glideFrom *= d0.r; try { R.db.play(nt, n.t + d0.dt); } catch (er) {} } }
+    R.og.gain.setTargetAtTime(e > IPH ? A3 * ASH[2] : 0, n.t, Math.pow(PHI, -3));   // the overdrive unit joins past PHI^-1 of the arc (its share of the rack)
+  }
+
   // ---------- reverb: impulse built once, send glides up from silence ----------
   var conv = null;
   function reverb(c, revIn, bus, G) {
@@ -225,5 +276,5 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     return ' \u00B7 live: sun ' + Math.round(z.elev) + '\u00B0, moon ' + Math.round(z.moonLit * pct) + '% lit, season ' + Math.round(z.season * deg) + '\u00B0' +
       (P && P.page ? ', rhythm \u00D7' + P.page.out().toFixed(2) : '');
   }
-  K.extras({ ir: function () { return conv && conv.buffer; }, hit: hit, reverb: reverb, sync: syncChips, live: liveLine, chips: function (el) { if (chips) return; chips = el; buildChips(); } });
+  K.extras({ ir: function () { return conv && conv.buffer; }, hit: hit, acid: acid, reverb: reverb, sync: syncChips, live: liveLine, chips: function (el) { if (chips) return; chips = el; buildChips(); } });
 })();
