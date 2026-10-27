@@ -257,21 +257,53 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     return (L.ju = { inp: inp, dry: dry, ch: [mk(0), mk(1)] });
   }
   function junoIdle(L, t) { var J = L.ju; if (!J) return; clearTimeout(J.idle); J.idle = setTimeout(function () { J.dead = true; try { J.ch.forEach(function (x) { x.lfo.stop(); x.out.disconnect(); }); J.dry.disconnect(); J.inp.disconnect(); } catch (er) {} }, (Math.max(0, t - C().currentTime) + Math.pow(PHI, 4)) * 1e3); }
-  function juno(tr, f, t, d, v, pad) {
-    var c = C(), tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, J = junoBus(tr), o = c.createOscillator(), sub = c.createOscillator(), sg = c.createGain(), hp = c.createBiquadFilter(), l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain();
-    var at = pad ? IPH : Math.pow(PHI, -8), rel = pad ? IPH : Math.pow(PHI, -4), sus = pad ? IPH : IPH * IPH, end = t + d + rel * 4;   // phi: pad PHI^-1 s attack / release, arp PHI^-8 / PHI^-4
-    var base = Math.min(FHI * Math.pow(IPH, 3), f * Math.pow(PHI, (pad ? 1 : PHI) + e * IPH)), pk = Math.min(FHI * IPH * IPH, base * Math.pow(PHI, pad ? IPH : PHI));   // keytracked cutoff, a rung up with the arc; the arp sweeps more
+  function juno(tr, f, t, d, v, pad, ev) {                                // ev: a pad shape's envelope (padEnv), else the old pad / the arp
+    var c = C(), tk = tr.tk || tr.trk || tr, e = tk.e == null ? 1 : tk.e, J = junoBus(tr), o = c.createOscillator(), sub = c.createOscillator(), sg = c.createGain(), hp = c.createBiquadFilter(), l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain();
+    var at = ev ? ev.at : pad ? IPH : Math.pow(PHI, -8), rel = ev ? ev.rel : pad ? IPH : Math.pow(PHI, -4), sus = ev ? ev.sus : pad ? IPH : IPH * IPH, dec = ev ? ev.dec : Math.pow(PHI, pad ? 0 : -4), end = t + d + rel * 4;   // phi: pad PHI^-1 s attack / release, arp PHI^-8 / PHI^-4
+    var base = Math.min(FHI * Math.pow(IPH, 3), f * Math.pow(PHI, (pad ? 1 : PHI) + e * IPH)), pk = Math.min(FHI * IPH * IPH, base * Math.pow(PHI, ev ? ev.fd : pad ? IPH : PHI)), fT = ev ? ev.fT : pad ? PHI : Math.pow(PHI, -3);   // keytracked cutoff, a rung up with the arc; the arp sweeps more
     o.type = 'sawtooth'; o.frequency.value = f; sub.type = 'square'; sub.frequency.value = f / 2; sg.gain.value = IPH * IPH;   // sub oscillator PHI^-2
     hp.type = 'highpass'; hp.frequency.value = FLO * Math.pow(PHI, pad ? 3 : 4); l1.type = l2.type = 'lowpass'; l1.Q.value = 0; l2.Q.value = Math.pow(PHI, 2);   // phi: HPF rung, resonance PHI^2 dB
-    [l1, l2].forEach(function (q) { q.frequency.setValueAtTime(pk, t); q.frequency.exponentialRampToValueAtTime(base, t + (pad ? PHI : Math.pow(PHI, -3))); });
-    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + at); a.gain.setTargetAtTime(v * sus, t + at, Math.pow(PHI, pad ? 0 : -4)); a.gain.setTargetAtTime(0, t + d, rel / 3);
-    o.connect(hp); sub.connect(sg); sg.connect(hp); hp.connect(l1); l1.connect(l2); l2.connect(a); a.connect(J.inp); o.start(t); sub.start(t); o.stop(end); sub.stop(end);
+    [l1, l2].forEach(function (q) { q.frequency.setValueAtTime(pk, t); q.frequency.exponentialRampToValueAtTime(base, t + fT); });
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + at); a.gain.setTargetAtTime(v * sus, t + at, dec); a.gain.setTargetAtTime(0, t + d, rel / 3);
+    var out = a;
+    if (ev && ev.gate) { var g = c.createGain(), sm = Math.pow(PHI, -10), st = ev.gate.step, n = Math.max(1, Math.round(d / st));   // phi: chop edges PHI^-10 s (~8 ms), click-free
+      g.gain.setValueAtTime(0, t); for (var k = 0; k < n; k++) { if (!ev.gate.on(k)) continue; var s0 = t + k * st; g.gain.setTargetAtTime(1, s0, sm); g.gain.setTargetAtTime(0, s0 + st * ev.gate.open, sm); }
+      a.connect(g); out = g; }
+    o.connect(hp); sub.connect(sg); sg.connect(hp); hp.connect(l1); l1.connect(l2); l2.connect(a); out.connect(J.inp); o.start(t); sub.start(t); o.stop(end); sub.stop(end);
     J.ch[1].out.gain.setTargetAtTime(e > IPH && bx('juno', 2) ? DXR.u[2] : 0, t, IPH);    // chorus II joins past PHI^-1
     J.ch[0].out.gain.setTargetAtTime(bx('juno', 0) ? DXR.u[0] : 0, t, Math.pow(PHI, -3)); J.dry.gain.setTargetAtTime(bx('juno', 1) ? DXR.u[1] : 0, t, Math.pow(PHI, -3));   // the desk's box switches
     junoIdle(tr, end);
   }
+  // PAD SHAPES (Danny 19:58 AWST 27 Oct, Claude chat: pads 'not sounding electro'; asked stab, pluck or gated: 'All'): the Juno pad under
+  // electro's stabs takes any set of four shapes, layered at equal power (each at 1/sqrt n of the old pad):
+  //   swell  the old pad: PHI^-1 s in and out, holds at PHI^-1, the filter closes over PHI s (the trance swell, kept to compare)
+  //   stab   in PHI^-9 s (~13 ms), gone in a PHI^-4 s decay (holds at PHI^-6), PHI^-3 s release, the filter snaps PHI rungs and shuts with it
+  //   pluck  in PHI^-8 s (~21 ms), a PHI^-2 s decay to a PHI^-3 tail through the bar, PHI^-2 s release, the filter snaps PHI rungs and closes
+  //          over PHI^-1 s (the 'wah')
+  //   gate   the swell's sustain chopped on the grid (16ths), each chop open PHI^-1 of its step; the downbeat always open, the rest open
+  //          with the arc (PHI^-1 .. all), the pattern seeded per track
+  // AUTO (padM 0): the energy picks one; pluck under PHI^-2, stab under PHI^-1, gate above. RANDOM (padM -1): 1 or 2 shapes per track.
+  // The desk's faders move each shape in rungs from its own: attack, decay, release x PHI^k; hold loss x PHI^-k; filter snap +k rungs;
+  // gate rate x 2^k (1/32 .. 1/4); gate open is the threshold itself.
+  var PSH = { 1: { at: IPH, dec: 1, sus: IPH, rel: IPH, fd: IPH, fT: PHI },
+              2: { at: Math.pow(PHI, -9), dec: Math.pow(PHI, -4), sus: Math.pow(PHI, -6), rel: Math.pow(PHI, -3), fd: PHI, fT: Math.pow(PHI, -4) },
+              4: { at: Math.pow(PHI, -8), dec: Math.pow(PHI, -2), sus: Math.pow(PHI, -3), rel: Math.pow(PHI, -2), fd: PHI, fT: IPH },
+              8: { at: Math.pow(PHI, -6), dec: 1, sus: IPH, rel: Math.pow(PHI, -2), fd: IPH, fT: PHI, gate: 1 } };   // phi: every time and level a rung
+  function pdl(k, d) { var D = window.DadAutoDJ, x = D && D.dial ? +D.dial(k) : d; return isFinite(x) ? x : d; }
+  function padModes(tk) {
+    var m = pdl('padM', 0) | 0, e = tk.e == null ? 1 : tk.e, a = [];
+    if (m > 0) { [1, 2, 4, 8].forEach(function (b) { if (m & b) a.push(b); }); if (a.length) return a; }
+    if (m < 0) { if (!tk.pmR) { var all = [1, 2, 4, 8], n = Math.random() < IPH ? 1 : 2; tk.pmR = []; while (tk.pmR.length < n) tk.pmR.push(all.splice(Math.floor(Math.random() * all.length), 1)[0]); } return tk.pmR; }   // phi: one shape on PHI^-1 of tracks, two on the rest
+    return [e < IPH * IPH ? 4 : e < IPH ? 2 : 8];
+  }
+  function padEnv(b, tk) {
+    var S = PSH[b], ev = { at: S.at * Math.pow(PHI, pdl('padA', 0)), dec: S.dec * Math.pow(PHI, pdl('padD', 0)), sus: clamp(S.sus * Math.pow(PHI, -pdl('padS', 0)), 0, 1), rel: S.rel * Math.pow(PHI, pdl('padR', 0)), fd: Math.max(0, S.fd + pdl('padF', 0)), fT: S.fT * Math.pow(PHI, pdl('padD', 0)) };
+    if (S.gate) { var e = tk.e == null ? 1 : tk.e, dens = IPH + (1 - IPH) * e, sd = (tk.seed | 0) >>> 0, bpm = tk.bpm > 0 ? tk.bpm : 120;   // unit: 120 BPM only if the track has none
+      ev.gate = { step: 60 / bpm / 4 * Math.pow(2, Math.round(pdl('padG', 0))), open: clamp(pdl('padO', IPH), Math.pow(IPH, 6), 1 - Math.pow(IPH, 6)), on: function (k) { return k % 16 === 0 || fr(sd * IPH * IPH + (k % 16) * IPH) < dens; } }; }   // unit: a sixteenth = a quarter of a beat; 2^k: 1/32 .. 1/4
+    return ev;
+  }
   INST.juno = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.07, false); };          // the arp: a rung over the old chip blips (0.045)
-  INST.junopad = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.05, true); };       // the pad under the stabs
+  INST.junopad = function (tr, f, t, d, v) { var tk = tr.tk || tr.trk || tr, ms = padModes(tk), q = 1 / Math.sqrt(ms.length); ms.forEach(function (b) { juno(tr, f, t, d, v * 0.05 * q, true, padEnv(b, tk)); }); };   // the pad under the stabs, in its shapes
   // ----- Ed's Jupiter -----
   function jup(tr, f, t, d, v, oct) {
     var c = C(), o1 = c.createOscillator(), o2 = c.createOscillator(), xm = c.createGain(), p1 = c.createStereoPanner ? c.createStereoPanner() : null, p2 = c.createStereoPanner ? c.createStereoPanner() : null,

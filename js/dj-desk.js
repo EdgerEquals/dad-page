@@ -133,6 +133,19 @@
       dial('hrLo', 'fastest chord', 'R', -1, 0, -1 / 2, function (v) { return Math.pow(2, v).toFixed(2) + ' bar'; }), dial('hrHi', 'slowest chord', 'R', 1, 2, 3 / 2, function (v) { return Math.pow(2, v).toFixed(1) + ' bar'; }),
       dial('rho0', 'root motion, calm', 'C', 1 / 2, 1, 3 / 4), dial('rho1', 'root motion, driving', 'C', -1, -1 / 2, -3 / 4)]);
     tools(hm, hl);
+    // PAD (Danny 19:58 AWST 27 Oct, Claude chat: the electro pad as a stab, a pluck or a gated pad? 'All'): the shapes are switches, any set
+    // layers (as the transitions); auto lets the energy pick, random draws one or two per track. The faders move every shape in rungs from
+    // its own; gate rate in powers of two (1/32 .. 1/4), gate open the share of each chop (a threshold).
+    var pd = strip(host, 'pad', 'Pad', "electro's Juno pad · steps are rungs from each shape's own");
+    var PMS = [['auto', 0], ['swell', 1], ['stab', 2], ['pluck', 4], ['gate', 8], ['random', -1]], pmw = E('div', 'dk-sws');
+    var pmOn = function (b) { var m = D.dial('padM') | 0; return b <= 0 ? m === b : m > 0 && !!(m & b); };
+    PMS.forEach(function (x) { pmw.appendChild(sw(x[0], function () { return pmOn(x[1]); }, function () { var m = D.dial('padM') | 0, b = x[1]; m = b <= 0 ? b : m > 0 ? m ^ b : b; D.dial('padM', m); log('dial.padM', m); pmw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
+    pd.appendChild(E('div', 'dk-sub', 'shape · pick any set')); pd.appendChild(pmw);
+    var rg = function (v) { return Math.abs(v) < 1e-9 ? 'own' : (v > 0 ? '+' : '') + num(v); };
+    var pfl = bank(pd, [dial('padA', 'attack', 'R', -3, 3, 0, rg), dial('padD', 'decay', 'R', -3, 3, 0, rg), dial('padS', 'hold loss', 'L', -3, 3, 0, rg), dial('padR', 'release', 'R', -3, 3, 0, rg), dial('padF', 'filter snap', 'R', -2, 2, 0, rg),
+      { id: 'dial.padG', name: 'gate rate', k: 'R', L: [-1, 0, 1, 2], def: 0, lab: function (v) { return ['1/32', '1/16', '1/8', '1/4'][Math.round(v) + 1] || num(v); }, get: function () { return D.dial('padG'); }, set: function (v) { D.dial('padG', v); } },
+      { id: 'dial.padO', name: 'gate open', k: 'V', L: [Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1 - Math.pow(IPH, 4)], def: IPH, lab: function (v) { return Math.round(v * 100) + '%'; }, get: function () { return D.dial('padO'); }, set: function (v) { D.dial('padO', v); } }]);
+    tools(pd, pfl);
     // MELODY
     var me = strip(host, 'melody', 'Melody', 'motif memory · call and response');
     var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; })]);
