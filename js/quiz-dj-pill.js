@@ -14,7 +14,7 @@
   var x=pop.querySelector('.djp-x'),play=document.getElementById('dj-play'),edit=document.getElementById('dj-edit');
   var PHI=(1+Math.sqrt(5))/2,MS=1e3;                                               // unit: ms per s
   // ---- the desk (fetched once, on the first open) ----
-  var DESK='js/dj-desk.js?v=meter1',dq=0,dw=[];
+  var DESK='js/dj-desk.js?v=random1',dq=0,dw=[];
   function desk(cb){if(window.DjDesk){cb(window.DjDesk);return;}dw.push(cb);if(dq)return;dq=1;var s=document.createElement('script');s.src=DESK;s.async=true;
     s.onload=function(){var D=window.DjDesk;dw.splice(0).forEach(function(f){if(D)f(D);});};s.onerror=function(){dq=0;dw.length=0;};document.head.appendChild(s);}
   function isOpen(){return !!(window.DjDesk&&window.DjDesk.isOpen);}

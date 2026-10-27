@@ -69,7 +69,7 @@
     { k: 'echo', lab: 'Echo', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
     { k: 'wash', lab: 'Wash', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
     { k: 'crush', lab: 'Crush', L: R2, names: ['off', 'touch', 'some', 'lots', 'max'], kind: 'mul' },
-    { k: 'trans', lab: 'Transition (\uD83D\uDD00)', L: [0, 1, 2, 3, 4, 5], names: ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash'], kind: 'pick' }   // unit: style index (0 = auto)
+    { k: 'trans', lab: 'Transition (\uD83D\uDD00)', L: [0, 1, 2, 3, 4, 5, 6], names: ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash', 'random'], kind: 'pick' }   // unit: style index (0 = auto: the pump energy picks; 6 = random: chance picks each time, Danny 18:53 AWST 27 Oct 'Keep auto and add random')
   ];
   var nudge = {}, seed = null, nodes = {};
   FX.forEach(function (f, i) { nudge[f.k] = 0; nodes[f.k] = P ? P.node('djfx:' + f.k, SPB - 1, PHI * SPB - 1, IPH * IPH, P.page, i) : null; });   // phi: periods PHI^5.5.. s, depth PHI^-2
@@ -270,7 +270,8 @@
     var sw = autoSweep(); if (sw) { txN++; var u0 = energy(), g2 = gdraw(2), g3 = gdraw(3), q2 = IPH * IPH;
       o = { wait: g2 * (1 - q2) + (o && o.wait != null ? clamp(o.wait, 0, 1) : u0) * q2,
             depth: Math.pow(Math.pow(PHI, -2 * (1 - g3)), 1 - q2) * Math.pow(o && o.depth != null ? clamp(o.depth, IPH * IPH, 1) : 1, q2) }; }
-    var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0], S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
+    var st = sw ? sweepStyle(energy()) : E.trans ? E.trans.v : AUTO[0]; if (st === 6) st = 1 + Math.floor(Math.random() * (STY.length - 1));   // random: any of the five, by chance
+    var S = STY[st] || STY[1], S16 = SPB * SPB, d16 = G.d16, bar = d16 * S16, beat = d16 * SPB, now = c.currentTime;   // unit: sixteenths per bar
     var u = energy(), ri = clamp((o && o.wait != null ? Math.round(o.wait * (BARS.length - 1)) : S.r) + Math.round((u - 1 / 2) * IPH * PHI), 0, BARS.length - 1), nB = BARS[ri];   // automatic changes: the landing-wait dial picks the rung   // pump nudge of up to a rung
     var k = Math.ceil(G.step / S16) * S16, ts = G.t + (k - G.step) * d16; while (ts < now + Math.pow(PHI, -2)) { ts += bar; k += S16; }   // phi: the next bar line at least PHI^-2 s out
     var bs = k / S16, bd = bs + nB; if (nB >= SPB - 1 && bd % SPB) bd += SPB - bd % SPB;   // long ones land on a phrase line (SPB bars)

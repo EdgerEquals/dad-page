@@ -133,7 +133,7 @@
     var vol = clamp(IPH * Math.pow(PHI, -sv / 4), 0.25, 0.8);   // phi: base level PHI^-1 (was a fixed 0.55)
     if (p.mood === 'serious' || p.urgency === 'urgent') vol = 0.3;
     return { p: p, s: s, fade: clamp(Math.pow(PHI, 3.5 + sf), 2.06, 22.83), bpm: clamp(baseBpm(sb) * TAPR, BPM_LO, BPM_HI),
-             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GPICK && GEN[GPICK] ? [GPICK] : p.mood === 'neutral' ? Object.keys(GEN) : GENRES[p.mood] || GENRES.neutral, mix: M.seed, dims: dimsOf(dimX(null, p.z)) };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
+             vol: vol, trackLen: Math.pow(PHI, Math.max(6, 7.5 + sl)), genres: GPICK && GEN[GPICK] ? [GPICK] : GPICK === 'random' ? Object.keys(GEN) : p.mood === 'neutral' ? Object.keys(GEN) : GENRES[p.mood] || GENRES.neutral, mix: M.seed, dims: dimsOf(dimX(null, p.z)) };   // phi: tracks last at least PHI^6 s (was PHI^4 = 6.9 s when excited/urgent/hot)
   }
 
   // ---------- music theory + genre table ----------
@@ -175,6 +175,9 @@
   function home(k) { var g = GEN[k], S16 = SPB * SPB, n = 0;                // a genre's own place: drum steps hit per bar, mode brightness
     for (var i = 0; i < S16; i++) if (['kick', 'snare', 'hat', 'shaker', 'tom'].some(function (d) { return g[d] && g[d][i % g[d].length] !== '.'; })) n++;
     return { drive: n / S16, brightness: 1 - FIFTHS.indexOf(g.scale) / (FIFTHS.length - 1) }; }
+  // RANDOM STYLE (Danny 18:53 AWST 27 Oct, Claude chat: 'Keep auto and add random'): auto = the pumps choose (as before); random = each new
+  // track draws any style but the one playing, by chance (Math.random, not the golden sequence), so it is truly unpredictable
+  function rndG(c) { var lv = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], gs = c.genres.filter(function (g) { return !lv || g !== lv.genre; }); return gs.length ? gs[Math.floor(Math.random() * gs.length)] : c.genres[0]; }
   function pickG(c, n) {                                                  // the n-th genre of c.genres
     var F = window.DadAutoDJ && DadAutoDJ.fx; if (F && F.autoSweep && F.autoSweep() && c.dims) {   // auto sweep (Danny 20:03): any genre in GEN can come next; weather and a set mood only tilt the odds
       var all = Object.keys(GEN), d0 = c.dims, D0 = Math.pow(PHI, PHI * PHI * d0.tension), ml = c.genres.length < all.length ? c.genres : [];
@@ -290,7 +293,7 @@
     paint(compute()); loadFX();
   }
   // ---------- effects (Danny 14:34 AWST 26 Oct): js/dj-fx.js loads after the extras, once sound exists; dry path -> fx chain over PHI^2 s ----------
-  var FXURL = 'js/dj-fx.js?v=desk1', fxReq = false, fxDry = null, fxC = null;
+  var FXURL = 'js/dj-fx.js?v=random1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
   var VURL = 'js/dj-voice.js?v=meter1', vReq = false, VH = null;
@@ -775,7 +778,7 @@
   var playing = false, cur = null, fadingUntil = 0, clock = 0, T0 = Date.now(), lastMood = null, genreFlip = 0, setBm = false;
   function startTrack(c, fade, sp, ox) {
     var pre = !sp && ox && ox.pre && GEN[ox.pre.genre] && c.genres.indexOf(ox.pre.genre) >= 0 ? ox.pre : null;   // the bridge already chose the next genre, seed and key (unless a style pick since rules it out)
-    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : pickG(c, genreFlip++), t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
+    var gs = c.genres, genre = sp && GEN[sp.genre] ? sp.genre : pre ? (genreFlip++, pre.genre) : GPICK === 'random' ? (genreFlip++, rndG(c)) : pickG(c, genreFlip++), t = Math.max(ox && ox.at || 0, ctx.currentTime + Math.pow(PHI, -6));   // phi: fade starts PHI^-6 s out (or at the transition's drop)
     var prev = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
     var tr = makeTrack(genre, sp && sp.bpm > 0 ? sp.bpm : gBpm(genre, c.bpm), sp && isFinite(sp.seed) ? sp.seed : pre ? pre.seed : (Math.random() * SEEDS) | 0, prev, sp ? sp.root : pre ? pre.root : null, sp && sp.dm, sp && sp.mo);
     if (sp) { tr.born = sp.born; tr.step = stepsIn((Date.now() - sp.born) / MS, tr.bpm); }
@@ -813,7 +816,7 @@
   }
   function preProg(genre, seed) { var r = rng(seed), g = GEN[genre]; r(); return g.progs[Math.floor(r() * g.progs.length)]; }   // makeTrack's own draw order
   function preNext(live, mix) {
-    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = pickG(c, fl), g = GEN[genre];
+    var c = compute(), gs = c.genres, fl = genreFlip + (mix != null ? Math.floor(withKnobs(genome(mix)).flip * SPB) : 0), genre = GPICK === 'random' ? rndG(c) : pickG(c, fl), g = GEN[genre];
     var seed = (Math.random() * SEEDS) | 0, root = live && live.sc ? travel(SCALES[g.scale], g.root, live, frac(seed * IPH)) : g.root;
     return { genre: genre, seed: seed, root: root, prog: preProg(genre, seed) };
   }
@@ -873,7 +876,7 @@
     if (!sp || !(sp.len > 0) || !isFinite(sp.born)) return null;
     var age = (Date.now() - sp.born) / MS; if (age < sp.len) return sp;
     var k = Math.floor(age / sp.len), gs = c.genres; genreFlip += k;
-    var gk = pickG(c, genreFlip - 1); return { genre: gk, bpm: gBpm(gk, c.bpm), seed: (sp.seed + Math.imul(k, GA)) | 0, born: sp.born + k * sp.len * MS, len: c.trackLen };
+    var gk = GPICK === 'random' ? rndG(c) : pickG(c, genreFlip - 1); return { genre: gk, bpm: gBpm(gk, c.bpm), seed: (sp.seed + Math.imul(k, GA)) | 0, born: sp.born + k * sp.len * MS, len: c.trackLen };
   }
   function start(sp) {
     if (!ensure()) { paint(compute()); return; }
@@ -1009,7 +1012,7 @@
     if (s.mx && typeof s.mx === 'object') ['m', 's', 'e', 'w'].forEach(function (k) { var o = s.mx[k]; MX[k] = {}; if (o) CHS.forEach(function (c) { if (o[c] != null) MX[k][c] = k === 'm' || k === 's' ? !!o[c] : clamp(o[c] | 0, 0, SENDL.length - 1); }); });
     if (s.mx && s.mx.b && typeof s.mx.b === 'object') { MX.b = {}; Object.keys(s.mx.b).forEach(function (r) { var b = s.mx.b[r]; if (b && Array.isArray(b.m) && Array.isArray(b.s)) MX.b[r] = { m: b.m.map(Boolean).slice(0, 8), s: b.s.map(Boolean).slice(0, 8) }; }); }   // the desk's mutes, solos and sends carry like the dials
     if (Array.isArray(s.mm)) MEMO = s.mm.filter(function (c) { return Array.isArray(c) && c.length >= 2 && c.length <= 32 && c.every(function (v) { return Math.abs(v) <= 12 && v === Math.round(v); }); }).slice(-MEMN);   // the themes carry like the mix
-    TAPR = s.tt > 0 && isFinite(s.tt) ? +s.tt : 1; TAPB = s.tb > 0 && isFinite(s.tb) ? +s.tb : 0; GPICK = s.gp && GEN[s.gp] ? s.gp : null;   // tapped tempo + genre pick carry like the mix
+    TAPR = s.tt > 0 && isFinite(s.tt) ? +s.tt : 1; TAPB = s.tb > 0 && isFinite(s.tb) ? +s.tb : 0; GPICK = s.gp && (GEN[s.gp] || s.gp === 'random') ? s.gp : null;   // tapped tempo + genre pick carry like the mix
     if (mode === 'restart') { if (s.on && AC) { pend = {}; arm(); } return; }   // new solar day: still on (his choice), fresh track, knobs back to live
     if (s.nudge) Object.keys(nudge).forEach(function (k) { if (isFinite(s.nudge[k])) nudge[k] = s.nudge[k]; });
     var w = resumeW(e), now = Date.now();
@@ -1164,7 +1167,7 @@
     solo: function (ch, v) { if (CHS.indexOf(ch) < 0) return; MX.s[ch] = !!v; save(); },
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
-    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && GEN[g] ? g : null; glide(); save(); syncGen(); }, get genres() { return Object.keys(GEN); },
+    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(); save(); syncGen(); }, get genres() { return Object.keys(GEN); },
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); } return DIAL[k]; },
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },

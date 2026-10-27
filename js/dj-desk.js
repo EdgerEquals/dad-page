@@ -103,7 +103,7 @@
     m.appendChild(grid);
     // STYLE
     var st = strip(host, 'style', 'Style'), row = E('div', 'dk-sws');
-    ['auto'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
+    ['auto', 'random'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });   // auto = the pumps choose; random = chance, each new track (Danny 18:53)
     st.appendChild(row);
     // DRUMS
     var rd = function (k, name, kind, lo, hi, def, live) { return { id: 'rd.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return v === def ? 'mid' : num(v); }, get: function () { return D.rd(k); }, set: function (v) { D.rd(k, v); }, live: live }; };
@@ -133,7 +133,7 @@
     var fl = bank(ef, FXK.map(function (x) { var L = x[3].map(function (_, i) { return i; });
       return { id: 'fx.' + x[0], name: x[1], k: x[2], L: L, def: null, lab: function (i) { return x[3][i]; }, get: function () { var e = fxe(x[0]); return e ? e.i : null; }, set: function (i) { var F = d && d.fx; if (F && F.set) F.set(x[0], i); },
         live: function () { var e = fxe(x[0]); return e && e.li != null ? e.li / (L.length - 1) : null; } }; }));
-    var tx = E('div', 'dk-sws'), TX = ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash'];
+    var tx = E('div', 'dk-sws'), TX = ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash', 'random'];
     TX.forEach(function (lab, i) { tx.appendChild(sw(lab, function () { var e = fxe('trans'); return e ? (e.i | 0) === i : i === 0; }, function () { var F = d && d.fx; if (F && F.set) F.set('trans', i); log('fx.trans', i); tx.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
     ef.appendChild(E('div', 'dk-sub', 'transition')); ef.appendChild(tx);
     var fxr = E('div', 'dk-tools'), fb = E('button', 'dk-mini', '🎲'), fbk = E('button', 'dk-mini', 'back to live'); fb.type = fbk.type = 'button';
