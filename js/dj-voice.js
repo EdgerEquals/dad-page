@@ -125,7 +125,7 @@
     if (part !== 'lead' || !D.playing) return; lPrev = m;
     var S = state(t, tk), n = harm(tk, m); if (n == null) return;
     var lv = S.lvl * Math.sqrt(1 - S.h) * clamp(v, 0, 1);
-    sing(tk.L ? tk.L.lead : lay, n, hPrev, t, d, lv, S.I, false); hPrev = n; LOG.push([t, 'h', n, +lv.toFixed(4)]);
+    sing(tk.L ? tk.L.voice || tk.L.lead : lay, n, hPrev, t, d, lv, S.I, false); hPrev = n; LOG.push([t, 'h', n, +lv.toFixed(4)]);
   }
   // ---------- own line: a melismatic line on the live chords, on the grid ----------
   var oNext = -1, oTk = null;
@@ -147,7 +147,7 @@
         for (var k = 0, moved = 0; k < OCT && moved < step; k++) { n += dir; if (inScale(tk, n) && (!strong || isChord(tk, n) || moved + 1 < step)) moved++; }
         if (strong && !isChord(tk, n)) { for (var e = 1; e < OCT / 2; e++) { if (isChord(tk, n + e * dir)) { n += e * dir; break; } if (isChord(tk, n - e * dir)) { n -= e * dir; break; } } }   // lean on the chord tones
         var nb = p + len / (SPB * SPB) / arcB > 1 - Math.pow(PHI, -2.5), lv = S.lvl * Math.sqrt(S.h) * Math.pow(PHI, -(s16 % SPB ? 1 : 0) * IPH);   // phi: off-beats PHI^-1/PHI softer
-        sing(tk.L ? tk.L.lead : null, n, oPrev, t, len * d16, lv, S.I, nb); oPrev = n; LOG.push([t, 'o', n, +lv.toFixed(4)]);
+        sing(tk.L ? tk.L.voice || tk.L.lead : null, n, oPrev, t, len * d16, lv, S.I, nb); oPrev = n; LOG.push([t, 'o', n, +lv.toFixed(4)]);
       } else if (breathe) oPrev = null;                                 // a new arc starts fresh from the lead's register
       oNext += len;
     }

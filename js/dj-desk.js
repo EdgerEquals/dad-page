@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=desk3';
+  var CSS = 'css/dj-desk.css?v=meter1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -35,7 +35,7 @@
 
   // ---------- the faders ----------
   // spec: { id, name, k (R C V L N), L (ladder values), lab (fn v -> label), get (), set (v), live () -> 0..1 or null, grey: hint }
-  var FD = [];
+  var FD = [], MIX = [];
   function near(L, v) { var b = 0; for (var i = 1; i < L.length; i++) if (Math.abs(L[i] - v) < Math.abs(L[b] - v)) b = i; return b; }
   function fader(f) {
     var w = E('div', 'dk-f' + (f.grey ? ' is-grey' : '')), nm = E('div', 'dk-nm', f.name), up = E('button', 'dk-ar', '▲'), dn = E('button', 'dk-ar', '▼'),
@@ -97,7 +97,8 @@
         o.el.classList.add('dk-mini-f'); sends.appendChild(o.el); });
       var row = E('div', 'dk-chr'); row.appendChild(meter); row.appendChild(sends); c.appendChild(row); grid.appendChild(c);
       FD.push({ el: c, paint: function () { c.querySelectorAll('.dk-sw').forEach(function (b) { if (b._sync) b._sync(); }); c.classList.toggle('is-off', !D.on(ch)); },
-        meter: function () { mi.style.transform = 'scaleY(' + clamp(D.meter(ch), 0, 1).toFixed(3) + ')'; }, f: { id: 'ch.' + ch } });
+        meter: null, f: { id: 'ch.' + ch } });
+      MIX.push({ ch: ch, mi: mi, v: 0 });
     });
     m.appendChild(grid);
     // STYLE
@@ -221,9 +222,18 @@
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
+  // CHANNEL METERS (Danny 18:47 AWST 27 Oct: 'We don't want it actually measuring the sound volume ... the energy in the circuit ... mapped
+  // from our parameters'): each channel's capacitor voltage from js/dad-autodj-quiz.js (chMeter: every note a charge pulse of the level the
+  // engine set x the layer's arc gain x the crossfade, discharging over PHI^-1 of a beat). No audio is measured. Read every PHI^-5 s while
+  // the Sound tab is open, transform only.
+  var MSTEP = Math.pow(PHI, -5);                                          // phi: read every PHI^-5 s (~90 ms)
+  function fast() { clearTimeout(fT); if (!isOpen() || UI.tab !== 'sound') return; var D = DK(); if (D && D.meter) MIX.forEach(function (m) {
+      m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
+    fT = setTimeout(fast, MSTEP * MS); }
+  var fT = 0;
   function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
-    if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); }
+    if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {
     if (el) return; var main = doc.getElementById('home-main'); if (!main) return;
     if (!doc.querySelector('link[data-desk]')) { var l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = CSS; l.setAttribute('data-desk', '1'); doc.head.appendChild(l); }
@@ -254,7 +264,7 @@
     de.setAttribute('data-desk', '1'); if (main) main.scrollTop = 0; show(UI.tab === 'visual' ? 'visual' : 'sound'); tick(); sync(true);
   }
   function full(on) { if (on) de.setAttribute('data-desk-full', '1'); else de.removeAttribute('data-desk-full'); }
-  function close(refocus) { if (!isOpen()) return; full(false); de.removeAttribute('data-desk'); clearTimeout(mT); var main = doc.getElementById('home-main'); if (main) main.scrollTop = keep; sync(false);
+  function close(refocus) { if (!isOpen()) return; full(false); de.removeAttribute('data-desk'); clearTimeout(mT); clearTimeout(fT); var main = doc.getElementById('home-main'); if (main) main.scrollTop = keep; sync(false);
     if (refocus) { var b = doc.getElementById('dj-edit'); if (b) b.focus({ preventScroll: true }); } }
   function sync(o) { var b = doc.getElementById('dj-edit'); if (b) b.setAttribute('aria-expanded', o ? 'true' : 'false'); }
   root.DjDesk = { open: open, close: close, toggle: function () { isOpen() ? close(false) : open(); }, get isOpen() { return isOpen(); }, history: function () { return ld(KH, []); }, paint: paintAll };

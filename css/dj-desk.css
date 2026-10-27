@@ -59,7 +59,7 @@ html[data-desk] #home-main{z-index:4}                                   /* the d
 .dk-ms{display:flex;gap:.25rem}.dk-ms .dk-sw{flex:1;padding:.32rem 0;font-weight:700}
 .dk-chr{display:flex;gap:.2rem;align-items:stretch}
 .dk-chm{position:relative;flex:0 0 .45rem;border-radius:.25rem;background:#020a12;border:1px solid #163d58;overflow:hidden}
-.dk-chm i{position:absolute;inset:2px;transform-origin:50% 100%;transform:scaleY(0);background:linear-gradient(to top,#1fa98f,var(--dk-led) 62%,var(--dk-amb));transition:transform .236s ease-out;will-change:transform}
+.dk-chm i{position:absolute;inset:2px;transform-origin:50% 100%;transform:scaleY(0);background:linear-gradient(to top,#1fa98f,var(--dk-led) 62%,var(--dk-amb));transition:transform .09s linear;will-change:transform}
 .dk-snds{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:.15rem;min-width:0}
 .dk-mini-f .dk-nm{height:auto;font-size:.55rem;color:var(--dk-dim)}
 .dk-mini-f .dk-ar{height:1.25rem}

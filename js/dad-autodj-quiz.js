@@ -293,7 +293,7 @@
   var FXURL = 'js/dj-fx.js?v=desk1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
-  var VURL = 'js/dj-voice.js?v=desk1', vReq = false, VH = null;
+  var VURL = 'js/dj-voice.js?v=meter1', vReq = false, VH = null;
   function loadV() { if (vReq || !ctx) return; vReq = true; var sc = document.createElement('script'); sc.src = VURL; sc.async = true; document.head.appendChild(sc); }
   function idleV() { var ric = window.requestIdleCallback || function (f) { return setTimeout(f, Math.pow(PHI, 2) * MS); }; ric(loadV, { timeout: Math.pow(PHI, 5) * MS }); }   // phi: idle, at the latest PHI^5 s later
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
@@ -472,7 +472,7 @@
     var sE = ctx.createGain(), sW = ctx.createGain(); sE.gain.value = sW.gain.value = 0.0001;   // the track's echo / wash send busses, faded with it (the mixer)
     var lay = function (to, ch) { var n = ctx.createGain(); n.gain.value = 1; n.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');
       n.connect(se); se.connect(sE); n.connect(sw); sw.connect(sW); return { g: gx, out: n, rev: rv, ch: ch, se: se, sw: sw }; };   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
-    var dk = ctx.createGain(); dk.gain.value = 1; dk.connect(out); var L = { drums: lay(xo, 'drums'), lead: lay(xo, 'lead'), answer: lay(xo, 'answer'), bass: lay(dk, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xo, 'arp');
+    var dk = ctx.createGain(); dk.gain.value = 1; dk.connect(out); var L = { drums: lay(xo, 'drums'), lead: lay(xo, 'lead'), answer: lay(xo, 'answer'), voice: lay(xo, 'voice'), bass: lay(dk, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xo, 'arp');   // voice: js/dj-voice.js sings here
     var hb0 = phoneBass(L.bass.out, dk, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
     var T = { dk: dk, dr: M.donor && !g.own ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: X0, sE: sE, sW: sW, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; });
     var S0 = Object.create(T), so = lay(dk, 'chords'); S0.out = so.out; S0.se = so.se; S0.sw = so.sw; S0.ch = 'chords'; S0.tk = T; L.chords = S0; fxSends(T); return T;   // chords: the track's own fields, its own channel   // phi: first step PHI^-6 s out
@@ -491,7 +491,7 @@
   function ageOf(tr, t) { var w = Date.now() + (t != null && ctx ? (t - ctx.currentTime) * MS : 0); return clamp((w - tr.born) / MS / (tr.trackLen || compute().trackLen), 0, 1); }   // at the note's audio time t when given (so the arc does not depend on when the clock scheduled it)
   function shape(tr, t, barLen) {                                         // once a bar: glide the layers to the arc
     var a = ageOf(tr, t), e = arc(a), tau = barLen * IPH; tr.e = e; tr.bd = a > IPH && e < IPH;
-    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e * Math.pow(PHI, 2 * (tr.dm ? tr.dm.weight : 1 / 2) - 1)), t, tau);   // data: weight, half a rung either way under the root
+    tr.L.drums.out.gain.setTargetAtTime(e, t, tau); tr.L.lead.out.gain.setTargetAtTime(e, t, tau); if (tr.L.answer) tr.L.answer.out.gain.setTargetAtTime(e, t, tau); if (tr.L.voice) tr.L.voice.out.gain.setTargetAtTime(e, t, tau);   // the answer and the voice ride the lead's arc, as they did inside its layer tr.L.bass.out.gain.setTargetAtTime(tr.noBass ? 0 : Math.sqrt(e * Math.pow(PHI, 2 * (tr.dm ? tr.dm.weight : 1 / 2) - 1)), t, tau);   // data: weight, half a rung either way under the root
     tr.L.pad.out.gain.setTargetAtTime(clamp(IPH * IPH + (1 - e) * PHI, 0, 1), t, tau);
   }
   // VOICE LEADING + EXTENSIONS: 3 + a pump-ratio count of stacked thirds (triad, 7th, 9th); of the inversions (+-12 per note) the one
@@ -604,7 +604,7 @@
   }
   function RPAT(tr, k, home) { var p = tr.rp; if (!p || !p.pat) return home; if (k === 'kick' || k === 'snare') return p.pat[k] || home; if (k === 'hat') return p.pat.hat || home; return home; }
   function rduck(tk, t) { if (!tk.dk || !tk.rp) return; var b = SPM / tk.bpm; tk.dk.gain.setTargetAtTime(tk.rp.dk, t, Math.pow(PHI, -7)); tk.dk.gain.setTargetAtTime(1, t + Math.pow(PHI, -6), b * Math.pow(PHI, -1 - tk.rp.drv)); }
-  function hitW(x) { return function (L, k, t, v, a) { if (!chOn('drums')) return; var tk = L.tk || L, p = tk.rp, q = RQ('drum:' + k, tk, t, v, 0, 0); if (!(q > 0)) return; act('drums', t, q);
+  function hitW(x) { return function (L, k, t, v, a) { if (!chOn('drums')) return; var tk = L.tk || L, p = tk.rp, q = RQ('drum:' + k, tk, t, v, 0, 0); if (!(q > 0)) return; act('drums', t, q, tk);
     var d16 = SPM / tk.bpm / SPB, s16 = tk.step % 16;
     if (p && k === 'snare') t += p.lb;
     if (k === 'kick') rduck(tk, t);
@@ -681,10 +681,17 @@
   function chOn(ch) { var any = false, k; for (k in MX.s) if (MX.s[k]) { any = true; break; } return any ? !!MX.s[ch] : !MX.m[ch]; }
   function chOf(part, tr) { return tr && tr.ch || (part === 'bass' ? 'bass' : part === 'lead' ? 'lead' : part === 'drums' ? 'drums' : 'chords'); }
   function sendV(ch, k) { var i = (k === 'e' ? MX.e : MX.w)[ch] | 0; return Math.max(1e-4, SENDL[clamp(i, 0, SENDL.length - 1)]); }
-  function act(ch, t, v) { var q = AQ[ch] || (AQ[ch] = []), now = ctx ? ctx.currentTime : 0; q.push(t, v); while (q.length && q[0] < now - PHI * PHI) q.splice(0, 2); }   // phi: keep PHI^2 s
-  function chMeter(ch) { var q = AQ[ch], now = ctx ? ctx.currentTime : 0, tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], bt = tr ? SPM / tr.bpm : IPH, sum = 0, i;
-    if (q) for (i = 0; i < q.length; i += 2) if (q[i] <= now && q[i] > now - bt) sum += q[i + 1];
-    return 1 - Math.pow(PHI, -sum * PHI); }                               // phi: a soft ceiling, one PHI-loud note reads ~0.7
+  // CHANNEL METERS (Danny 18:47 AWST 27 Oct, Claude chat: 'We don't want it actually measuring the sound volume ... the energy in the circuit
+  // ... mapped from our parameters because we already have that'): no audio is measured. Each note a channel plays is a charge pulse into
+  // that channel's capacitor: q = its level as the engine sets it (velocity after the rhythm plan) x the layer's energy-arc gain x the
+  // track's crossfade at the note's time. The meter reads the capacitor's voltage now, discharging with tau = PHI^-1 of a beat (RC), so
+  // it rises on each hit and falls between them; shown on a soft ceiling 1 - PHI^-(PHI V).
+  function lgain(tk, ch) { var L = !tk ? null : ch === 'arp' ? tk.x : tk.L && tk.L[ch]; return L && L.out ? L.out.gain.value : 1; }
+  function act(ch, t, v, tk) { var q = AQ[ch] || (AQ[ch] = []), now = ctx ? ctx.currentTime : 0; if (!tk) tk = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
+    q.push(t, v * lgain(tk, ch) * (tk ? gAt(tk, t) : 1)); while (q.length && q[0] < now - PHI * PHI) q.splice(0, 2); }   // phi: keep PHI^2 s of pulses
+  function chMeter(ch) { var q = AQ[ch], now = ctx ? ctx.currentTime : 0, tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tau = (tr ? SPM / tr.bpm : 1) * IPH, V = 0, i;
+    if (q) for (i = 0; i < q.length; i += 2) if (q[i] <= now) V += q[i + 1] * Math.exp(-(now - q[i]) / tau);
+    return 1 - Math.pow(PHI, -V * PHI); }                               // phi: a soft ceiling, one PHI-loud note reads ~0.7
   function boxOn(rack, u) { var b = MX.b[rack]; if (!b) return true; var any = b.s && b.s.some(function (x) { return x; }); return any ? !!b.s[u] : !(b.m && b.m[u]); }
   function layers(tr) { var o = []; if (tr.L) Object.keys(tr.L).forEach(function (k) { o.push(tr.L[k]); }); if (tr.x) o.push(tr.x); return o; }
   function resend() { var t = ctx ? ctx.currentTime : 0; tracks.forEach(function (tr) { layers(tr).forEach(function (L) { if (!L.se) return;
@@ -722,13 +729,13 @@
     var dn = IPH * IPH + (1 - IPH * IPH - Math.pow(IPH, 3)) * e, nx = pat[(s16 + 1) % 16];
     if (st.rank >= dn || !chOn('bass') || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16)))) { tr.acFrom = null; return; }
     var m = bn + st.iv, v = vl(s16, dyn) * (st.acc ? 1 : IPH), slide = st.slide && nx.rank < dn, d = dur16 * (slide ? 1 + Math.pow(IPH, 6) : IPH);   // phi: a held slide just outlasts its step, a plain note is PHI^-1 of it
-    act('bass', t, v); if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
+    act('bass', t, v, tr); if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
     else INST.bass(tr.L.bass, mtof(m), t, d, v);
     tr.acFrom = slide ? m : null;
     if (VH) try { VH('bass', tr.L.bass, m, t, d, v); } catch (er) {}
     rec('bass', m, t, d, v * gAt(tr, t));
   }
-  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d); if (!(q > 0)) return; v = q; act(ch, t, v); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
+  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d); if (!(q > 0)) return; v = q; act(ch, t, v, tr.tk || tr); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u; return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
 
