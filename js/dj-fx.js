@@ -46,6 +46,9 @@
   TAP.forEach(function (t) { t.connect(tHP); }); tHP.connect(eDel);
   post.connect(eSend); eSend.connect(eDel); eDel.connect(tLP); tLP.connect(tSh); tSh.connect(eFb); eFb.connect(eDel); tSh.connect(eRet); eRet.connect(tChop); tChop.connect(tDuck); tDuck.connect(post2);
   post.connect(wSend); wSend.connect(wConv); wConv.connect(post2);
+  // THE MIXER's channel sends (Danny 18:12 AWST 27 Oct: 'an effects send'): each channel's echo / wash send arrives here, straight into
+  // the same delay loop and convolver as the knobs (their returns), so a send works whatever the master echo / wash knob is at
+  var echoIn = g(1), washIn = g(1); echoIn.connect(eDel); washIn.connect(wConv);
   post2.connect(cDry); cDry.connect(out); post2.connect(shp); shp.connect(cWet); cWet.connect(out);
   // FLANGER + RISER (transitions only, Danny 15:44; 'flounder' = flanger): a short swept delay with feedback beside the dry path, and a
   // band-passed noise riser; both silent until a transition opens them.
@@ -379,7 +382,7 @@
       if (mode !== 'restart' && s.n) FX.forEach(function (f) { if (isFinite(s.n[f.k])) nudge[f.k] = s.n[f.k]; }); },
     reset: function () { FX.forEach(function (f) { nudge[f.k] = 0; }); apply(); } });   // daily restart: knobs back to live, the effects seed stays
   // ---------- in ----------
-  apply(); K.fx({ inp: inp, out: out });                                  // the start engine crossfades dry -> this chain over PHI^2 s
+  apply(); irReady(); K.fx({ inp: inp, out: out, sends: { echo: echoIn, wash: washIn } });                                  // the start engine crossfades dry -> this chain over PHI^2 s
   var EV = K.every || setInterval;                                        // phases on the one clock (core), else timers
   EV(function () { if (!document.hidden) apply(); }, IPH * MS);   // phi: knobs follow the live pumps every PHI^-1 s
   EV(rollTick, Math.pow(PHI, -4) * MS);

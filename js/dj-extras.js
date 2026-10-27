@@ -119,18 +119,21 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   // panel's '808 character' row) is a rung on the depth of that departure from the stock rack: off 0, less PHI^-1, normal 1, more
   // PHI, max PHI^2. It moves set-up, never level (THE RULE). Our own kit (unit 1) keeps its sound.
   function fr(x) { return x - Math.floor(x); }
+  // rack boxes on the desk (Danny 18:12 AWST 27 Oct: mute / solo like a desk, inside the racks too): a box that is off plays no notes
+  function bx(rack, u) { var DK = window.DadAutoDJ && DadAutoDJ.desk; return !DK || DK.box(rack, u); }
   function char808(tk) { if (tk.c8) return tk.c8; var sd = (tk.seed | 0) >>> 0, g = function (k) { return fr(sd * IPH + k * IPH * IPH) - 1 / 2; };   // phi: golden draws on the track seed, -1/2..1/2
     return (tk.c8 = { th: g(1), br: g(2), pt: g(3), rot: g(4) + 1 / 2 }); }
   function depth808() { var D = window.DadAutoDJ, d = D && D.dial ? +D.dial('c808') : 1; return isFinite(d) && d >= 0 ? d : 1; }
   function bank(tr, kind, t, v, a) {
     var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, c = C(), now = c.currentTime, ch = char808(tk), dp = depth808(), cl = function (x) { return Math.max(0, Math.min(1, x)); };
-    if (!D8) { load808(); house(tr, kind, t, v); return; }
+    if (!D8) { load808(); if (bx('808', 1)) house(tr, kind, t, v); return; }
     var id = kind === 'hat' && a === 'x' ? '808.oh' : kind === 'tom' && tk.step % 16 >= 16 - 2 ? '808.mt' : B8[kind], V = B8V[id];   // the fill's last toms step up to the mid tom
-    house(tr, kind, t, v * SHARE[1]);
+    if (bx('808', 1)) house(tr, kind, t, v * SHARE[1]);
     if (!V) return;
     d8live = d8live.filter(function (x) { return x > now; });
     var on = [0]; if (SUBK[kind] && e > IPH * IPH) on.push(2); if (SNAPK[kind] && e > IPH) on.push(3);   // pump count: units join as the arc rises
     if (d8live.length > Math.pow(PHI, 7)) on = [0];                        // phi: voice cap PHI^7
+    on = on.filter(function (u) { return bx('808', u); });
     var acc = Math.max(0, Math.min(1, (v - IPH) / (1 - IPH)));             // x hits (v >= 1) are accented, o hits (v = PHI^-1) not
     if (kind === 'hat' && a !== 'x' && tr.oh) { tr.oh.forEach(function (o) { try { o.gain.cancelScheduledValues(t); o.gain.setTargetAtTime(0, t, Math.pow(PHI, -12)); } catch (er) {} }); tr.oh = null; }   // phi: choke over PHI^-12 s
     on.forEach(function (u) {
@@ -188,11 +191,11 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     if (!D3) load303(); else if (!R.db && !R.dbReq) { R.dbReq = true; D3.Bassline.create(c).then(function (r) { if (R.dead) { r.bassline.dispose(); return; } R.db = r.bassline; R.db.output.connect(R.bus); }).catch(function () {}); }
     var f = 440 * Math.pow(2, (n.m - 69) / 12), from = n.from != null ? 440 * Math.pow(2, (n.from - 69) / 12) : null, gate = n.step * (n.slide ? 1 + Math.pow(IPH, 6) : IPH);
     var det = function (u) { var k = (u * IPH) % 1; return { r: Math.pow(2, (k - 1 / 2) * Math.pow(PHI, 5) / 1200), dt: k * Math.pow(PHI, -11) }; };   // phi: golden cents and ms per unit
-    var d1 = det(1); edNote(R.ed, n, f * d1.r, from != null ? from * d1.r : null, n.t + d1.dt, gate, A3 * ASH[1] * n.v);
-    if (R.db) { var d0 = det(0), pa = D3.params, P = { tune: 1 / 2, wave: n.wave === 'square' ? 1 : 0, cutoff: IPH * IPH + Math.pow(IPH, 3) * e, resonance: 1 - Math.pow(IPH, 3), envMod: IPH, decay: IPH * IPH, accent: pa.accent, level: Math.min(1, A3 * ASH[0] * n.v) };   // phi: knobs on golden fractions; cutoff a rung brighter with the arc
+    var d1 = det(1); if (bx('303', 1)) edNote(R.ed, n, f * d1.r, from != null ? from * d1.r : null, n.t + d1.dt, gate, A3 * ASH[1] * n.v);
+    if (R.db && bx('303', 0)) { var d0 = det(0), pa = D3.params, P = { tune: 1 / 2, wave: n.wave === 'square' ? 1 : 0, cutoff: IPH * IPH + Math.pow(IPH, 3) * e, resonance: 1 - Math.pow(IPH, 3), envMod: IPH, decay: IPH * IPH, accent: pa.accent, level: Math.min(1, A3 * ASH[0] * n.v) };   // phi: knobs on golden fractions; cutoff a rung brighter with the arc
       var nt = D3.bassNote(P, { note: n.m - 33, accent: n.acc, slide: n.slide }, n.from != null ? { note: n.from - 33, slide: true } : { note: null, slide: false }, n.step);   // unit: MIDI 33 = A1 = driftbox's 55 Hz root at tune 0.5
       if (nt) { nt.frequency *= d0.r; if (nt.glideFrom) nt.glideFrom *= d0.r; try { R.db.play(nt, n.t + d0.dt); } catch (er) {} } }
-    R.og.gain.setTargetAtTime(e > IPH ? A3 * ASH[2] : 0, n.t, Math.pow(PHI, -3));   // the overdrive unit joins past PHI^-1 of the arc (its share of the rack)
+    R.og.gain.setTargetAtTime(e > IPH && bx('303', 2) ? A3 * ASH[2] : 0, n.t, Math.pow(PHI, -3));   // the overdrive unit joins past PHI^-1 of the arc (its share of the rack)
   }
 
   // ---------- KEYS FOR ELECTRO (Danny 15:42-15:56 AWST 27 Oct, Claude chat: 'we need the Junos ... and the Jupiter eight ... best if you
@@ -237,10 +240,10 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   function dxIdle(L, t) { var R = L.dx; if (!R) return; clearTimeout(R.idle); R.idle = setTimeout(function () { R.dead = true; try { R.n.port.postMessage({ k: 'end' }); setTimeout(function () { R.n.disconnect(); R.lp.disconnect(); }, Math.pow(PHI, 4) * 1e3); } catch (er) {} }, (Math.max(0, t - C().currentTime) + Math.pow(PHI, 4)) * 1e3); }   // phi: retire PHI^4 s after the last note; unit: ms per s
   INST.dx = function (tr, f, t, d, v) {
     var L = tr, tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, m = Math.round(69 + 12 * Math.log(f / 440) / Math.LN2), R = dxRack(L), g = v * IPH;   // our bell peaks near the DX7's 2-op level at gain PHI^-1 (offline renders)
-    if (INST.bell) INST.bell(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
+    if (INST.bell && bx('dx', 1)) INST.bell(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
     if (!R) return;
-    R.n.port.postMessage({ k: 'on', id: 'bell', note: m, vel: v, t: t, d: d, g: g * DXR.u[0] * 2 });
-    if (e > IPH) R.n.port.postMessage({ k: 'on', id: 'tine', note: m, vel: v, t: t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d: d, g: g * DXR.u[2] * 2 });   // the tine piano joins past PHI^-1
+    if (bx('dx', 0)) R.n.port.postMessage({ k: 'on', id: 'bell', note: m, vel: v, t: t, d: d, g: g * DXR.u[0] * 2 });
+    if (e > IPH && bx('dx', 2)) R.n.port.postMessage({ k: 'on', id: 'tine', note: m, vel: v, t: t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d: d, g: g * DXR.u[2] * 2 });   // the tine piano joins past PHI^-1
     dxIdle(L, t + d);
   };
   // ----- Ed's Juno -----
@@ -263,7 +266,8 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     [l1, l2].forEach(function (q) { q.frequency.setValueAtTime(pk, t); q.frequency.exponentialRampToValueAtTime(base, t + (pad ? PHI : Math.pow(PHI, -3))); });
     a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + at); a.gain.setTargetAtTime(v * sus, t + at, Math.pow(PHI, pad ? 0 : -4)); a.gain.setTargetAtTime(0, t + d, rel / 3);
     o.connect(hp); sub.connect(sg); sg.connect(hp); hp.connect(l1); l1.connect(l2); l2.connect(a); a.connect(J.inp); o.start(t); sub.start(t); o.stop(end); sub.stop(end);
-    J.ch[1].out.gain.setTargetAtTime(e > IPH ? DXR.u[2] : 0, t, IPH);    // chorus II joins past PHI^-1
+    J.ch[1].out.gain.setTargetAtTime(e > IPH && bx('juno', 2) ? DXR.u[2] : 0, t, IPH);    // chorus II joins past PHI^-1
+    J.ch[0].out.gain.setTargetAtTime(bx('juno', 0) ? DXR.u[0] : 0, t, Math.pow(PHI, -3)); J.dry.gain.setTargetAtTime(bx('juno', 1) ? DXR.u[1] : 0, t, Math.pow(PHI, -3));   // the desk's box switches
     junoIdle(tr, end);
   }
   INST.juno = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.07, false); };          // the arp: a rung over the old chip blips (0.045)
@@ -282,9 +286,9 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     l1.connect(l2); l2.connect(a); a.connect(tr.out); o1.start(t); o2.start(t); o1.stop(end); o2.stop(end);
   }
   INST.jup = function (tr, f, t, d, v) { var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, g = v * 0.07;   // the old stab's level (0.07)
-    jup(tr, f, t, d, g * DXR.u[0] * 2, false);
-    if (MORE.stab) MORE.stab(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
-    if (e > IPH) jup(tr, f, t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d, g * DXR.u[2] * 2, true); };   // unison an octave down past PHI^-1
+    if (bx('jup', 0)) jup(tr, f, t, d, g * DXR.u[0] * 2, false);
+    if (MORE.stab && bx('jup', 1)) MORE.stab(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
+    if (e > IPH && bx('jup', 2)) jup(tr, f, t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d, g * DXR.u[2] * 2, true); };   // unison an octave down past PHI^-1
 
   // ---------- reverb: impulse built once, send glides up from silence ----------
   var conv = null;

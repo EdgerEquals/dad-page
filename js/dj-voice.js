@@ -89,6 +89,7 @@
   // ---------- one sung note ----------
   var live = 0, sung = 0;
   function sing(lay, m, from, t, dur, lvl, I, last) {
+    var DK = D.desk; if (DK && !DK.on('voice')) return; if (DK) DK.act('voice', t, lvl);   // the desk's voice channel: mute / solo, meter (Danny 18:12 AWST 27 Oct)
     if (!lay || !lay.out || !(lvl > LEAD * Math.pow(PHI, -8))) return;     // phi: below PHI^-8 of the lead it is inaudible; no nodes
     var Z = shared(); if (!Z) return; var c = Z.c;
     var f = mtof(m), f0 = mtof(from == null ? m : from), tp = Math.pow(PHI, -2 - I), ta = Math.pow(PHI, -3 - I), tr = last ? Math.pow(PHI, -I) : Math.pow(PHI, -3 - I);

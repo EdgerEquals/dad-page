@@ -18,7 +18,26 @@
     ['critters', '\uD83D\uDC1E', 'Critters'], ['sun', '\u2600\uFE0F', 'Sun & planets'], ['earth', '\uD83C\uDF0D', 'Earth & Moon'],
     ['ping', '\uD83D\uDCE1', 'Dish ping'], ['sky', '\u2728', 'Star spin'], ['ring', '\uD83E\uDE90', 'Space ring'],
     ['matrix', '\uD83D\uDFE9', 'Matrix rain'], ['code', '\uD83D\uDCDC', 'Code drift'], ['loop', '\uD83C\uDF9E\uFE0F', 'Space loop']];
-  root.AnimTiles = { list: A.map(function (a) { return a[0]; }), open: open };
+  // DESK, VISUAL SIDE (Danny 18:15 AWST 27 Oct 2026, Claude chat: 'a duplicate page but for the visual layer, again with visual reference to
+  // the actual emoji that represent that node or the animation'): Ed's desk (js/dj-desk.js) sets per animation MUTE / SOLO (its pieces
+  // hidden by visibility, so every clock and path keeps running and the collision engine skips them, as js/anim-solo.js does) and SPEED (a
+  // rung PHI^r on its CSS animations through js/ratio-pump.js's per-element factors). Saved on this device ('dadDesk.visual.v1') and applied
+  // here at every load. Pieces are each animation's own (anim-solo's map without the borrowed backdrops).
+  var KV = 'dadDesk.visual.v1', PIECES = { rain: ['.rain'], comet: ['.es-comet'], rocket: ['#rk1', '.rb-l'], critters: ['#foot .note'], sun: ['.pl-sun', '.pl-small', '.sm-n', '.sm-b', '.tsl-layer'],
+    earth: ['.pl-big', '.pl-moon', '.pl-sat', '.pl-ast'], ping: ['.pl-scope', '.pl-dish'], sky: ['.es-layer'], ring: ['.qs-layer'], matrix: ['#mxrain'], code: ['.home-code'], loop: ['#bgloop', '.bgloop-still'] };
+  var vSt = null, vSp = {};
+  function vload() { try { return JSON.parse(localStorage.getItem(KV) || '{}') || {}; } catch (e) { return {}; } }
+  function deskApply(st) {
+    st = st || vload(); var m = st.m || {}, so = st.s || {}, sp = st.sp || {}, any = Object.keys(so).some(function (k) { return so[k]; }), css = '';
+    function hid(k) { return !!m[k] || (any && !so[k]); }
+    Object.keys(PIECES).forEach(function (k) { if (hid(k)) css += PIECES[k].join(',') + '{visibility:hidden!important}'; });
+    if (hid('sky') && !hid('comet')) css += '.es-comet:not(.ec-gone){visibility:visible!important}';   // the comet rides inside the star layer
+    if (!vSt) { vSt = doc.createElement('style'); vSt.id = 'desk-visual'; doc.head.appendChild(vSt); } vSt.textContent = css;
+    var RP = root.RatioPump, inf = RP && RP.info && RP.info(), slow = inf && inf.slow;
+    if (slow) { Object.keys(PIECES).forEach(function (k) { var f = Math.pow(PHI, +sp[k] || 0), e = vSp[k]; if (!e) { if (f === 1) return; e = vSp[k] = [PIECES[k].join(','), f]; slow.push(e); } e[1] = f; }); try { RP.refresh(); } catch (e2) {} }
+  }
+  root.AnimTiles = { list: A.map(function (a) { return a[0]; }), open: open, pieces: PIECES, desk: function (st) { try { localStorage.setItem(KV, JSON.stringify(st)); } catch (e) {} deskApply(st); }, deskState: vload };
+  (function () { var st = vload(); if (st && (st.m || st.s || st.sp)) { if (root.RatioPump) deskApply(st); else setTimeout(function () { deskApply(st); }, 0); } })();
   var U = 'var(--fc-u,var(--hw-u,min(100vw,100svh * ' + r(-1) + ')))';
   function u(n) { return 'calc(' + U + ' * ' + r(n) + ')'; }
   var T = r(-2) + 's';

@@ -86,7 +86,7 @@
   var NS = 'http://www.w3.org/2000/svg';
   var W = [
     { k: 'dj', t: "Ed's DJ booth", s: 'decks asleep \u00b7 tap to wake', p: '<span class="hw-eq">' + '<i></i><i></i><i></i><i></i><i></i>' + '</span>',
-      go: function () { if (root.DadDJPanel) DadDJPanel.open(); } },   // opens the pop-up (the music button itself is on/off since onoff1, Danny 13:44 AWST 27 Oct)
+      go: function () { if (root.DadDJPanel) DadDJPanel.open(); } },   // opens Ed's desk (a page in the main area since desk1, Danny 18:21 AWST 27 Oct)
     { k: 'sky', t: 'Sky over Perth', s: '\u2026', p: '<span class="m" aria-hidden="true">\uD83C\uDF15</span><span class="w" aria-hidden="true"></span>',
       go: function () { pop('#wx'); } },
     { k: 'gc', t: 'Ground control', s: 'simmie$ listening', p: '',

@@ -4,16 +4,22 @@
    - the music-note button (#dj-pill) = Ed's DJ on or off, one tap / click / Enter / Space, at once. It presses the engine's own switch (#dj-play,
      hidden in the pop-up), so start, stop, 'tap to resume' after a reload and the sound-switch master behave exactly as the panel switch did.
      A tap before the engine has landed still counts: the AudioContext is made inside that touch and the switch is pressed once the engine is there.
-   - the faders button beside it (#dj-edit) = Ed's DJ controls open / closed (the pop-up for now; the DJ desk page later).
+   - the faders button beside it (#dj-edit) = Ed's desk open / closed: a page in the main content area (js/dj-desk.js, fetched on the
+     first tap; Danny 18:21 AWST 27 Oct: 'Remember I want the panel to open as a page on the main content window'). The old pop-up stays
+     hidden in the page only as the engine's switch (#dj-play) and readout.
    The pop-up still closes on the X, Esc, or a tap/click outside; closing only hides it, so music keeps playing. The small mix and MIDI-export
    buttons (js/dad-autodj-quiz.js) do not close it. The DJ booth tile (js/home-windows.js) opens it through DadDJPanel.open(). */
 (function(){
   var pill=document.getElementById('dj-pill'),pop=document.getElementById('qh-djpop');if(!pill||!pop)return;
   var x=pop.querySelector('.djp-x'),play=document.getElementById('dj-play'),edit=document.getElementById('dj-edit');
   var PHI=(1+Math.sqrt(5))/2,MS=1e3;                                               // unit: ms per s
-  function isOpen(){return !pop.hidden;}
-  function open(){pop.hidden=false;if(edit)edit.setAttribute('aria-expanded','true');if(x)x.focus({preventScroll:true});}
-  function close(refocus){if(!isOpen())return;pop.hidden=true;if(edit)edit.setAttribute('aria-expanded','false');if(refocus&&edit)edit.focus({preventScroll:true});}
+  // ---- the desk (fetched once, on the first open) ----
+  var DESK='js/dj-desk.js?v=desk1',dq=0,dw=[];
+  function desk(cb){if(window.DjDesk){cb(window.DjDesk);return;}dw.push(cb);if(dq)return;dq=1;var s=document.createElement('script');s.src=DESK;s.async=true;
+    s.onload=function(){var D=window.DjDesk;dw.splice(0).forEach(function(f){if(D)f(D);});};s.onerror=function(){dq=0;dw.length=0;};document.head.appendChild(s);}
+  function isOpen(){return !!(window.DjDesk&&window.DjDesk.isOpen);}
+  function open(){desk(function(D){D.open();});}
+  function close(refocus){if(window.DjDesk)window.DjDesk.close(refocus);}
   function flip(){isOpen()?close(false):open();}
   // ---- on / off: press the engine's switch ----
   var waitT=0;
@@ -26,10 +32,7 @@
   }
   pill.addEventListener('click',toggle);
   if(edit)edit.addEventListener('click',function(e){e.stopPropagation();flip();});
-  if(x)x.addEventListener('click',function(){close(true);});
-  document.addEventListener('keydown',function(e){if((e.key==='Escape'||e.key==='Esc')&&isOpen()){e.preventDefault();close(pop.contains(document.activeElement)||document.activeElement===edit);}});
-  document.addEventListener('pointerdown',function(e){if(!isOpen())return;var t=e.target,panel=pop.querySelector('.dad-dj');
-    var mx=document.getElementById('dj-mix'),xp=document.getElementById('dj-exp');if(pill.contains(t)||(edit&&edit.contains(t))||(mx&&mx.contains(t))||(xp&&xp.contains(t))||(panel&&panel.contains(t)))return;close(false);},true);
+  if(x)x.addEventListener('click',function(){pop.hidden=true;});
   window.DadDJPanel={open:open,close:function(){close(false);},toggle:flip,get isOpen(){return isOpen();}};
   // the button mirrors the DJ play state, so you can see the music is on while the pop-up is closed
   // continuity (Danny 13:47 AWST 26 Oct): before the DJ engine has loaded (tier 2), a DJ that was on is shown on at once, waiting for a tap
