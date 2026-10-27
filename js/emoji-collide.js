@@ -30,7 +30,10 @@
    energy at that moment; the spun-out rocket stays live (E PHI^-1, shrinking), so its next hit explodes smaller; the smoke follows it,
    sized to its size at every instant.
    Cost: one rAF loop capped at PHI^-6 s, rects of ~20-40 elements, a spatial grid, a swept test (no tunnelling between ticks);
-   effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades. */
+   effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades.
+   DJ COLLISION PUMP (Danny 10:18 AWST 27 Oct): each hit's impulse q = violence x K_t / (K_t + session mean K, weight PHI^-3) x chain E
+   feeds PhiPumps (not RatioPump): 'collisions' = 1 - e^(-A PHI^-2), A = sum q e^(-age / PHI^5 s), decayed on read; 'collisions:boom' =
+   the largest dispersion q (flames, vaporise, burst, rocket) since the last read, cleared by that read. */
 (function () {
   'use strict';
   var doc = document, root = window;
@@ -54,6 +57,14 @@
   var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
   var L = doc.createElement('div'); L.className = 'ec-l'; L.setAttribute('aria-hidden', 'true'); doc.body.appendChild(L);
   var pump = null;
+  // ---------- the collision pump feed (djcollide) ----------
+  var CA = 0, CT = 0, KM = 0, BM = 0, NQ = 0, PREG = false;
+  function tauC() { var D = root.DadAutoDJ, v = null; try { v = D && D.dial ? +D.dial('colT') : null; } catch (e) {} return v > 0 ? v : Math.pow(PHI, 5); }   // phi: PHI^5 s, or the DJ's colT dial
+  function swellA(t) { return CT ? CA * Math.exp(-(t - CT) / MS / tauC()) : 0; }
+  function swell() { return 1 - Math.exp(-swellA(performance.now()) * IP * IP); }
+  function feed(q, boom) { var t = performance.now(); CA = swellA(t) + q; CT = t; NQ++; if (boom && q > BM) BM = q; }
+  function preg() { var P = root.PhiPumps; if (PREG || !P || !P.provide) return; PREG = true;
+    P.provide('collisions', swell); P.provide('collisions:boom', function () { var b = BM; BM = 0; return b; }); }
   function k() { var P = root.PhiPumps; if (P && !pump) pump = P.node('collide', 3, 5, Math.pow(IP, 3), P.page, 89); try { return pump ? pump.out() : 1; } catch (e) { return 1; } }   // phi: 3 pumps, rungs 5.., depth PHI^-3
 
   // ---------- bodies ----------
@@ -106,7 +117,7 @@
     raf = 0; if (doc.hidden) return;
     if (now - last >= TICK) {
       last = now;
-      if (now - lastFind > FIND) { lastFind = now; scan(); }
+      if (now - lastFind > FIND) { lastFind = now; scan(); preg(); }
       DB = DB.filter(function (b) { return b.el.isConnected; });           // knocked-off emojis still flying
       var on = B.filter(function (b) { return !b.gone && now > b.until && measure(b, now); }).concat(DB.filter(function (b) { return now > b.until && measure(b, now); }));
       var open = live < MAXFX && now - lastHit > GAPS * MS;                 // the gate holds back fresh hits; a chain (a knocked-off emoji) is never held
@@ -141,7 +152,9 @@
     if (a.virt && !c.virt) c.E = a.E; if (c.virt && !a.virt) a.E = c.E;    // a knocked-off emoji hands its energy on
     var Ka = ke(a), Kc = ke(c), Kt = Ka + Kc;                              // rule 15: mass from the drawn size, energy = mass x speed^2
     var gen = Math.max(a.gen || 0, c.gen || 0) + 1, pair = ++pairs; gens[gen] = (gens[gen] || 0) + 1;
-    lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y], gen: gen, E: [a.E || 1, c.E || 1], rocket: !!(a.rk || c.rk), K: [Ka, Kc] };
+    var Ech = a.virt ? a.E : c.virt ? c.E : 1, km = KM || Kt, q = Kt > 0 ? w * Kt / (Kt + km) * (Ech || 1) : 0; KM = km + (Kt - km) * Math.pow(IP, 3);   // phi: running mean weight PHI^-3
+    feed(q, kindFx === 'flames' || kindFx === 'vaporise' || kindFx === 'burst' || !!(a.rk || c.rk)); preg();
+    lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y], gen: gen, E: [a.E || 1, c.E || 1], rocket: !!(a.rk || c.rk), K: [Ka, Kc], q: q };
     [a, c].forEach(function (b, i) {
       var sx = i ? 1 : -1, vn = b.vx * nx + b.vy * ny;                     // reflect the body's own velocity off the contact line
       var dx = b.vx - 2 * vn * nx, dy = b.vy - 2 * vn * ny, dl = Math.hypot(dx, dy);
@@ -278,8 +291,9 @@
         e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3)); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, 0, IP), opacity: 0 }], MS * IP * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
     }
   }
-  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens, booms: booms }; },
+  root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens, booms: booms, pump: { c: swell(), A: swellA(performance.now()), boom: BM, impulses: NQ, Kmean: KM, tau: tauC(), registered: PREG } }; },
+    pulse: function (q, boom) { feed(q == null ? IP : +q, !!boom); preg(); return swell(); },   // test: a forced impulse
     chains: function () { return DB.map(function (q) { return { E: q.E, gen: q.gen, x: Math.round(q.x), y: Math.round(q.y) }; }); },   // debug: knocked-off emojis still live
     test: function (fx, x, y, s) { play(fx || 'burst', { x: x || innerWidth / 2, y: y || innerHeight / 2, fs: s || 32, el: { textContent: '\uD83D\uDEF8' } }, 1, 0, 1 - IP); } };   // unit: debug only, centre of the screen
-  scan(); go();
+  scan(); preg(); go();
 })();
