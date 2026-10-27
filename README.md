@@ -15,3 +15,11 @@ EdgerEquals/simmie-chat `questionnaire-preview.html` on 25 Oct 2026; the old URL
 - Answers to the questions stay in page memory (nothing is sent anywhere). Usage counts (`js/phi-adapt.js`) stay on the device.
 - Page guard: run `bash tools/install_page_guard.sh` once per clone. Removing page elements needs a new line in `.page-guard-allow`
   approved by Danny. Rollback by tag before every change.
+
+## Credits (third-party code)
+
+Danny's rule (27 Oct 2026): always acknowledge anything we use, and expect the same in return.
+
+- **driftbox** (`js/vendor/driftbox-808.js`): the TR-808 voices and renderer from
+  [@driftbox/engine](https://github.com/emmettl/driftbox) 0.6.0 by Louis Emmett, MIT licence (full text in the file).
+  One of the units in Ed's DJ 808 bank (electro); loaded only when an electro track plays.

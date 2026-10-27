@@ -68,7 +68,8 @@
 K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.gain.setTargetAtTime(z.tilt, t, Math.pow(PHI, -2));   // phi: glide PHI^-2 s
     return z;
   }
-  function hit(tr, kind, t, v) {
+  function house(tr, kind, t, v) {                                         // our own kit (unchanged); a clap is its snare, a cowbell only exists on the 808
+    if (kind === 'clap') kind = 'snare'; else if (kind === 'cow') return;
     var g = C().createGain(); g.connect(tr.out);
     if (kind === 'kick' || kind === 'tom') {
       var o = C().createOscillator(), f0 = FLO * Math.pow(PHI, kind === 'kick' ? 2 * PHI + IPH : 2 * PHI), f1 = FLO * Math.pow(PHI, kind === 'kick' ? PHI : PHI + IPH), dec = kind === 'kick' ? 0.12 : 0.35;
@@ -85,6 +86,52 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * (kind === 'snare' ? 0.22 : kind === 'shaker' ? 0.05 : 0.06), t + len * Math.pow(PHI, -5)); g.gain.exponentialRampToValueAtTime(0.0001, t + len);   // phi: a PHI^-5 attack, no onset click (MIDI Bot review)
     src.start(t, Math.random() * 0.5); src.stop(t + len + 0.02);
   }
+
+  // ---------- 808 BANK (Danny 15:2x-15:42 AWST 27 Oct, Claude chat: 'in my own studio I don't have just 1 808 ... multiple hardware
+  // units ... replicas ... I just layer them up ... I want to do the same here ... do both'; 15:42 'build them both and get them in there
+  // so I can hear them') ----------
+  // Genres with bank: 1 (electro) play every drum hit on a rack of 808s. Unit 0 is the driftbox 808 at stock settings ('body'), unit 1
+  // our own kit above (house, unchanged), unit 2 the driftbox 808 set up as a 'sub' box (a golden step lower, longer, no click: kick,
+  // toms, snare body), unit 3 as a 'snap' box (shorter, brighter, more click / snappy: kick, snare, clap, hats). driftbox = @driftbox/engine
+  // 0.6.0 by Louis Emmett, MIT (js/vendor/driftbox-808.js, licence and credit there), loaded on the first electro hit; until it lands the
+  // house kit plays alone. Each driftbox unit is a few cents out (golden cents, +-PHI^5 / 2) and a few ms late (golden ms, 0..PHI^-11 s),
+  // so the layers thicken instead of doubling.
+  // THE RULE (docs/electrical-model.md): no gain dial anywhere here. How many units play is a pump count from the track's energy arc
+  // (sub joins above PHI^-2, snap above PHI^-1: thresholds); each unit's share is a fixed coupling on the golden ladder PHI^-k / sqrt 5
+  // (1 + PHI^-1 + PHI^-2 + PHI^-3 = sqrt 5, so the full rack sums to one kit); the 808's own voice balance is the driftbox kit's trims,
+  // anchored to our kick by measurement (KM). Closed hats choke open ones (one circuit on the real machine). At most PHI^7 driftbox
+  // voices sound at once (a count); past that a hit gets its body unit only.
+  var D8 = null, d8Req = false, D8URL = 'js/vendor/driftbox-808.js?v=e808a';
+  var B8 = { kick: '808.bd', snare: '808.sd', clap: '808.cp', tom: '808.lt', hat: '808.ch', shaker: '808.ma', cow: '808.cb' }, B8V = {};
+  var KM = 0.2576;                                                         // data: our kick / driftbox kick, RMS of the first 200 ms, 48 kHz offline render (Claude, 27 Oct)
+  var SHARE = [0, 1, 2, 3].map(function (k) { return Math.pow(PHI, -k) / Math.sqrt(5); });   // phi: ladder shares body, house, sub, snap
+  var ROLE = [{ tune: 1 / 2, decay: 1 / 2, tone: 1 / 2, colour: 1 / 2 }, null,
+              { tune: IPH * IPH, decay: IPH, tone: IPH * IPH, colour: Math.pow(IPH, 4) },    // sub: a golden step down, longer, darker, no click
+              { tune: IPH, decay: IPH * IPH, tone: IPH, colour: IPH }];                      // snap: up a step, shorter, brighter, more click
+  var SUBK = { kick: 1, tom: 1, snare: 1 }, SNAPK = { kick: 1, snare: 1, clap: 1, hat: 1 }, d8live = [];
+  function load808() { if (d8Req) return; d8Req = true; var sc = document.createElement('script'); sc.src = D8URL; sc.async = true;
+    sc.onload = function () { var W = window.Driftbox808; if (!W || !W.voices) return; W.voices.forEach(function (x) { B8V[x.id] = x; }); D8 = W; }; document.head.appendChild(sc); }
+  function retune(spec, r) { spec.sources.forEach(function (s) { if (s.kind !== 'osc') return; s.frequency *= r; if (s.pitch) s.pitch = s.pitch.map(function (q) { return { to: q.to * r, at: q.at, curve: q.curve }; }); }); return spec; }
+  function bank(tr, kind, t, v, a) {
+    var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, c = C(), now = c.currentTime;
+    if (!D8) { load808(); house(tr, kind, t, v); return; }
+    var id = kind === 'hat' && a === 'x' ? '808.oh' : kind === 'tom' && tk.step % 16 >= 16 - 2 ? '808.mt' : B8[kind], V = B8V[id];   // the fill's last toms step up to the mid tom
+    house(tr, kind, t, v * SHARE[1]);
+    if (!V) return;
+    d8live = d8live.filter(function (x) { return x > now; });
+    var on = [0]; if (SUBK[kind] && e > IPH * IPH) on.push(2); if (SNAPK[kind] && e > IPH) on.push(3);   // pump count: units join as the arc rises
+    if (d8live.length > Math.pow(PHI, 7)) on = [0];                        // phi: voice cap PHI^7
+    var acc = Math.max(0, Math.min(1, (v - IPH) / (1 - IPH)));             // x hits (v >= 1) are accented, o hits (v = PHI^-1) not
+    if (kind === 'hat' && a !== 'x' && tr.oh) { tr.oh.forEach(function (o) { try { o.gain.cancelScheduledValues(t); o.gain.setTargetAtTime(0, t, Math.pow(PHI, -12)); } catch (er) {} }); tr.oh = null; }   // phi: choke over PHI^-12 s
+    on.forEach(function (u) {
+      var R = ROLE[u], k = (u * IPH) % 1, cents = (k - 1 / 2) * Math.pow(PHI, 5), dt = k * Math.pow(PHI, -11);   // phi: golden cents and ms per unit
+      var pan = kind === 'hat' || kind === 'cow' || kind === 'shaker' ? (u % 2 ? -1 : 1) * Math.pow(IPH, 3) : 0;   // phi: hats a little wide, the rest centred
+      var spec = retune(V.build({ tune: R.tune, decay: R.decay, tone: R.tone, colour: R.colour, level: 1, pan: (1 + pan) / 2 }, acc), Math.pow(2, cents / 1200));
+      spec.trim = V.trim * KM * v * SHARE[u];
+      try { var o = D8.renderVoice(c, spec, tr.out, t + dt); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
+    });
+  }
+  function hit(tr, kind, t, v, a) { if (tr.g && tr.g.bank) bank(tr, kind, t, v, a); else house(tr, kind, t, v); }
 
   // ---------- reverb: impulse built once, send glides up from silence ----------
   var conv = null;
