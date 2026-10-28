@@ -15,7 +15,7 @@ function ok(n, c, x) { R.push((c ? 'PASS ' : 'FAIL ') + n + (x ? '  [' + x + ']'
     const g = (m, k) => (m.find(x => x.name === k) || {}).value; return +(100 * (g(m1, 'TaskDuration') - g(m0, 'TaskDuration')) / (g(m1, 'Timestamp') - g(m0, 'Timestamp'))).toFixed(1); };
   const before = { genre: await p.evaluate(() => DadAutoDJ.track.genre), cpu: await cpu(10) };
   const inst = await p.evaluate(() => { const I = DadAutoDJ._kit && DadAutoDJ._kit.INST; if (!I) return 'no INST'; window.__c = {}; ['jup', 'juno', 'junopad', 'dx', 'bell', 'stab', 'square'].forEach(k => { const f = I[k]; if (!f) return; I[k] = function () { __c[k] = (__c[k] || 0) + 1; return f.apply(this, arguments); }; }); return Object.keys(I).join(','); });
-  await p.evaluate(() => { DadAutoDJ.desk.dial('fmM', -1); DadAutoDJ.desk.setPick('electro'); });
+  await p.evaluate(() => { DadAutoDJ.desk.dial('fmM', -1); ['lN', 'mBl', 'soloP'].forEach(k => DadAutoDJ.desk.dial(k, k === 'lN' ? 1 : 0)); DadAutoDJ.desk.setPick('electro'); });   // the melody dials as before melody1: one lead voice, no build, no solo (this test counts the DX7's notes)
   for (let i = 0; i < 90; i++) { if (await p.evaluate(() => DadAutoDJ.track.genre) === 'electro') break; await p.waitForTimeout(500); }
   await p.waitForTimeout(4000);
   const meas = (sec) => p.evaluate(async (sec) => { const a = window.__an, d = new Float32Array(a.fftSize); let pk = 0, ss = 0, n = 0, t0 = performance.now();

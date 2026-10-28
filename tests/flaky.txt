@@ -1,2 +1,3 @@
 no chip blips in electro
 intro: no bass, chords, pad or lead
+full drive on the drums is louder and still finite
