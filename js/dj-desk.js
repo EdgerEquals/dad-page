@@ -145,7 +145,9 @@
       ['e', 'w'].forEach(function (k) { if (((k === 'e' ? D.mx.e : D.mx.w)[ch] | 0) > 0) D.send(ch, k, 0); });
       // LEVEL (Danny 08:43 'lost my ability to change the volumes'; 08:49 'build them in'): a loss knob, 0 dB down a rung at a time to off,
       // with the channel's stereo VU on its left (the energy in the circuit after the level; mono channels move both sides together)
-      var lvk = fader({ id: 'level.' + ch, name: 'level', k: 'L', L: [6, 5, 4, 3, 2, 1, 0], def: 0, lab: function (v) { return v >= 6 ? 'off' : v === 0 ? '0 dB' : '\u2212' + (v * 20 * Math.log10(PHI)).toFixed(1) + ' dB'; }, get: function () { return D.level ? D.level(ch) : 0; }, set: function (v) { if (D.level) D.level(ch, v); } });
+      // DRIVE (Danny 09:44 AWST 28 Oct: 'I need to be able to turn things up ... overdrive everything'): the level knob now goes both ways,
+      // a rung (about 4.2 dB) a step from off up to +21 dB; above 0 dB the channel overloads like a console channel driven hot
+      var lvk = fader({ id: 'level.' + ch, name: 'level', k: 'R', L: [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5], def: 0, note: 'above 0 dB the channel drives into overload', lab: function (v) { return v <= -6 ? 'off' : v === 0 ? '0 dB' : (v > 0 ? '+' : '\u2212') + (Math.abs(v) * 20 * Math.log10(PHI)).toFixed(1) + ' dB' + (v > 0 ? ' drive' : ''); }, get: function () { return D.level ? D.level(ch) : 0; }, set: function (v) { if (D.level) D.level(ch, v); } });
       var row = E('div', 'dk-chr'); row.appendChild(vu.el); row.appendChild(lvk.el); c.appendChild(row); grid.appendChild(c);
       FD.push({ el: c, paint: function () { c.querySelectorAll('.dk-sw').forEach(function (b) { if (b._sync) b._sync(); }); c.classList.toggle('is-off', !D.on(ch)); },
         meter: null, f: { id: 'ch.' + ch } });
@@ -337,6 +339,14 @@
     sy.appendChild(E('div', 'dk-sub', 'cascade'));
     bank(sy, [gr('taps → energy', 'C', IPH * IPH, 'with the energy model (Phase 2)'), gr('self-sustain', 'N', 1, 'pumps on the loop; loop gain 1 = sustains (Phase 2)'), gr('busy cap', 'V', PHI, 'the zener knee over the strike (Phase 2)')]);
     tools(sy, s1.concat(s2));
+    // MY MOVES (Danny 09:44 AWST 28 Oct: 'I need you to look out for me, what settings I had last night ... make that the default volumes
+    // for electro'): the desk's history of moves lives only on this phone; this hands the last three days of it, and the settings now, to
+    // the share sheet (or copies them) so they can be pasted to Claude.
+    sy.appendChild(E('div', 'dk-sub', 'my moves')); var shr = E('div', 'dk-sws'), SHL = 'share my moves';
+    var shb = sw(SHL, function () { return false; }, function () { var since = Date.now() - 3 * 24 * 3600 * 1000, t = JSON.stringify({ at: new Date().toISOString(), pick: D.pick, mx: D.mx, dial: D.dials || null, moves: ld(KH, []).filter(function (x) { return x[0] >= since; }) });
+      var done = function (m) { shb.textContent = m; setTimeout(function () { shb.textContent = SHL; }, 2600); }, copy = function () { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done('copied: paste it to Claude'); }, function () { done('could not copy'); }); else done('could not copy'); };
+      if (navigator.share) navigator.share({ title: "Ed's DJ moves", text: t }).then(function () { done('shared'); }, copy); else copy(); });
+    shr.appendChild(shb); sy.appendChild(shr);
   }
 
   // ---------- VISUAL page (Danny 18:15 AWST 27 Oct: 'a duplicate page but for the visual layer, again with visual reference to the actual

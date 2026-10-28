@@ -497,8 +497,8 @@
     var xo = ctx.createGain(), xoM = ctx.createGain(), xoF = ctx.createGain(); xo.gain.value = xoM.gain.value = xoF.gain.value = XL; xo.connect(out); xoM.connect(oM); xoF.connect(oF);   // extras glide in here: drums, the arp (music bus), the lead, answer and voice (front bus)
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var sE = ctx.createGain(), sW = ctx.createGain(); sE.gain.value = sW.gain.value = 0.0001;   // the track's echo / wash send busses, faded with it (the mixer)
-    var lay = function (to, ch) { var n = ctx.createGain(), lv = ctx.createGain(); n.gain.value = 1; lv.gain.value = levelG(ch); n.connect(lv); lv.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');
-      lv.connect(se); se.connect(sE); lv.connect(sw); sw.connect(sW); return { g: gx, out: n, lv: lv, rev: rv, ch: ch, se: se, sw: sw }; };   // lv: the channel's level (a loss), after the arc, before the sends   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
+    var lay = function (to, ch) { var n = ctx.createGain(), lv = ctx.createGain(), ov = ctx.createWaveShaper(); n.gain.value = 1; lv.gain.value = levelG(ch) / OVH; ov.curve = ovCurve(); ov.oversample = '2x'; n.connect(lv); lv.connect(ov); ov.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');   // DRIVE: level -> the channel's overload -> the bus and the sends
+      ov.connect(se); se.connect(sE); ov.connect(sw); sw.connect(sW); return { g: gx, out: n, lv: lv, rev: rv, ch: ch, se: se, sw: sw }; };   // lv: the channel's level (a loss), after the arc, before the sends   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
     var dk = ctx.createGain(), dkB = ctx.createGain(); dk.gain.value = dkB.gain.value = 1; dk.connect(oM); dkB.connect(oB); var L = { drums: lay(xo, 'drums'), lead: lay(xoF, 'lead'), answer: lay(xoF, 'answer'), voice: lay(xoF, 'voice'), bass: lay(dkB, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xoM, 'arp');   // the kick's duck: dk (pad, chords) and dkB (bass)   // voice: js/dj-voice.js sings here
     var hb0 = phoneBass(L.bass.out, dkB, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
     var T = { dk: dk, dkB: dkB, outs: OUTS, xos: [xo, xoM, xoF], dr: M.donor && !g.own ? GEN[M.donor] : g, shift: g.own ? 0 : M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: X0, sE: sE, sW: sW, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; });
@@ -797,13 +797,21 @@
   // played in the last beat (velocity sum), read by the desk once a beat. All saved with the DJ (mx).
   var CHS = ['drums', 'bass', 'chords', 'arp', 'pad', 'lead', 'answer', 'voice'];
   var SENDL = [0, Math.pow(PHI, -4), Math.pow(PHI, -3), Math.pow(PHI, -2), IPH, 1];   // phi: send rungs, off .. full
-  var MX = { m: {}, s: {}, e: {}, w: {}, b: {}, l: {} }, MX0 = JSON.stringify(MX), AQ = {}, FXS = null;
+  var MX = { m: {}, s: {}, e: {}, w: {}, b: {}, l: {}, g: {} }, MX0 = JSON.stringify(MX), AQ = {}, FXS = null;
   // CHANNEL LEVEL (Danny 08:43 AWST 28 Oct: 'I've lost my ability to change the volumes in mixer'; 08:48-08:49 the knobs, 'build them in'):
   // a LOSS, one of the five dial types: each channel only turns down, PHI^-1 (about 4.2 dB) a rung from 0 to 5, and 6 is off. It sits after
   // the layer's energy arc and before its sends (post-fader), and the channel meters read it too (the circuit's energy after the loss).
-  var LVMAX = 6;
-  function levelG(ch) { var k = MX.l[ch] | 0; return k >= LVMAX ? 0 : Math.pow(PHI, -k); }
-  function applyLevels() { var t = ctx ? ctx.currentTime : 0; tracks.forEach(function (tr) { layers(tr).forEach(function (L) { if (L.lv) L.lv.gain.setTargetAtTime(levelG(L.ch), t, Math.pow(PHI, -5)); }); }); }   // phi: glide PHI^-5 s
+  // DRIVE (Danny 09:44 AWST 28 Oct, Claude chat: 'I need to be able to turn things up in the mixer not just down because I want to drive
+  // them all up against the compressors and the limits and get ... distortion and overdrive ... I need that built-in'): the level is now a
+  // RUNG both ways, -5 .. +5 (PHI per rung, about 4.2 dB; +5 is about +21 dB), -6 off; the old loss setting carries over (l -> -l). Above
+  // 0 the channel OVERLOADS like a console channel pushed hot: after the level a soft clip, straight up to PHI^-1 of full scale, then a
+  // tanh into full scale, so a channel only distorts once it is driven. The shaper sees the level over PHI^3 of headroom (its input is
+  // scaled down by PHI^3 and its curve back up), so nothing below the knee changes; the ceiling and the master still sit after it.
+  var LVMAX = 6, DRMAX = 5, OVH = Math.pow(PHI, 3), OVC = null;
+  function rungOf(ch) { return MX.g[ch] != null ? MX.g[ch] : -(MX.l[ch] | 0); }
+  function levelG(ch) { var k = rungOf(ch); return k <= -LVMAX ? 0 : Math.pow(PHI, k); }
+  function ovCurve() { if (OVC) return OVC; var n = 4097, a = new Float32Array(n), K = IPH; for (var i = 0; i < n; i++) { var x = (i / (n - 1) * 2 - 1) * OVH, ax = Math.abs(x), y = ax <= K ? ax : K + (1 - K) * Math.tanh((ax - K) / (1 - K)); a[i] = x < 0 ? -y : y; } return (OVC = a); }   // phi: straight to PHI^-1, a tanh to full scale over the last PHI^-2
+  function applyLevels() { var t = ctx ? ctx.currentTime : 0; tracks.forEach(function (tr) { layers(tr).forEach(function (L) { if (L.lv) L.lv.gain.setTargetAtTime(levelG(L.ch) / OVH, t, Math.pow(PHI, -5)); }); }); }   // phi: glide PHI^-5 s
   function chOn(ch) { var any = false, k; for (k in MX.s) if (MX.s[k]) { any = true; break; } return any ? !!MX.s[ch] : !MX.m[ch]; }
   function chOf(part, tr) { return tr && tr.ch || (part === 'bass' ? 'bass' : part === 'lead' ? 'lead' : part === 'drums' ? 'drums' : 'chords'); }
   function sendV(ch, k) { var i = (k === 'e' ? MX.e : MX.w)[ch] | 0; return Math.max(1e-4, SENDL[clamp(i, 0, SENDL.length - 1)]); }
@@ -1215,7 +1223,7 @@
     if (s.sg) Object.keys(sign).forEach(function (k) { var a = s.sg[k]; if (a && a.length === DIMS.length && a.every(function (v) { return v === -1 || v === 0 || v === 1; })) sign[k] = a.slice(); });   // the signs dial is a choice: it carries                             // learned level per unit of nominal volume (a calibration, kept)
     if (s.ks) Object.keys(KP).forEach(function (k) { if (isFinite(s.ks[k])) kseed[k] = s.ks[k]; });   // knob seeds are choices: they carry like the mix
     if (s.mix != null && isFinite(s.mix)) mixSeed = s.mix; M = withKnobs(genome(mixSeed));   // his mix choice carries through reloads and the daily restart
-    if (s.mx && typeof s.mx === 'object') ['m', 's', 'e', 'w', 'l'].forEach(function (k) { var o = s.mx[k]; MX[k] = {}; if (o) CHS.forEach(function (c) { if (o[c] != null) MX[k][c] = k === 'm' || k === 's' ? !!o[c] : k === 'l' ? clamp(o[c] | 0, 0, LVMAX) : clamp(o[c] | 0, 0, SENDL.length - 1); }); });
+    if (s.mx && typeof s.mx === 'object') ['m', 's', 'e', 'w', 'l', 'g'].forEach(function (k) { var o = s.mx[k]; MX[k] = {}; if (o) CHS.forEach(function (c) { if (o[c] != null) MX[k][c] = k === 'm' || k === 's' ? !!o[c] : k === 'l' ? clamp(o[c] | 0, 0, LVMAX) : k === 'g' ? clamp(Math.round(+o[c] || 0), -LVMAX, DRMAX) : clamp(o[c] | 0, 0, SENDL.length - 1); }); });
     if (s.mx && s.mx.b && typeof s.mx.b === 'object') { MX.b = {}; Object.keys(s.mx.b).forEach(function (r) { var b = s.mx.b[r]; if (b && Array.isArray(b.m) && Array.isArray(b.s)) MX.b[r] = { m: b.m.map(Boolean).slice(0, 8), s: b.s.map(Boolean).slice(0, 8) }; }); }   // the desk's mutes, solos and sends carry like the dials
     if (Array.isArray(s.mm)) { var mr0 = Array.isArray(s.mr) && s.mr.length === s.mm.length ? s.mr : s.mm.map(function () { return null; }), keep = s.mm.map(function (c, q) { return Array.isArray(c) && c.length >= 2 && c.length <= 32 && c.every(function (v) { return Math.abs(v) <= 12 && v === Math.round(v); }) ? q : -1; }).filter(function (q) { return q >= 0; }).slice(-MEMN); MEMO = keep.map(function (q) { return s.mm[q]; }); MEMR = keep.map(function (q) { var r = mr0[q]; return isFinite(r) && r >= 0 && r < 4294967296 ? r >>> 0 : null; }); }   // the themes carry like the mix
     TAPR = s.tt > 0 && isFinite(s.tt) ? +s.tt : 1; TAPB = s.tb > 0 && isFinite(s.tb) ? +s.tb : 0; GPICK = s.gp && (GEN[s.gp] || s.gp === 'random') ? s.gp : null;   // tapped tempo + genre pick carry like the mix
@@ -1460,10 +1468,10 @@
   var REBUILD = ['modeR', 'modeLo', 'loopLo', 'loopHi', 'hrLo', 'hrHi', 'rho0', 'rho1', 'recall', 'mRh'], rbT = 0;   // faders only a new track hears
   // the desk's handle (js/dj-desk.js): read and set everything it shows, through the same paths the old panel used
   var DESK = { CHS: CHS, SENDL: SENDL, on: chOn, box: boxOn, meter: chMeter, act: function (ch, t, v) { act(ch, t, v); },
-    get mx() { return JSON.parse(JSON.stringify(MX)); },
+    get mx() { return JSON.parse(JSON.stringify(MX)); }, get dials() { return JSON.parse(JSON.stringify(DIAL)); },   // the dials too (the desk's 'share my moves')
     mute: function (ch, v) { if (CHS.indexOf(ch) < 0) return; MX.m[ch] = !!v; save(); },
     solo: function (ch, v) { if (CHS.indexOf(ch) < 0) return; MX.s[ch] = !!v; save(); },
-    level: function (ch, k) { if (CHS.indexOf(ch) < 0) return null; if (k != null && isFinite(k)) { MX.l[ch] = clamp(Math.round(k), 0, LVMAX); applyLevels(); save(); } return MX.l[ch] | 0; },
+    level: function (ch, k) { if (CHS.indexOf(ch) < 0) return null; if (k != null && isFinite(k)) { MX.g[ch] = clamp(Math.round(k), -LVMAX, DRMAX); delete MX.l[ch]; applyLevels(); save(); } return rungOf(ch); },   // DRIVE: a rung, -6 off .. +5
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
     get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); }, get forms() { return FKEYS.slice(); },
