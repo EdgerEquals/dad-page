@@ -311,6 +311,19 @@
   doc.addEventListener('resume', poke('resume'));
   ['touchend', 'click', 'keydown'].forEach(function (n) { doc.addEventListener(n, function () { setTimeout(hook, 0); }, true); });   // the DJ builds its context on a tap
   setInterval(function () { if (!doc.hidden || !AU.down) poke('beat')(); }, CADENCE * MS);   // phi: a PHI^4 s check catches a silent interruption end
+  // RELOADS BY THE PHONE (Danny 14:15 AWST 28 Oct, Claude chat: 'if you just listening at some point it times out I think the website
+  // reloads'): nothing in the site reloads the page, so a reload mid-listen is iOS ending the tab (memory or energy) and Safari loading it
+  // again. A heartbeat every PHI^4 s keeps {when, playing since, hidden} on this phone; a page that leaves normally says goodbye (pagehide).
+  // On load, a last heartbeat that was playing and never said goodbye goes into the sound log: how long it had played, how long since its
+  // last beat, whether it was in the background, and how this load came about (navigation type). Read with the desk's 'share sound log'.
+  var HBK = 'dadRhythm.heartbeat.v1', HB0 = Date.now(), HBS = null;
+  function hbWrite(bye) { var p = wanted(); if (p && HBS == null) HBS = Date.now(); if (!p) HBS = null;
+    try { root.localStorage.setItem(HBK, JSON.stringify({ t: Date.now(), playing: p, since: HBS, up: Date.now() - HB0, hidden: doc.hidden, state: st(), bye: !!bye })); } catch (e) {} }
+  try { var hb = JSON.parse(root.localStorage.getItem(HBK) || 'null'), nv = root.performance && performance.getEntriesByType ? (performance.getEntriesByType('navigation')[0] || {}).type : '';
+    if (hb && hb.playing && !hb.bye) note('page reloaded by the phone while playing: had played ' + Math.round((hb.t - (hb.since || hb.t)) / 6e4) + ' min, page up ' + Math.round(hb.up / 6e4) + ' min, last beat ' + Math.round((HB0 - hb.t) / 1e3) + ' s before this load, ' + (hb.hidden ? 'in the background' : 'on screen') + ', audio ' + hb.state + ', load: ' + (nv || '?'));
+  } catch (e) {}
+  setInterval(function () { hbWrite(false); }, CADENCE * MS); root.addEventListener('pagehide', function () { hbWrite(true); });   // phi: the same PHI^4 s cadence
+  doc.addEventListener('visibilitychange', function () { hbWrite(false); });
   try { var MSn = navigator.mediaSession; if (MSn) { var sa = MSn.setActionHandler.bind(MSn);   // the lock screen / Control Center play button also starts the ladder
     MSn.setActionHandler = function (k, f) { return sa(k, k === 'play' && f ? function (d) { note('session: play'); var r = f(d); setTimeout(poke('session-play'), 0); return r; } : f); }; } } catch (e) {}
   root.RhythmContinuity.audio = { info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },

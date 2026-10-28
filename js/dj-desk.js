@@ -370,7 +370,15 @@
     var shb = sw(SHL, function () { return false; }, function () { var since = Date.now() - 3 * 24 * 3600 * 1000, t = JSON.stringify({ at: new Date().toISOString(), pick: D.pick, mx: D.mx, dial: D.dials || null, moves: ld(KH, []).filter(function (x) { return x[0] >= since; }) });
       var done = function (m) { shb.textContent = m; setTimeout(function () { shb.textContent = SHL; }, 2600); }, copy = function () { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done('copied: paste it to Claude'); }, function () { done('could not copy'); }); else done('could not copy'); };
       if (navigator.share) navigator.share({ title: "Ed's DJ moves", text: t }).then(function () { done('shared'); }, copy); else copy(); });
-    shr.appendChild(shb); sy.appendChild(shr);
+    shr.appendChild(shb);
+    // SOUND LOG (Danny 14:15 AWST 28 Oct, Claude chat: 'The Audio is dropping out ... sometimes that stops ... at some point it times out I think
+    // the website reloads'): js/rhythm-continuity.js logs every interruption, every resume try and every reload by the phone on this phone only;
+    // this hands that log (and the state now) to the share sheet so it can be pasted to Claude.
+    var SLL = 'share sound log', slb = sw(SLL, function () { return false; }, function () { var A = window.RhythmContinuity && RhythmContinuity.audio, hb = null; try { hb = JSON.parse(localStorage.getItem('dadRhythm.heartbeat.v1') || 'null'); } catch (e) {}
+      var t = JSON.stringify({ at: new Date().toISOString(), ua: navigator.userAgent, now: A ? A.info() : null, heartbeat: hb, log: A ? A.log() : [] }, null, 1);
+      var done = function (m) { slb.textContent = m; setTimeout(function () { slb.textContent = SLL; }, 2600); }, copy = function () { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done('copied: paste it to Claude'); }, function () { done('could not copy'); }); else done('could not copy'); };
+      if (navigator.share) navigator.share({ title: "Ed's DJ sound log", text: t }).then(function () { done('shared'); }, copy); else copy(); });
+    shr.appendChild(slb); sy.appendChild(shr);
   }
 
   // ---------- VISUAL page (Danny 18:15 AWST 27 Oct: 'a duplicate page but for the visual layer, again with visual reference to the actual
