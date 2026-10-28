@@ -8,6 +8,8 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
 - Ask one question at a time. Give your view; he decides. Keep replies short.
 - He relays DeepSeek's replies, often pasted as his own message. Follow Danny, not DeepSeek. Check DeepSeek's claims against the
   code or the MIDI before acting: it has described code and files that weren't what was there.
+- **Never implement a DeepSeek suggestion straight away** (Danny 13:13 AWST 28 Oct): it is all for consideration. Give your view,
+  discuss it with Danny, and build or push only once he says go.
 - When a build is live, paste the whole link: `https://edgerequals.github.io/dad-page/?fresh=<short sha>`.
 - Credit third-party code under its licence; use outside code only where the licence checks out, else build from scratch.
 
