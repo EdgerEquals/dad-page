@@ -238,7 +238,8 @@
     tools(pd, pfl);
     // MELODY
     var me = strip(host, 'melody', 'Melody', 'motif memory · call and response', ['lead', 'answer']);
-    var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('mRh', 'own rhythm', 'C', 0, 1, IPH * IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; })]);   // own rhythm: Danny 20:15 'Dial for now'
+    var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('mRh', 'own rhythm', 'C', 0, 1, IPH * IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }),
+      { id: 'dial.belS', name: 'bells', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how many phrases a bell plays, as lead or answer', lab: function (v) { return v === 0 ? 'none' : Math.round(v * 100) + '% of phrases'; }, get: function () { return D.dial('belS'); }, set: function (v) { D.dial('belS', v); } }]);   // own rhythm: Danny 20:15 'Dial for now'; bells: Danny 10:10 'more sparsely'
     tools(me, ml);
     // EFFECTS (the returns; the knobs of js/dj-fx.js: a step is a nudge from the live value, as the old chips)
     var ef = strip(host, 'effects', 'Effects', 'returns · the bar = where the pumps have it');
