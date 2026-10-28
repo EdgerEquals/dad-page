@@ -120,7 +120,6 @@
   // each 8-bar block nudges one syllable (a step up or down, or a syllable in or out), and the block's last phrase ends on a leap.
   // It speaks in PHI^-1 of the 8-bar blocks (golden draw per block), never in the rhythm plan's stop, never when the energy is under PHI^-3.
   var MV = [[300, 870, 2240], [570, 840, 2410], [730, 1090, 2440], [270, 2290, 3010], [640, 1190, 2390]];   // cite: Peterson & Barney, JASA 24 (1952) Table II male averages: /u/, /o/ ('bought'), /a/ ('father'), /i/, /uh/ (Hz)
-  function vMode(tk) { var m = 0; try { m = D.desk && D.desk.dial ? D.desk.dial('voM') | 0 : 0; } catch (e) {} return m === 1 ? 'singer' : m === 2 ? 'machine' : tk && tk.genre === 'electro' ? 'machine' : 'singer'; }
   function singM(lay, m, from, t, dur, lvl, vw) {
     var DK = D.desk; if (DK && !DK.on('voice')) return; if (DK) DK.act('voice', t, lvl);
     if (!lay || !lay.out || !(lvl > LEAD * Math.pow(PHI, -8))) return; var Z = shared(); if (!Z) return; var c = Z.c;
@@ -152,7 +151,8 @@
     for (;;) {
       var t = G.t + (mNext - G.step) * d16; if (t - K.ctx.currentTime > ahead) break; if (t < K.ctx.currentTime) { mNext++; continue; }
       var st = mNext, s32 = st % 32, ph = Math.floor(st / 32), blk = Math.floor(ph / SPB), rp = tk.rp, s16 = st % (SPB * SPB);
-      var sd = (tk.seed | 0) >>> 0, speak = frac(sd * IPH + blk * IPH * IPH) < IPH && (tk.e == null || tk.e >= Math.pow(IPH, 3)) && !(rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0));   // phi: PHI^-1 of the 8-bar blocks
+      var sd = (tk.seed | 0) >>> 0, kd = kind(tk), every = !plan(tk).force && (kd === 'high' || kd === 'tease');   // VOICE PER TRACK: at a peak and in a tease it speaks every block
+      var speak = (every || frac(sd * IPH + blk * IPH * IPH) < IPH) && (tk.e == null || tk.e >= Math.pow(IPH, 3)) && !(rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0));   // phi: otherwise PHI^-1 of the 8-bar blocks
       var x = speak ? mPhrase(tk, blk)[s32] : null;
       if (x) { var sc = tk.scNow || tk.sc || [0, 2, 3, 5, 7, 8, 10], ln = sc.length, base = 45 + (((tk.root - 45) % 12) + 12) % 12;   // unit: the male register, the tonic placed from A2 (MIDI 45) up
         var dg = x.st + (ph % SPB === SPB - 1 && s32 >= 24 && x === lastOf(mPhrase(tk, blk)) ? SPB : 0), n = base + sc[((dg % ln) + ln) % ln] + 12 * Math.floor(dg / ln);   // the leap: the block's last phrase ends a fifth-ish up
@@ -162,6 +162,63 @@
     }
   }
   function lastOf(P) { for (var i = P.length - 1; i >= 0; i--) if (P[i]) return P[i]; return null; }
+  // ===== VOICE PER TRACK (Danny 09:59 AWST 28 Oct, Claude chat: 'it's either in a track or it's not and if it's in a track it's in one of
+  // these three forms so that we get variation over an hour ... with electro most electro tracks don't have voice ... we should have them
+  // all on the menu'; 09:56-09:59 the talk-through: the choir in breakdowns and builds, the machine at the peaks, and for the middle one of
+  // three flavours, his pick 'three with the tease'). Each track draws (a golden draw on its seed, so a reload keeps it) whether it has a
+  // voice: the style's chance (electro PHI^-3, about 1 in 4; electronic, ambient, cinematic and piano PHI^-2; the singing styles PHI^-1)
+  // moved by DIAL.voP rungs. A voiced track draws its middle's flavour: events (rest, but the lead voice's phrase in the last 2 bars before
+  // a change: a tease), talker (the lead voice through the middle) or choir bed (the choir holds under the middle). Then by section:
+  // breakdowns and builds the CHOIR, peaks the LEAD VOICE (the machine for electro, the singer for the rest), the intro and outro rest.
+  // With Form off the energy stands in (under PHI^-2 the choir, over 1 - PHI^-3 the peak). DIAL.voM forces one voice on every track
+  // (-1 off, 1 singer, 2 machine, 3 choir); DIAL.voF forces the flavour.
+  var VCH = { electro: Math.pow(IPH, 3), electronic: IPH * IPH, ambient: IPH * IPH, cinematic: IPH * IPH, piano: IPH * IPH }, FLV = [null, 'events', 'talker', 'choir bed'];
+  function dl(k) { try { return D.desk && D.desk.dial ? +D.desk.dial(k) || 0 : 0; } catch (e) { return 0; } }
+  function plan(tk) {
+    var m = dl('voM') | 0, sd = ((tk && tk.seed) | 0) >>> 0, base = tk && VCH[tk.genre] != null ? VCH[tk.genre] : IPH, vp = dl('voP'), ch = vp <= -9 ? 0 : vp >= 9 ? 1 : clamp(base * Math.pow(PHI, vp), 0, 1);
+    var on = m === -1 ? false : m !== 0 ? true : frac(sd * IPH * IPH + Math.pow(IPH, 5)) < ch, f = dl('voF') | 0, fl = f > 0 && f < 4 ? f : 1 + Math.floor(frac(sd * Math.pow(IPH, 3) + IPH) * 3);
+    var force = m === 1 ? 'singer' : m === 2 ? 'machine' : m === 3 ? 'choir' : null;
+    return { on: on, flav: fl, force: force, chance: ch, ch: force === 'singer' || force === 'machine' ? force : tk && tk.genre === 'electro' ? 'machine' : 'singer' };
+  }
+  function kind(tk) {                                                   // the section now: 'low' (breakdown, build), 'high' (peak), 'mid', 'tease' (a middle's last 2 bars before a change), 'rest' (intro, outro)
+    var fx = tk && tk.fx; if (!fx) { var e = tk && tk.e != null ? tk.e : 1 / 2; return e < IPH * IPH ? 'low' : e > 1 - Math.pow(IPH, 3) ? 'high' : 'mid'; }
+    var lv = fx.s.lv, f = fx.s.f, k = lv === 'low' || lv === 'build' ? 'low' : lv === 'high' ? 'high' : lv === 'intro' || lv === 'out' ? 'rest' : lv === 'mid' ? 'mid'
+      : f === 'bd' || f === 'roll' ? 'low' : f === 'out' || fx.i === 0 ? 'rest' : fx.s.e1 >= 1 - Math.pow(IPH, 4) ? 'high' : 'mid';   // written forms: by flag and energy
+    return k === 'mid' && fx.next && fx.s.b - fx.bi <= 2 ? 'tease' : k;
+  }
+  function role(tk) {                                                   // 'none', 'choir' or 'lead' (the machine or the singer), now
+    var P = plan(tk); if (!P.on) return 'none'; if (P.force === 'choir') return 'choir'; if (P.force) return 'lead';
+    var k = kind(tk); if (k === 'low') return 'choir'; if (k === 'high') return 'lead'; if (k === 'rest') return 'none';
+    return P.flav === 2 ? 'lead' : P.flav === 3 ? 'choir' : k === 'tease' ? 'lead' : 'none';
+  }
+  // the CHOIR: up to three voices on the chord's tones from A3 up, swelling in over about a second on open vowels (/o/, /a/, female
+  // formants above), no vibrato, a hair of detune between them, held until the chord changes (the engine's 'chord' event, every change).
+  var CHR = { tk: null, key: '', vs: [] };
+  function cRelease(t) { var tr = IPH; CHR.vs.forEach(function (v) { try { v.env.gain.cancelScheduledValues(t); v.env.gain.setTargetAtTime(0, t, tr); v.bg.gain.cancelScheduledValues(t); v.bg.gain.setTargetAtTime(0, t, tr); v.o.stop(t + tr * Math.pow(PHI, 4)); v.nz.stop(t + tr * Math.pow(PHI, 4)); } catch (e) {} }); CHR.vs = []; CHR.key = ''; }   // phi: release tau PHI^-1 s, stopped PHI^4 taus later
+  function cVoice(lay, m, t, lvl, k) {
+    var Z = shared(); if (!Z || !lay || !lay.out) return null; var c = Z.c, F = VOW[1 + (k % 2)], ta = Math.pow(PHI, -1.5);   // phi: swell tau PHI^-1.5 s (about half a second)
+    try {
+      var o = c.createOscillator(); o.setPeriodicWave(wave(IPH * IPH)); o.frequency.value = mtof(m); o.detune.value = (k - 1) * PHI * PHI;   // a soft source; phi: detune PHI^2 cents a voice
+      var bg = c.createGain(), env = c.createGain(); bg.gain.value = 0; env.gain.value = 0; bg.gain.setValueAtTime(0, t); bg.gain.setTargetAtTime(Math.pow(PHI, -4), t, ta);   // phi: breath PHI^-4
+      var nz = c.createBufferSource(); nz.buffer = Z.nb; nz.loop = true; nz.connect(bg);
+      F.forEach(function (fv, j) { var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = j ? fv : Math.max(fv, mtof(m)); bp.Q.value = Math.pow(PHI, 2 + j); o.connect(bp); bg.connect(bp); bp.connect(env); });
+      env.gain.setValueAtTime(0, t); env.gain.setTargetAtTime(lvl, t, ta); env.connect(bus(lay));
+      var safe = t + Math.pow(PHI, 9); o.start(t); o.stop(safe); nz.start(t, frac(sung * IPH)); nz.stop(safe); live++; sung++;   // phi: a safety stop PHI^9 s (~76 s) on
+      o.onended = function () { live--; try { env.disconnect(); } catch (e) {} };
+      return { o: o, env: env, bg: bg, nz: nz };
+    } catch (e) { return null; }
+  }
+  function choir(tk, notes, t) {
+    var DK = D.desk; if (DK && !DK.on('voice')) { cRelease(t); return; }
+    var rp = notes && notes.root != null ? pc(notes.root) : null, rk = function (n) { if (rp == null) return 0; var d = pc(n - rp); return d === 0 ? 0 : d === 3 || d === 4 ? 1 : d >= 6 && d <= 8 ? 2 : 3; };   // the triad first: root, third, fifth, then the rest
+    var pcs = [], vs = []; (notes || []).slice().sort(function (a, b) { return rk(a) - rk(b); }).forEach(function (n) { var p = pc(n); if (pcs.indexOf(p) < 0 && pcs.length < 3) { pcs.push(p); vs.push(n); } });
+    var lo = 57, v2 = vs.map(function (n) { while (n < lo) n += OCT; while (n >= lo + OCT + 5) n -= OCT; return n; }).sort(function (a, b) { return a - b; });   // unit: A3 (MIDI 57) up an octave and a fourth
+    var key = v2.join(','); if (CHR.tk === tk && key === CHR.key && CHR.vs.length) return;   // the same chord: hold
+    cRelease(t); CHR.tk = tk; CHR.key = key; if (!v2.length) return;
+    var lay = tk.L ? tk.L.voice || tk.L.lead : null, lvl = LEAD * VD.peak * IPH / Math.sqrt(v2.length);   // equal power across the voices
+    if (DK) DK.act('voice', t, lvl * Math.sqrt(v2.length));
+    v2.forEach(function (n, k) { var v = cVoice(lay, n, t, lvl, k); if (v) CHR.vs.push(v); LOG.push([t, 'c', n, +lvl.toFixed(4)]); });
+  }
   // ---------- harmonise: a diatonic third or sixth under each lead note ----------
   var hPrev = null, oPrev = null, lPrev = null, lastTk = null, LOG = [];
   function inScale(tk, n) { var sc = tk.scNow || tk.sc; return !sc || sc.indexOf(pc(n - tk.root)) >= 0; }
@@ -174,7 +231,8 @@
   }
   function onNote(part, lay, m, t, d, v) {
     var tk = lay && (lay.tk || lay); if (!tk) return; if (!tk.leaving) lastTk = tk;
-    if (part !== 'lead' || !D.playing) return; lPrev = m; if (vMode(tk) === 'machine') return;   // the machine voice speaks its own phrase
+    if (part === 'chord') { if (tk.leaving || !D.playing) return; if (role(tk) === 'choir') choir(tk, m, t); else if (CHR.vs.length && CHR.tk === tk) cRelease(t); return; }   // VOICE PER TRACK: the choir follows each chord change
+    if (part !== 'lead' || !D.playing) return; lPrev = m; if (role(tk) !== 'lead' || plan(tk).ch !== 'singer') return;   // the singer harmonises only when it is this track's lead voice now
     var S = state(t, tk), n = harm(tk, m); if (n == null) return;
     var lv = S.lvl * Math.sqrt(1 - S.h) * clamp(v, 0, 1);
     sing(tk.L ? tk.L.voice || tk.L.lead : lay, n, hPrev, t, d, lv, S.I, false); hPrev = n; LOG.push([t, 'h', n, +lv.toFixed(4)]);
@@ -182,8 +240,9 @@
   // ---------- own line: a melismatic line on the live chords, on the grid ----------
   var oNext = -1, oTk = null;
   function own() {
-    var G = K.grid && K.grid(), tk = lastTk; if (!K.ctx || !G || !tk || !D.playing || tk.leaving || tk.dead) return;
-    if (vMode(tk) === 'machine') return machine(G, tk);
+    var G = K.grid && K.grid(), tk = lastTk; if (CHR.vs.length && (!D.playing || !CHR.tk || CHR.tk.leaving || CHR.tk.dead)) cRelease(K.ctx ? K.ctx.currentTime : 0);   // the choir lets go when its track leaves
+    if (!K.ctx || !G || !tk || !D.playing || tk.leaving || tk.dead) return;
+    if (role(tk) !== 'lead') return; if (plan(tk).ch === 'machine') return machine(G, tk);   // VOICE PER TRACK: the lead voice only when this track's plan gives it one now
     var ahead = Math.pow(PHI, -2), d16 = G.d16;                          // phi: write PHI^-2 s ahead on the audio clock
     if (tk !== oTk || oNext < G.step || (oNext - G.step) * d16 > ahead + SPB * SPB * d16) { oTk = tk; oNext = G.step + 1; }   // a new track restarts its own grid count
     for (;;) {
@@ -208,6 +267,6 @@
   }
   K.voiceHook(onNote);
   (K.every || setInterval)(own, Math.pow(PHI, -4) * MS);               // phi: look-ahead every PHI^-4 s on the one clock
-  D.voice = { mode: function () { return vMode(lastTk); }, state: function () { return state(K.ctx ? K.ctx.currentTime : 0, lastTk); }, get live() { return live; }, get sung() { return sung; }, log: function () { return LOG.slice(); },
+  D.voice = { mode: function () { var tk = lastTk, r = tk ? role(tk) : 'none'; return r === 'lead' ? plan(tk).ch : r; }, plan: function () { var tk = lastTk; if (!tk) return null; var P = plan(tk); P.role = role(tk); P.kind = kind(tk); P.flavName = FLV[P.flav]; return P; }, choir: function () { return { n: CHR.vs.length, key: CHR.key }; }, state: function () { return state(K.ctx ? K.ctx.currentTime : 0, lastTk); }, get live() { return live; }, get sung() { return sung; }, log: function () { return LOG.slice(); },
     dial: function (k, v) { if (VD.hasOwnProperty(k) && isFinite(v)) VD[k] = clamp(+v, VR[k][0], VR[k][1]); return VD[k]; }, get dials() { return JSON.parse(JSON.stringify(VD)); }, ranges: VR };
 })();

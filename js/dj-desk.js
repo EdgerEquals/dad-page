@@ -159,8 +159,9 @@
     ['auto', 'random'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });   // auto = the pumps choose; random = chance, each new track (Danny 18:53)
     st.appendChild(E('div', 'dk-sub', 'style')); st.appendChild(row);
     // FORM (Danny 07:46 AWST 28 Oct: 'Can you add form'): the shape over time, sections that bring whole parts in and take them out.
-    // auto = the style's own form, off = the old arc (short tracks), random = a form per track; the readout shows where the track is.
-    var fr = E('div', 'dk-sws'), FMS = [['emergent', -3], ['auto', 0], ['off', -1], ['random', -2]].concat((D.forms || []).map(function (n, i) { return [n, i + 1]; }));
+    // emergent = the pumps choose the sections (the default since 09:59 28 Oct), written = the style's own written form, off = the old
+    // arc (short tracks), random = a written form per track; the named written forms follow; the readout shows where the track is.
+    var fr = E('div', 'dk-sws'), FMS = [['emergent', -3], ['written', 0], ['off', -1], ['random', -2]]   // EMERGENT BY DEFAULT (Danny 09:59): emergent first; written = the style's own written form (was 'auto').concat((D.forms || []).map(function (n, i) { return [n, i + 1]; }));
     FMS.forEach(function (x) { fr.appendChild(sw(x[0], function () { return (D.dial('fmM') | 0) === x[1]; }, function () { D.dial('fmM', x[1]); log('dial.fmM', x[1]); fr.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
     st.appendChild(E('div', 'dk-sub', 'form')); st.appendChild(fr);
     var FML = E('div', 'dk-hint dk-txl'); st.appendChild(FML);
@@ -309,11 +310,20 @@
     tools(mbs, bfl);
     // VOICE
     var vo = strip(host, 'voice', 'Voice', null, ['voice']);
-    var vmw = E('div', 'dk-sws'); [['auto', 0], ['singer', 1], ['machine', 2]].forEach(function (x) { vmw.appendChild(sw(x[0], function () { return (D.dial('voM') | 0) === x[1]; }, function () { D.dial('voM', x[1]); log('dial.voM', x[1]); vmw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });   // MACHINE VOICE (Danny 08:57): auto = electro speaks as the machine
-    vo.appendChild(E('div', 'dk-sub', 'voice · auto: electro talks in tune, the rest sing')); vo.appendChild(vmw);
+    // VOICE PER TRACK (Danny 09:59 AWST 28 Oct: 'it's either in a track or it's not ... we should have them all on the menu'): auto = each
+    // track draws a voice or none (the chance knob), and a voiced track the flavour of its middle; the buttons force one for every track.
+    var vrow = function (k, list) { var w = E('div', 'dk-sws'); list.forEach(function (x) { w.appendChild(sw(x[0], function () { return (D.dial(k) | 0) === x[1]; }, function () { D.dial(k, x[1]); log('dial.' + k, x[1]); w.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); }); return w; };
+    vo.appendChild(E('div', 'dk-sub', 'voice · auto: a track has a voice or not; choir in breakdowns, the machine (electro) or singer at the peaks'));
+    vo.appendChild(vrow('voM', [['auto', 0], ['off', -1], ['singer', 1], ['machine', 2], ['choir', 3]]));
+    vo.appendChild(E('div', 'dk-sub', 'the middle · events: rest, a tease before each change · talker · choir bed'));
+    vo.appendChild(vrow('voF', [['auto', 0], ['events', 1], ['talker', 2], ['choir bed', 3]]));
+    var VPL = E('div', 'dk-hint dk-txl'); vo.appendChild(VPL);
+    VPLF = function () { var V = window.DadAutoDJ && DadAutoDJ.voice, P = V && V.plan && V.plan(), t = !P ? 'the voice loads after the first sound' : !P.on ? 'this track: no voice (' + Math.round(P.chance * 100) + '% of ' + ((D.live() || {}).genre || 'its') + ' tracks have one)' : 'this track: ' + (P.force ? P.force + ' (forced)' : P.ch + ' voice, ' + P.flavName) + ' · now: ' + (P.role === 'none' ? 'resting' : P.role === 'lead' ? P.ch : 'choir');
+      if (VPL.textContent !== t) VPL.textContent = t; };
+    var vpk = bank(vo, [{ id: 'dial.voP', name: 'voice tracks', k: 'C', L: [-9, -2, -1, 0, 1, 2, 9], def: 0, note: 'how many tracks have a voice, in rungs from the style\u2019s', lab: function (v) { return v <= -9 ? 'never' : v >= 9 ? 'always' : v === 0 ? 'style' : (v > 0 ? '+' : '') + v + (Math.abs(v) === 1 ? ' rung' : ' rungs'); }, get: function () { return D.dial('voP'); }, set: function (v) { D.dial('voP', v); } }]);
     var vd = function (k, name, kind, lo, hi, def) { return { id: 'voice.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return Math.abs(v - def) < 1e-9 ? 'mid' : num(v); }, get: function () { var V = d && d.voice; return V && V.dial ? V.dial(k) : null; }, set: function (v) { var V = d && d.voice; if (V && V.dial) { V.dial(k, v); var R = root.RhythmContinuity; if (R && R.save) try { R.save(); } catch (e) {} } } }; };
     var vl = bank(vo, [vd('floor', 'floor', 'V', P(-4), P(-2), P(-3)), vd('club', 'club', 'C', 1, PHI * PHI, PHI), vd('tc', 'timing', 'R', 1 / 3, 2 / 3, 1 / 2), vd('nw', 'width', 'C', 0, IPH, IPH / 2), vd('soar', 'soar', 'R', IPH, PHI, 1), vd('vib', 'vibrato', 'R', IPH, PHI, 1)]);
-    tools(vo, vl);
+    tools(vo, vpk.concat(vl));
     // SKY (the collision pump into the music)
     var sk = strip(host, 'sky', 'Sky', 'emoji crashes in the music');
     var kl = bank(sk, [dial('colT', 'swell', 'R', P(4), P(6), P(5), function (v) { return v.toFixed(1) + ' s'; }), dial('colW', 'booms vs debris', 'C', IPH, PHI, 1), dial('colF', 'fill-out', 'C', 0, 1, IPH)]);
@@ -397,7 +407,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -411,7 +421,7 @@
     KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

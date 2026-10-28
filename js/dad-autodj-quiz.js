@@ -206,8 +206,8 @@
     padM: 0, padA: 0, padD: 0, padS: 0, padR: 0, padF: 0, padG: 0, padO: IPH,
     bLib: IPH, bMut: 2, bSl: 1, bAc: 1, bShp: 0,
     mRh: IPH * IPH,
-    voM: 0,   // MACHINE VOICE (Danny 08:57 AWST 28 Oct): the voice's mode, 0 auto (electro speaks as the machine), 1 singer, 2 machine
-    fmM: -1, fmU: SPB, fmR: 1, fmS: SPB,   // FORM is built but PAUSED (Danny 08:02 AWST 28 Oct 'pause everything else into this first'): off until he turns it on
+    voM: 0, voF: 0, voP: 0,   // MACHINE VOICE (Danny 08:57 AWST 28 Oct): voM 0 auto, 1 singer, 2 machine; VOICE PER TRACK (Danny 09:59): -1 off, 3 choir; voF the middle's flavour (0 auto, 1 events, 2 talker, 3 choir bed); voP the chance a track has a voice, rungs from the style's (-9 never, 9 always)
+    fmM: -3, fmU: SPB, fmR: 1, fmS: SPB, fmV: 2,   // FORM: EMERGENT BY DEFAULT (Danny 09:59 AWST 28 Oct, Claude chat: 'I think we just want emergent embedded into electro or ... all of the different genres but ... keeping the switch there'); it was paused (off) from 08:02; fmV: the version of that default
     fmSP: 5, fmTP: 13, fmMn: 8, fmHi: Math.pow(IPH, 3), fmLo: Math.pow(IPH, 4), fmHy: Math.pow(IPH, 4), fmDr: 1,   // EMERGENT FORM (Danny 09:09 AWST 28 Oct 'All'): section pump period (phrases), track pump period (phrases), minimum track (phrases), peak threshold, breakdown threshold, let-go, length drift (phrases)
       // FORM (Danny 07:46 AWST 28 Oct): form (0 auto, -1 off, -2 random, 1.. by name), bars per phrase, build-roll bars, stop sixteenths before a drop (counts)
     mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2,
@@ -308,7 +308,7 @@
   var FXURL = 'js/dj-fx.js?v=multi1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
-  var VURL = 'js/dj-voice.js?v=voice2', vReq = false, VH = null;
+  var VURL = 'js/dj-voice.js?v=voice3', vReq = false, VH = null;
   function loadV() { if (vReq || !ctx) return; vReq = true; var sc = document.createElement('script'); sc.src = VURL; sc.async = true; document.head.appendChild(sc); }
   function idleV() { var ric = window.requestIdleCallback || function (f) { return setTimeout(f, Math.pow(PHI, 2) * MS); }; ric(loadV, { timeout: Math.pow(PHI, 5) * MS }); }   // phi: idle, at the latest PHI^5 s later
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
@@ -560,7 +560,7 @@
   // Forms are ours, written from the conventions: electro (Detroit / Kraftwerk: groove first, stabs in, full, a breakdown to pad and lead,
   // a build back with a snare roll, the drop, an outro of kick and bass), club (house / trance: a long breakdown, the kick out through
   // the build), song (verse / chorus / bridge), ternary (A B A coda, piano), arch (cinematic: swell to a climax and back), tide (ambient).
-  // DIAL.fmM: 0 auto (the style's own), -1 off (the old arc, ~37 s tracks), -2 random (a form per track), 1.. a form by name.; -3 emergent (below: the pumps choose the sections)
+  // DIAL.fmM (desk labels since 09:59 28 Oct: emergent, written, off, random): 0 written (the style's own), -1 off (the old arc, ~37 s tracks), -2 random (a form per track), 1.. a form by name.; -3 emergent (below: the pumps choose the sections)
   var FE = [Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1 - Math.pow(IPH, 4), 1];   // phi: section energies on the golden ladder
   var FORMS = {
     electro: [['intro', 2, 1, 1, 'kh'], ['groove', 2, 2, 2, 'kshcb'], ['stabs in', 2, 3, 3, 'kshcbCa'], ['full', 4, 5, 5, 'kshcbCapl', 'B'], ['breakdown', 2, 0, 0, 'pla', 'B', 'bd'],
@@ -760,6 +760,7 @@
     if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
     if (first && !bs && tr.scHi) tr.scNow = frac((ci + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
     var ch = bs ? tr.ch : first || !tr.ch ? (tr.ch = voiced(tr, deg).map(function (n) { return n + (tr.ax || 0); })) : tr.ch, root0 = bs ? nearRoot(tr, bs.root) : chordNotes(tr.scNow || tr.sc, tr.root, deg, 0)[0] + (tr.ax || 0);
+    if (first && VH) try { var cn = ch.map(function (n) { return n + 12; }); cn.root = root0 + 12; VH('chord', tr, cn, t, barLen, 1); } catch (er) {}   // VOICE PER TRACK: the choir hears every chord change, whatever the section lets play
     // chords
     if (g.chords === 'pad' && first) ch.forEach(function (n) { pl('chords', INST.pad, tr.L.pad, n + 12, t, barLen, Math.sqrt(3 / ch.length))   /* organ fix (a): equal-power chord count, the triad voiced() starts from over n notes, like voice()'s vel / sqrt(copies) */; });
     if ((g.chords === 'strum' || g.chords === 'stab' || g.chords === 'ep') && g.steps.indexOf(s16) >= 0)
@@ -1231,6 +1232,7 @@
     if (s.k > 0 && isFinite(s.k)) kRef = s.k;
     if (s.dl) Object.keys(DIAL).forEach(function (k) { if (isFinite(s.dl[k])) DIAL[k] = +s.dl[k]; });
     if (s.dl && !(s.dl.dkV >= 2)) DIAL.dkFade = 1;   // the fade was in seconds before 08:14 28 Oct: an older save starts at a bar
+    if (s.dl && !(s.dl.fmV >= 2)) DIAL.fmM = -3;   // an older save had Form paused (off): it starts emergent, as every style now does (Danny 09:59)
     if (s.dl && !(s.dl.mbV >= 2)) { var D0 = JSON.parse(DIAL0); Object.keys(D0).forEach(function (k) { if (/^(mb|tp)/.test(k)) DIAL[k] = D0[k]; }); }   // the master dials changed meaning (templates): an older save starts them fresh   // the dials are choices: they carry
     if (s.sg) Object.keys(sign).forEach(function (k) { var a = s.sg[k]; if (a && a.length === DIMS.length && a.every(function (v) { return v === -1 || v === 0 || v === 1; })) sign[k] = a.slice(); });   // the signs dial is a choice: it carries                             // learned level per unit of nominal volume (a calibration, kept)
     if (s.ks) Object.keys(KP).forEach(function (k) { if (isFinite(s.ks[k])) kseed[k] = s.ks[k]; });   // knob seeds are choices: they carry like the mix
@@ -1373,7 +1375,7 @@
     if (!c.audioWorklet || !window.AudioWorkletNode) return; busCtx = c;
     c.audioWorklet.addModule(BUSURL).then(function () { if (c !== ctx || busNode) return;
       var n = new AudioWorkletNode(c, 'ed-bus', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
-      n.port.onmessage = function (e) { var d = e.data; if (d && isFinite(d.gr)) { busGR = d.gr; busMK = d.mk; busAv = d.av; busHit = Math.max(-d.gr, busHit * Math.pow(IPH, Math.pow(PHI, -4) / Math.pow(PHI, 3))); } };   // the hits: a peak hold that falls by PHI^-1 every PHI^3 s
+      n.port.onmessage = function (e) { var d = e.data; if (d && isFinite(d.gr)) { busGR = d.gr; busMK = d.mk; busAv = d.av; busHit = Math.max(-d.gr, busHit * Math.pow(IPH, Math.pow(PHI, -4) / Math.pow(PHI, 3))); busStep = Math.max(busStep, -d.gr); } };   // busStep: the deepest squeeze since the servo's last step   // the hits: a peak hold that falls by PHI^-1 every PHI^3 s
       busNode = n; try { from.disconnect(to); } catch (er) {} from.connect(n); n.connect(to);
       try { if (BIN) { var nb = new AudioWorkletNode(c, 'ed-buses', { numberOfInputs: 4, numberOfOutputs: 1, outputChannelCount: [2] });   // FOUR BUSES: the tracks' four outputs -> the bus worklet -> the pump volume
         nb.port.onmessage = function (e) { var d = e.data; if (d && d.k === 'b') BSR = d; }; bsNode = nb; BIN.forEach(function (g, i) { try { g.disconnect(bus); } catch (er) {} g.connect(nb, 0, i); }); nb.connect(bus); } } catch (er) { bsNode = null; }
@@ -1426,7 +1428,7 @@
     bsNode.port.postMessage({ k: 'p', b: b, par: par });
   }
   var SATN = { none: 0, soft: 1, tube: 2, tape: 3, transistor: 4 }, MDET = [null, 'peak', 'peak', 'rms', 'rms'], MNAME = [null, 'VCA', 'FET', 'opto', 'vari-mu'];
-  var busHit = 0, busOff = 0, busTpl = null, busOffs = {}, busLoud = null;                       // the hits' reduction (dB, decaying peak); the servo's threshold offset (dB), remembered per palette; the music's loud level (dB)
+  var busHit = 0, busStep = 0, busOff = 0, busTpl = null, busOffs = {}, busLoud = null;                       // the hits' reduction (dB, decaying peak); the servo's threshold offset (dB), remembered per palette; the music's loud level (dB)
   // SERVO FIXES (Danny 08:31 AWST 28 Oct 'Yes', to the three points from DeepSeek's review he relayed at 08:28): (1) a QUIET GATE, the servo
   // only adjusts while the music sits within PHI^3 dB of its loud level (a peak that falls PHI^-1 dB a step), so a long breakdown can't drag
   // the threshold down and squash the first hit after it; (2) a DEADBAND, no correction within max(PHI^-3, PHI^-3 x target) dB of the target, and
@@ -1440,10 +1442,11 @@
     var u = energy(), tgt = T.gr * Math.pow(PHI, DIAL.mbT) * Math.pow(PHI, DIAL.mbE * 2 * (u - IPH));   // the squeeze: the template's, in rungs, leaning with the energy
     var lv = preS > 0 ? 20 * Math.log10(preS) : -Math.pow(PHI, 6);   // phi: -PHI^6 dB before the first reading
     if (step && preS > 0) busLoud = busLoud == null ? lv : Math.max(lv, busLoud - IPH);   // phi: the loud level falls PHI^-1 dB a step (a PHI s step)
-    var er = busHit - tgt, sm = Math.min(1, tgt), dbd = Math.max(Math.pow(PHI, -3), tgt * Math.pow(IPH, 3));
+    var er = (step ? busStep : busHit) - tgt, sm = Math.min(1, tgt), dbd = Math.max(Math.pow(PHI, -3), tgt * Math.pow(IPH, 3));   // SERVO FIX (Danny 12:53 AWST 28 Oct 'sort the compressor thing out'): the servo judges the last step's deepest squeeze, not the slow peak hold (which kept saying 'too much' for 10-20 s after a loud crossfade, so the threshold overshot and the master went loose)
     if (step && busHit >= 0 && busLoud != null && lv > busLoud - Math.pow(PHI, 3) && Math.abs(er) > dbd) busOff = clamp(busOff + clamp(er * IPH * sm, -PHI * sm, PHI * sm), -Math.pow(PHI, 5), Math.pow(PHI, 5));   // phi: PHI^-1 of the error per PHI s, at most PHI dB a step (scaled below a 1 dB target), within PHI^5 dB of the level
     var thr = lv + busOff, ov = DIAL.mbS < 0 ? 0 : T.sat === 'none' ? (DIAL.mbS > 0 ? 8 * Math.pow(PHI, -DIAL.mbS) : 0) : T.over * Math.pow(PHI, -DIAL.mbS);   // unit: dB; phi: -PHI^6 dB before the first reading; a template with no saturation takes a soft one from 8 dB when pushed
     var st = DIAL.mbS < 0 ? 0 : T.sat === 'none' ? (DIAL.mbS > 0 ? SATN.soft : 0) : SATN[T.sat];
+    if (step) busStep = 0;
     busP = { tpl: tn, model: MNAME[mo], own: own, target: tgt, hit: busHit, thr: thr, lv: lv, base: base, sat: st ? (T.sat === 'none' ? 'soft' : T.sat) : null, over: ov };
     busNode.port.postMessage({ k: 'p', p: { model: mo, det: MDET[mo], opto: mo === 3, mu: mo === 4, thr: thr, ratio: Math.max(1, base.q * Math.pow(PHI, DIAL.mbR)), atk: base.a * Math.pow(PHI, DIAL.mbA), rel: base.r * Math.pow(PHI, DIAL.mbRl), knee: base.k * Math.pow(PHI, DIAL.mbK),
       mix: clamp(DIAL.mbX, 0, 1), sat: st, satT: st ? Math.pow(10, ov / 20) : 0, asym: clamp(DIAL.mbH, 0, IPH * IPH) } });   // unit: dB to a level ratio
