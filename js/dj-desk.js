@@ -302,7 +302,9 @@
       { id: 'dial.bsP', name: 'smash', k: 'C', L: [-5, -2, -1, 0, 1, 2], def: 0, note: "the drums' parallel copy, crushed and blended in", live: bgr(-1), get: function () { return D.dial('bsP'); }, set: function (v) { D.dial('bsP', v); },
         lab: function (v) { if (v <= -5) return 'off'; var x = bb(), m = x && x.p && x.p.par, cur = D.dial('bsP'); return m && m.mix > 0 && cur > -5 ? Math.round(Math.min(1, m.mix / Math.pow(PHI, cur) * Math.pow(PHI, v)) * 100) + '%' : (v ? (v > 0 ? '+' : '') + v : 'template'); } },
       bsq('bsB', 'bass', 1, 'how hard the bass bus is squeezed'), bsq('bsU', 'music', 2, 'stabs, arp and pad together'), bsq('bsF', 'front', 3, 'lead, answer and voice together'),
-      { id: 'dial.bsS', name: 'bus drive', k: 'V', L: [-1, 0, 1, 2, 3], def: 0, note: 'saturation before each bus compressor', lab: function (v) { return v < 0 ? 'off' : v === 0 ? 'template' : 'heavier ' + v; }, get: function () { return D.dial('bsS'); }, set: function (v) { D.dial('bsS', v); } }]);
+      { id: 'dial.bsS', name: 'bus drive', k: 'V', L: [-1, 0, 1, 2, 3], def: 0, note: 'saturation before each bus compressor', lab: function (v) { return v < 0 ? 'off' : v === 0 ? 'template' : 'heavier ' + v; }, get: function () { return D.dial('bsS'); }, set: function (v) { D.dial('bsS', v); } },
+      // KICK DUCK (Danny 10:05 AWST 28 Oct 'Yes'): how hard each kick ducks the bass, pad and chords; template = the palette's (electro none)
+      { id: 'dial.kdC', name: 'kick duck', k: 'C', L: [-1, 0, P(-3), P(-2), IPH, 1], def: -1, note: 'each kick dips the bass, pad and chords', lab: function (v) { return v < 0 ? 'template' : v === 0 ? 'off' : 'up to ' + (v * 2 * 20 * Math.log10(PHI)).toFixed(1) + ' dB'; }, get: function () { return D.dial('kdC'); }, set: function (v) { D.dial('kdC', v); } }]);
     tools(mbs, bfl);
     // VOICE
     var vo = strip(host, 'voice', 'Voice', null, ['voice']);

@@ -211,7 +211,8 @@
     fmSP: 5, fmTP: 13, fmMn: 8, fmHi: Math.pow(IPH, 3), fmLo: Math.pow(IPH, 4), fmHy: Math.pow(IPH, 4), fmDr: 1,   // EMERGENT FORM (Danny 09:09 AWST 28 Oct 'All'): section pump period (phrases), track pump period (phrases), minimum track (phrases), peak threshold, breakdown threshold, let-go, length drift (phrases)
       // FORM (Danny 07:46 AWST 28 Oct): form (0 auto, -1 off, -2 random, 1.. by name), bars per phrase, build-roll bars, stop sixteenths before a drop (counts)
     mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2,
-    bsM: 0, bsD: 0, bsP: 0, bsB: 0, bsU: 0, bsF: 0, bsS: 0 };   // FOUR BUSES (Danny 09:09 AWST 28 Oct 'All'; the draft's step 2): 0 template / -1 off; squeeze rungs for drums, bass, music, front; the drums' parallel blend (rungs, -5 off); saturation (-1 off, 0 template, n heavier)   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
+    bsM: 0, bsD: 0, bsP: 0, bsB: 0, bsU: 0, bsF: 0, bsS: 0,
+    kdC: -1 };   // KICK DUCK (Danny 10:05 AWST 28 Oct 'Yes'): -1 the template's, else a coupling 0 (off) .. 1 (the drive curve, up to ~8 dB)   // FOUR BUSES (Danny 09:09 AWST 28 Oct 'All'; the draft's step 2): 0 template / -1 off; squeeze rungs for drums, bass, music, front; the drums' parallel blend (rungs, -5 off); saturation (-1 off, 0 template, n heavier)   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -631,6 +632,15 @@
   }
   var EMK = ['fmSP', 'fmTP', 'fmMn', 'fmHi', 'fmLo', 'fmHy', 'fmDr'];
   function formPumps(tr) { var u = Math.max(1, Math.round(DIAL.fmU)), b = tr.step / 16, sd = tr.seed | 0; return { sec: fpump(sd, 3, DIAL.fmSP * u, b) + ((tr.dm ? tr.dm.drive : 1 / 2) - 1 / 2) * IPH * IPH, trk: fpump(sd + 7, 2, DIAL.fmTP * u, b) }; }   // the section and track pumps now, for the desk (the same formulas as emerge)
+  // ELECTRO ROLLS ON (Danny 10:01 AWST 28 Oct, Claude chat, on his MIDI dad-dj-20261028-0955.mid: 'It's too choppy ... a lot of energy on the
+  // first hit and then ... a slight gap ... too much ducking and weaving'; 10:05 'Yes' to the four changes): in that file every bar's
+  // downbeat kick was velocity 91 and electro's syncopated kicks 20-55 (the metric accent ladder), the kick ducked the bass, pad and chords
+  // on every hit, and a fill, a stop and a slam came every 4 bars. For a style with its own kit (electro): its drums keep only PHI^-3 of
+  // the metric lean (a drum machine plays its hits level; accents come from the pattern's x), the kick duck follows the mix template
+  // (electro's is off: the draft, 'kick-ducking the mix is French house, not electro'; DIAL.kdC overrides), and fills and stops come only
+  // where a Form section changes, or every 2 phrases (8 bars) with Form off.
+  function phrEnd(tr, phr) { var fx = tr.fx; return fx ? fx.bi === fx.s.b - 1 && !!fx.next : (((phr % (2 * SPB)) + 2 * SPB) % (2 * SPB)) === 2 * SPB - 1; }
+  function kdOf(tr) { var k = DIAL.kdC; if (k >= 0) return clamp(k, 0, 1); var tn = tplName(tr), T = tn && TPL[tn]; return T && T.kd != null ? T.kd : 1; }   // the kick duck's coupling: the desk's, or the template's (1 = the drive curve, as before)
   var AXIS = [3, -3, 6], K332 = [0, 6, 12];                               // cite: axis substitutes (minor third, tritone); 3+3+2 eighths in sixteenths
   // ===== RHYTHM + DYNAMICS (MIDI Bot rhythm study, Danny 19:18 AWST 26 Oct: 'send the rhythm and reload fix') =====
   // Each bar rplan() draws a rhythm plan from the track's birth dims, the arc energy and its own phi pump (dj:rhy): the genre's home
@@ -694,7 +704,7 @@
     Object.keys(RANK).forEach(function (k, vi) { p.rest[k] = gold(tr, bar, 2 + vi) < spc * Math.pow(PHI, -RANK[k] - 1) * 2 * RD.rest * (tr.fx ? IPH * IPH : 1); });   // FORM: the sections do the big rests, so the per-bar ones thin to PHI^-2
     if (p.rest.lead && p.rest.chords && p.rest.bass) p.rest.lead = false;                               // something always sings
     // stop before the hit: the last bar of a phrase, chance drive x stop dial (x2 at mid), length SPB x PHI^(2 drive - 1) sixteenths
-    p.stop = bl === 0 && gold(tr, bar, 11) < drv * 2 * RD.stop; p.L16 = clamp(Math.round(SPB * Math.pow(PHI, 2 * drv - 1)), 2, 8);
+    p.stop = bl === 0 && gold(tr, bar, 11) < drv * 2 * RD.stop && (!tr.g.own || phrEnd(tr, phr)); p.L16 = clamp(Math.round(SPB * Math.pow(PHI, 2 * drv - 1)), 2, 8);
     var fx = tr.fx; if (fx && fx.next && fx.next.f === 'drop' && fx.bi === fx.s.b - 1) { p.stop = DIAL.fmS > 0; p.L16 = clamp(Math.round(DIAL.fmS), 1, 16); }   // FORM: the stop before the drop
     if (fx && fx.bi === 0 && (fx.s.f === 'drop' || fx.s.f === 'lift') && bar > 0) p.slam = true;   // ... and the drop (or a lift) slams its first downbeat
     p.slam = !!(p.slam || (prev && prev.stop && prev.bar === bar - 1));   // FORM fix (emergent form, 09:2x 28 Oct): this line used to overwrite the lift's slam just above, so a lift never slammed
@@ -702,7 +712,7 @@
     p.roll = p.an.half && gold(tr, bar, 12) < dm.tension * 2 * RD.roll * (1 + o * PHI) && bar % 2 === 1; p.rollN = gold(tr, bar, 13) < 1 / 2 ? 2 : 3;   // trap hat rolls: 32nds or 16th-note triplets on the last beat
     p.lb = (SPM / tr.bpm) * Math.pow(PHI, -5) * clamp(spc * (1 - drv) * 2 * RD.laid * 2, 0, 1);       // laid-back snare/comp: up to a beat x PHI^-5 (Danielsen: 8-12% of a quarter)
     p.ghost = (1 - drv) * dm.density * 2 * RD.ghost; p.ghost += o * Math.max(0, 1 - p.ghost); p.o = o;  // ghost-note layer level share (djcollide: + o)
-    p.dk = Math.pow(PHI, -2 * drv);                                                                     // duck depth on each kick
+    p.dk = Math.pow(PHI, -2 * drv * kdOf(tr));                                                         // duck depth on each kick (ELECTRO ROLLS ON: times the template's coupling; electro's is 0)
     var d16 = SPM / tr.bpm / SPB;
     if (tr.dk && p.stop) { var ts = t + (16 - p.L16) * d16, td = t + 16 * d16; [tr.dk, tr.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(Math.pow(PHI, -4), ts, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, td - Math.pow(PHI, -8), Math.pow(PHI, -8)); }); }
     tr.rp = p; RPN = p;
@@ -738,7 +748,7 @@
     var slot = Math.max(SPB * SPB / 2, Math.round(SPB * SPB * (tr.hb || g.bars))), ci = Math.floor(st / slot);   // unit: sixteenths per chord (half a bar at the fastest)
     var deg = pr[ci % pr.length], barLen = dur16 * slot, first = st % slot === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
-    var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
+    var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = g.own ? phrEnd(tr, phr) : (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
     if (first) tr.ax = peak && !tr.bridge && !tr.leaving && ci % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
     // CALL AND RESPONSE BETWEEN PARTS (Danny 17:43 AWST 27 Oct, 'Go'): the lead's 64-step motif is a 2-bar call and its 2-bar answer
@@ -778,7 +788,7 @@
       if (s16 % rdv === 0) { var rv = Math.pow(PHI, -2 * (1 - rp0)) * (dyn || 1); X.hit(tr.L.drums, 'snare', t, rv); rec('drums', GM.snare, t, dur16, rv * gAt(tr, t)); } }
     if (X && X.hit && peak && !g.own && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
-    if (X && X.hit) ['kick', 'snare', 'clap', 'hat', 'shaker', 'tom', 'cow'].forEach(function (k) { if (k === 'kick' && peak && !g.own) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = RPAT(tr, k, (tr.dr || g)[k]); if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = vl(s16, dyn) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv, v); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down   // a style with its own kit (electro) keeps its kick at the peak
+    if (X && X.hit) ['kick', 'snare', 'clap', 'hat', 'shaker', 'tom', 'cow'].forEach(function (k) { if (k === 'kick' && peak && !g.own) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = RPAT(tr, k, (tr.dr || g)[k]); if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = (g.own ? Math.pow(PHI, -depth(s16) * (RPN.c || 1) * Math.pow(IPH, 3)) * (dyn || 1) : vl(s16, dyn)) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv, v); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down   // a style with its own kit (electro) keeps its kick at the peak
     ghostStep(tr, t); if (s16 % 4 === 0) beat(t, s16 === 0);
     if (s16 === 0 && !tr.leaving) recBar(tr, t, st);                     // the live track's downbeat, for the .mid's bar lines
   }
@@ -1377,7 +1387,7 @@
   // where it bends (over, dB above the level after the compressor). Palettes stand in for the Instruments row until the split lands.
   var TPLK = ['electro', 'club', 'pop', 'soul', 'acoustic', 'piano', 'orchestral', 'ambient'];
   var TPL = {
-    electro:    { m: 1, a: 30, r: 150, q: 2, k: 3, gr: 2, sat: 'tape', over: 8 },
+    electro:    { m: 1, a: 30, r: 150, q: 2, k: 3, gr: 2, sat: 'tape', over: 8, kd: 0 },   // kd: the kick duck's coupling (0 off; others 1, the drive curve)
     club:       { m: 1, a: 20, r: 120, q: 2, k: 3, gr: 2.5, sat: 'tape', over: 6 },
     pop:        { m: 1, a: 20, r: 150, q: 2, k: 3, gr: 2.5, sat: 'transistor', over: 8 },
     soul:       { m: 4, a: 25, r: 400, q: 1.6, k: 15, gr: 2, sat: 'tape', over: 5 },
@@ -1479,7 +1489,7 @@
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k.indexOf('bs') === 0 || k === 'tpM') busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
-    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
+    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x, dk: tr.rp.dk, stop: !!tr.rp.stop } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
     get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
   window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, emerge: function (nm, seed, drive, u) { return emerge(nm, { seed: seed, dm: { drive: drive } }, u || SPB).map(function (q) { return { n: q.n, b: q.b, f: q.f, lv: q.lv, P: q.P }; }); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
