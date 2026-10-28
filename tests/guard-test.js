@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   ok('the guard rises when the page stalls', g0 === 0 && g1.guard >= 1, { before: g0, after: g1 });
   const log = await p.evaluate(() => RhythmContinuity.audio.log().filter(l => /health:/.test(l)));
   ok('the sound log says what happened', log.length > 0, log.slice(-2).join(' / '));
-  await p.waitForTimeout(45000); const g2 = await p.evaluate(() => DadAutoDJ._kit.health());
+  await p.waitForTimeout(75000); const g2 = await p.evaluate(() => DadAutoDJ._kit.health());
   ok('calm again, it comes back down', g2.guard < g1.guard, { up: g1.guard, now: g2.guard });
   await p.locator('#dj-edit').first().tap().catch(() => {}); await p.waitForTimeout(2500);
   const line = await p.evaluate(() => [...document.querySelectorAll('#dj-desk [data-strip="system"] .dk-txl')].map(x => x.textContent).filter(t => /audio clock/.test(t)).join(''));

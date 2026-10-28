@@ -136,13 +136,14 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     on = on.filter(function (u) { return bx('808', u); });
     var acc = Math.max(0, Math.min(1, (v - IPH) / (1 - IPH)));             // x hits (v >= 1) are accented, o hits (v = PHI^-1) not
     if (kind === 'hat' && a !== 'x' && tr.oh) { tr.oh.forEach(function (o) { try { o.gain.cancelScheduledValues(t); o.gain.setTargetAtTime(0, t, Math.pow(PHI, -12)); } catch (er) {} }); tr.oh = null; }   // phi: choke over PHI^-12 s
+    var VB = K.vibe ? K.vibe() : null, vt = VB ? VB.v * VB.t : 0;   // VIBE: the tone reach on the 808
     on.forEach(function (u) {
       var R = ROLE[u], k = fr(u * IPH + Math.min(dp, 1) * ch.rot), sp = Math.pow(PHI, 2 * dp * ch.th), cents = (k - 1 / 2) * Math.pow(PHI, 5) * sp, dt = k * Math.pow(PHI, -11) * sp;   // phi: golden cents and ms per unit, spread a rung wider (thick) or narrower (tight) per track
-      var kn = { tune: cl(R.tune + dp * ch.pt * IPH * IPH), decay: cl(R.decay + dp * ch.th * IPH * IPH), tone: cl(R.tone + dp * ch.br * IPH * IPH), colour: cl(R.colour + dp * ch.br * IPH * IPH) };   // phi: each knob moves up to PHI^-2 x depth / 2
+      var kn = { tune: cl(R.tune + dp * ch.pt * IPH * IPH), decay: cl(R.decay + dp * ch.th * IPH * IPH - vt * IPH * IPH), tone: cl(R.tone + dp * ch.br * IPH * IPH + vt * Math.pow(IPH, 3)), colour: cl(R.colour + dp * ch.br * IPH * IPH) };   // VIBE (Danny 18:57 AWST 28 Oct): hard shortens the decay PHI^-2 and brightens the tone PHI^-3, soft the reverse   // phi: each knob moves up to PHI^-2 x depth / 2
       var pan = kind === 'hat' || kind === 'cow' || kind === 'shaker' ? (u % 2 ? -1 : 1) * Math.pow(IPH, 3) : 0;   // phi: hats a little wide, the rest centred
       var aq = Math.round(acc * 2) / 2, spec = retune(V.build({ tune: kn.tune, decay: kn.decay, tone: kn.tone, colour: kn.colour, level: 1, pan: (1 + pan) / 2 }, aq), Math.pow(2, cents / 1200));   // accent in three steps (off, half, full) so the sound can be kept
       spec.trim = V.trim * KM * v * SHARE[u];
-      try { var o = play808(c, spec, tr.out, t + dt, tk, id + '|' + u + '|' + aq + '|' + dp); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
+      try { var o = play808(c, spec, tr.out, t + dt, tk, id + '|' + u + '|' + aq + '|' + dp + '|' + vt.toFixed(3)); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
     });
   }
   // 808 KEPT AS RECORDINGS (Danny 14:15 AWST 28 Oct, Claude chat: 'The Audio is dropping out ... at some point it times out I think the
@@ -320,7 +321,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     return [e < IPH * IPH ? 4 : e < IPH ? 2 : 8];
   }
   function padEnv(b, tk) {
-    var S = PSH[b], ev = { at: S.at * Math.pow(PHI, pdl('padA', 0)), dec: S.dec * Math.pow(PHI, pdl('padD', 0)), sus: clamp(S.sus * Math.pow(PHI, -pdl('padS', 0)), 0, 1), rel: S.rel * Math.pow(PHI, pdl('padR', 0)), fd: Math.max(0, S.fd + pdl('padF', 0)), fT: S.fT * Math.pow(PHI, pdl('padD', 0)) };
+    var VB = K.vibe ? K.vibe() : null, S = PSH[b], ev = { at: S.at * Math.pow(PHI, pdl('padA', 0) - (VB ? Math.min(0, VB.v) * VB.t : 0)), dec: S.dec * Math.pow(PHI, pdl('padD', 0)), sus: clamp(S.sus * Math.pow(PHI, -pdl('padS', 0)), 0, 1), rel: S.rel * Math.pow(PHI, pdl('padR', 0)), fd: Math.max(0, S.fd + pdl('padF', 0)), fT: S.fT * Math.pow(PHI, pdl('padD', 0)) };
     if (S.gate) { var e = tk.e == null ? 1 : tk.e, dens = IPH + (1 - IPH) * e, sd = (tk.seed | 0) >>> 0, bpm = tk.bpm > 0 ? tk.bpm : 120;   // unit: 120 BPM only if the track has none
       ev.gate = { step: 60 / bpm / 4 * Math.pow(2, Math.round(pdl('padG', 0))), open: clamp(pdl('padO', IPH), Math.pow(IPH, 6), 1 - Math.pow(IPH, 6)), on: function (k) { return k % 16 === 0 || fr(sd * IPH * IPH + (k % 16) * IPH) < dens; } }; }   // unit: a sixteenth = a quarter of a beat; 2^k: 1/32 .. 1/4
     return ev;

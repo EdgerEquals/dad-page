@@ -191,6 +191,17 @@
       fd('fmMn', 'at least', 'R', [5, 8, 13, 21], 8, 'the shortest track, before its outro', phl),
       fd('fmTP', 'ends after', 'R', [8, 13, 21, 34], 13, 'the track pump: the track ends at its first peak after the shortest', phl, fpv('trk'))]);
     tools(st, ffl.concat(efl));   // one reset + dice for both Form banks
+    // VIBE (Danny 18:57 AWST 28 Oct, Claude chat: soft / hard 'is not just for electro ... it ... just works despite whatever is playing it could
+    // even be classical ... turn up the drive that distortion ... aggressive clipping at the extreme end ... tie into the effects layer too'): one
+    // knob over whatever plays; the four reaches set how far it goes into drive, dynamics, tone, and space + effects.
+    var vbs = strip(host, 'vibe', 'Vibe', 'soft \u2194 hard \u00B7 over whatever plays'), VBL = [-1, -IPH, -IPH * IPH, -P(-3), 0, P(-3), IPH * IPH, IPH, 1], RCH = [0, P(-3), P(-2), IPH, 1];
+    var rch = function (k, name, note) { return { id: 'dial.' + k, name: name, k: 'C', L: RCH, def: 1, note: note, lab: function (v) { return v === 0 ? 'none' : Math.round(v * 100) + '%'; }, get: function () { return D.dial(k); }, set: function (v) { D.dial(k, v); } }; };
+    var vbl = bank(vbs, [{ id: 'dial.vb', name: 'vibe', k: 'C', L: VBL, def: 0, note: 'soft: cleaner, looser, darker, wetter \u00B7 hard: every channel driven, tighter, brighter, drier; the top end clips and crushes', lab: function (v) { return v === 0 ? 'as is' : (v < 0 ? 'soft ' : 'hard ') + Math.round(Math.abs(v) * 100) + '%'; }, get: function () { return D.dial('vb'); }, set: function (v) { D.dial('vb', v); } },
+      rch('vbD', 'drive reach', 'hard: every channel into its clipper and the saturation heavier; soft: the saturation lighter'),
+      rch('vbY', 'dynamics reach', 'accent contrast, the master squeeze, and the swing straightening on the hard side'),
+      rch('vbT', 'tone reach', 'brighter and shorter hard, darker and longer soft: filters, the 808, the pad attack'),
+      rch('vbS', 'space + effects reach', 'wetter soft, drier hard: reverb, echo, wash, the filter; the crush comes in at the top of hard')]);
+    tools(vbs, vbl);
     // CHANGES (Danny 18:55-18:59 AWST 27 Oct: 'Can the transition happen faster when I change a parameter?' ... 'build it as dials so that I
     // can adjust it ... from my usage data ... where I generally land'): how a change made here lands; the DJ's own changes keep the radio pacing
     var cg = strip(host, 'changes', 'Changes', 'how fast your changes land');

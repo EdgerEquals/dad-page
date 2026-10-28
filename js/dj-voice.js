@@ -166,13 +166,13 @@
   // these three forms so that we get variation over an hour ... with electro most electro tracks don't have voice ... we should have them
   // all on the menu'; 09:56-09:59 the talk-through: the choir in breakdowns and builds, the machine at the peaks, and for the middle one of
   // three flavours, his pick 'three with the tease'). Each track draws (a golden draw on its seed, so a reload keeps it) whether it has a
-  // voice: the style's chance (electro PHI^-3, about 1 in 4; electronic, ambient, cinematic and piano PHI^-2; the singing styles PHI^-1)
+  // voice: the style's chance (electro PHI^-1, about 3 in 5 since Danny 18:57 AWST 28 Oct '1, 2 and 5', was PHI^-3; electronic, ambient, cinematic and piano PHI^-2; the singing styles PHI^-1)
   // moved by DIAL.voP rungs. A voiced track draws its middle's flavour: events (rest, but the lead voice's phrase in the last 2 bars before
   // a change: a tease), talker (the lead voice through the middle) or choir bed (the choir holds under the middle). Then by section:
   // breakdowns and builds the CHOIR, peaks the LEAD VOICE (the machine for electro, the singer for the rest), the intro and outro rest.
   // With Form off the energy stands in (under PHI^-2 the choir, over 1 - PHI^-3 the peak). DIAL.voM forces one voice on every track
   // (-1 off, 1 singer, 2 machine, 3 choir); DIAL.voF forces the flavour.
-  var VCH = { electro: Math.pow(IPH, 3), electronic: IPH * IPH, ambient: IPH * IPH, cinematic: IPH * IPH, piano: IPH * IPH }, FLV = [null, 'events', 'talker', 'choir bed'];
+  var VCH = { electro: IPH, electronic: IPH * IPH, ambient: IPH * IPH, cinematic: IPH * IPH, piano: IPH * IPH }, FLV = [null, 'events', 'talker', 'choir bed'];
   function dl(k) { try { return D.desk && D.desk.dial ? +D.desk.dial(k) || 0 : 0; } catch (e) { return 0; } }
   function plan(tk) {
     var m = dl('voM') | 0, sd = ((tk && tk.seed) | 0) >>> 0, base = tk && VCH[tk.genre] != null ? VCH[tk.genre] : IPH, vp = dl('voP'), ch = vp <= -9 ? 0 : vp >= 9 ? 1 : clamp(base * Math.pow(PHI, vp), 0, 1);

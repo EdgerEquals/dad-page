@@ -22,6 +22,7 @@
   function barsOf(ev) {
     var bs = ev.filter(function (e) { return e[1] === 'bar' && e[2] > 0; }).sort(function (a, b) { return a[0] - b[0]; });
     bs = bs.filter(function (b, i) { return !i || b[0] > bs[i - 1][0]; }); if (!bs.length) return null;   // one downbeat per instant
+    for (var j = 0; j < bs.length - 1;) { var bj = bs[j], nj = bs[j + 1]; if (nj[0] - bj[0] < (1 / ((1 + Math.sqrt(5)) / 2)) * QPB * SPM * MS / bj[2] && j > 0) bs.splice(j, 1); else j++; }   // CATCH-UP (Danny's 19:39 28 Oct file: a 4653 BPM bar after an interruption): a downbeat followed within PHI^-1 of its own bar is a resume jump, not a bar; drop it and the bar before runs to the next
     var first = Math.min.apply(null, ev.map(function (e) { return e[0]; }));
     while (first < bs[0][0]) { var b = bs[0]; bs.unshift([b[0] - QPB * SPM * MS / b[2], 'bar', b[2], b[3], b[4] - QPB * SPQ]); }
     return bs.map(function (b, i) { var n = bs[i + 1], same = n && n[3] === b[3] && n[4] - b[4] === QPB * SPQ;   // the next downbeat is this track's very next bar

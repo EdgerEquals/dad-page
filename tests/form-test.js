@@ -19,8 +19,8 @@ const { chromium } = require('playwright');
   ok('drop: everything', by.drop && by.drop.bass && by.drop.lead, by.drop);
   const drum = await p.evaluate(() => new Promise(done => { const r = []; const D = DadAutoDJ._kit; done(true); }));
   await p.evaluate(() => DadDJPanel.open()); await p.waitForTimeout(2000); await p.evaluate(() => document.querySelectorAll('#dj-desk .is-folded').forEach(s => s.classList.remove('is-folded')));
-  const ui = await p.evaluate(() => ({ form: [...document.querySelectorAll('[data-strip="style"] .dk-sws')[1].querySelectorAll('.dk-sw')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')).join(' '), read: document.querySelector('[data-strip="style"] .dk-txl').textContent,
+  const ui = await p.evaluate(() => ({ form: [...document.querySelectorAll('[data-strip="style"] .dk-sws')[1].querySelectorAll('.dk-sw')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')).join(' '), read: [...document.querySelectorAll('[data-strip="style"] .dk-txl')].map(x => x.textContent).find(t => !/BPM/.test(t)) || '',
     sends: document.querySelectorAll('[data-strip="mixer"] .dk-mini-f').length, fad: document.querySelectorAll('[data-strip="style"] .dk-f').length }));
-  ok('desk: form row, readout, 10 Form knobs (3 + 7 emergent), no mixer sends', /written:true/.test(ui.form) && /electro/.test(ui.read) && ui.sends === 0 && ui.fad === 10, ui);
+  ok('desk: form row, readout, 10 Form knobs (3 + 7 emergent) + tempo + tempo lock, no mixer sends', /written:true/.test(ui.form) && /electro/.test(ui.read) && ui.sends === 0 && ui.fad === 12, ui);
   await p.evaluate(() => DadAutoDJ.desk.dial('fmM', -1)); await p.waitForTimeout(3000); const off = await p.evaluate(() => DadAutoDJ.desk.live().form); ok('form off = the old arc', off === null, off);
   ok('no page errors', !errs.length, errs.join(' / ') || 'none'); await b.close(); })();

@@ -122,6 +122,8 @@
     FX.forEach(function (f) { E[f.k] = effOf(f, u); });
     if (c.currentTime < TXu) { sync(); return; }                         // (the logo pad waits too)
     if (PAD) { E.filter.v = clamp(E.filter.v + PAD.filter, -1, 1); ['echo', 'wash', 'crush'].forEach(function (k) { E[k].v = clamp(E[k].v + PAD[k], 0, 1); }); }   // logo pad: on top of the pumped values
+    var VB = K.vibe ? K.vibe() : null, vv = VB ? VB.v * VB.s : 0, vc = Math.max(0, (vv - (1 - IPH * IPH)) / (IPH * IPH));   // VIBE (Danny 18:57 AWST 28 Oct: the soft / hard knob 'needs to tie into the effects layer too'): its space + effects reach; vc: the crush over the last PHI^-2 of the hard side
+    if (vv) { E.echo.v = clamp(E.echo.v - vv * IPH * IPH, 0, 1); E.wash.v = clamp(E.wash.v - vv * IPH, 0, 1); if (vv < 0) E.filter.v = clamp(E.filter.v + vv * IPH * IPH, -1, 1); }   // phi: echo +-PHI^-2 and wash +-PHI^-1 (up soft, down hard); soft leans the filter low-pass PHI^-2
     if (PAD || padFl) { var fb = bpm / SPM; padFl = !!PAD;                 // logo pad flanger: sweep at the beat rate x PHI^-3 .. x PHI^-2 with distance; silent at rest
       to(flW.gain, PAD ? PAD.flw * IPH * IPH : 0, tau); to(flFb.gain, PAD ? PAD.flw * IPH : 0, tau); to(flL.frequency, PAD ? fb * Math.pow(PHI, PAD.r - 3) : 0, tau); }                         // a transition owns the sweeps until its tail is done
     var fv = E.filter.v, span = Math.log(FHI / FLO);
@@ -135,7 +137,7 @@
     }
     to(eSend.gain, e, tau); eFb.gain.setTargetAtTime(fbTo(e * IPH), now + q * PHI * PHI, tau || IPH); }
     to(wSend.gain, wConv.buffer ? E.wash.v * IPH : 0, tau);
-    var cr = E.crush.v * (K.chip ? K.chip() : 1), b = cr ?   // bit-crush rides the chip share (Danny 16:53)
+    var cr = clamp(E.crush.v * (K.chip ? K.chip() : 1) + vc, 0, 1); E.crush.v = clamp(E.crush.v + vc, 0, 1); var b = cr ?   // the readout shows the vibe's crush too   // bit-crush rides the chip share (Danny 16:53)
        Math.round(Math.pow(PHI, 4) * (1 - cr)) + SPB : 0;   // phi: gentle bit depth, PHI^4 rungs above 4 bits
     if (b && b !== bits) { bits = b; shp.curve = crushCurve(b); }
     to(cWet.gain, cr * IPH * IPH, tau); to(cDry.gain, 1 - cr * Math.pow(PHI, -3), tau);   // phi: gentle, at most PHI^-2 wet

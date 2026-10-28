@@ -45,7 +45,7 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
   `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
 - Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
 
-## State (28 Oct 2026, 19:35 AWST)
+## State (28 Oct 2026, 20:05 AWST)
 Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
 servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
 (`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed) ·
@@ -76,11 +76,19 @@ electro, the machine voice more often, straighter swing, a denser repeating riff
 at electro's new ~121 BPM (~25% more notes than ~95). `guard1`: health every PHI^4 s (late steps, skips, worst clock gap, audio clock vs
 wall clock) -> the sound log ('health:' lines); a load guard (`GRD`, DIAL `ldG`, System strip) holds back stacked layers (1: Jupiter
 stab/octave units, 808 sub/snap; 2: also the house kit, pad under, ghost snares) and widens the look-ahead cap to 1 s. Tests:
-`tests/guard-test.js` (in CI). Next: Danny's 'share sound log' after a cut-out says which it is.
-**Parked in `git stash`** (not live, built before the cut-out report): the vibe macro (`vb` + reaches `vbD/vbY/vbT/vbS`; engine, 808,
-pad attack; the dj-fx.js part and the desk Vibe strip not yet written), electro breakdowns likely (planned: emerge LO lowered by
-PHI^-3 for electro, 53% -> ~89% in 600 simulated tracks), electro voice PHI^-3 -> PHI^-1 (dj-voice.js VCH). Danny said yes to all three
-(18:57): vibe for every style, soft to hard, hard end drives every channel into clipping and reaches into the effects.
+`tests/guard-test.js` (in CI). His sound log (19:39 28 Oct) settled it: zero health lines; the cut-outs are iOS audio interruptions
+('bridge: pause' -> 'state: interrupted'), lining up with him dictating in other apps; most recover in ~1 s, two took 35-45 s (iOS
+refuses play while hidden, back when he returns), and iOS reloaded the page 3x in the background. His 19:39 MIDI wrote a 4653 BPM
+bar after a catch-up: dj-midi.js now drops a downbeat followed within PHI^-1 of its bar.
+**Vibe** (`vibe1`, Danny 18:57 28 Oct '1, 2 and 5'): `vb` -1 soft .. +1 hard over whatever plays, reaches `vbD` drive (hard: +DRMAX
+rungs into every channel's clipper, `vbTrim` gives back PHI^-1 of it after the clipper so full hard is ~9 dB up, not 25; bus/master
+saturation PHI^2 rungs heavier/lighter), `vbY` dynamics (contrast +-1/2, squeeze +-1 rung, swing straighter hard), `vbT` tone (cut
++-PHI^-1 rung, 808 decay/tone, pad attack slower soft), `vbS` space + effects (reverb send +-1 rung; dj-fx.js echo/wash/filter, crush over
+the top PHI^-2 of hard). Desk: Vibe strip after Style. Electro breakdowns likely (`g.bdLean` PHI^-3 on emerge's LO: 53% -> 88% of 600
+simulated tracks); electro voice PHI^-1 (dj-voice.js VCH). Tests: `tests/vibe-test.js` (in CI).
+Next (Danny 19:54): a ROOM reverb on the whole finished mix (after the master compressor, before the ceiling; low end kept out), an
+amount dial and a size dial on the desk, riding the form (up through builds, back between, growing to the end); waiting on his room
+size (studio ~0.5 s / club ~1 s / warehouse 2 s+). Then: his 19:58 MIDI ('cute and quirky') to reverse-engineer for a personality dial.
 **GitHub listen runs** (Danny 19:17): `.github/workflows/listen.yml` + `tests/probes/` (listen.js, listen.sh, report.py); start with
 `gh workflow run listen.yml -f minutes=5 -f genre=electro -f compare=<sha> -f capture=yes`; read results from the run's annotations
 (`gh api repos/EdgerEquals/dad-page/check-runs/<job id>/annotations`). Use these for long runs instead of the session.
