@@ -128,10 +128,10 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, c = C(), now = c.currentTime, ch = char808(tk), dp = depth808(), cl = function (x) { return Math.max(0, Math.min(1, x)); };
     if (!D8) { load808(); if (bx('808', 1)) house(tr, kind, t, v); return; }
     var id = kind === 'hat' && a === 'x' ? '808.oh' : kind === 'tom' && tk.step % 16 >= 16 - 2 ? '808.mt' : B8[kind], V = B8V[id];   // the fill's last toms step up to the mid tom
-    if (bx('808', 1)) house(tr, kind, t, v * SHARE[1]);
+    if (bx('808', 1) && grd() < 2) house(tr, kind, t, v * SHARE[1]);   // LOAD GUARD level 2: the 808 alone
     if (!V) return;
     d8live = d8live.filter(function (x) { return x > now; });
-    var on = [0]; if (SUBK[kind] && e > IPH * IPH) on.push(2); if (SNAPK[kind] && e > IPH) on.push(3);   // pump count: units join as the arc rises
+    var on = [0]; if (SUBK[kind] && e > IPH * IPH && grd() < 1) on.push(2); if (SNAPK[kind] && e > IPH && grd() < 1) on.push(3);   // pump count: units join as the arc rises
     if (d8live.length > Math.pow(PHI, 7)) on = [0];                        // phi: voice cap PHI^7
     on = on.filter(function (u) { return bx('808', u); });
     var acc = Math.max(0, Math.min(1, (v - IPH) / (1 - IPH)));             // x hits (v >= 1) are accented, o hits (v = PHI^-1) not
@@ -167,6 +167,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     if (!E.b.length) { if (!E.dead) render8(c, spec, E); return D8.renderVoice(c, spec, dest, t); }   // the first hits play live while the takes render
     var b = E.b[E.i++ % E.b.length], s = c.createBufferSource(), g = c.createGain(); s.buffer = b; g.gain.setValueAtTime(spec.trim, t); s.connect(g); g.connect(dest);
     s.start(t); s.stop(t + b.duration); s.onended = function () { try { g.disconnect(); } catch (er) {} }; return { output: g, endsAt: t + b.duration }; }
+  function grd() { try { return K.guard ? K.guard() : 0; } catch (e) { return 0; } }   // LOAD GUARD (Danny 19:01 AWST 28 Oct, cutting out on the phone): level 1 holds back the Jupiter's stab and octave units and the 808's sub and snap units, level 2 also the house kit beside the 808
   function hit(tr, kind, t, v, a) { if (tr.g && tr.g.bank) bank(tr, kind, t, v, a); else house(tr, kind, t, v); }
 
   // ---------- 303 RACK (Danny 15:42 AWST 27 Oct, Claude chat: 'we get the 303 as well ... you can write one of those two'; the rack is
@@ -341,8 +342,8 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   }
   INST.jup = function (tr, f, t, d, v) { var tk = tr.tk || tr, e = tk.e == null ? 1 : tk.e, g = v * 0.07;   // the old stab's level (0.07)
     if (bx('jup', 0)) jup(tr, f, t, d, g * DXR.u[0] * 2, false);
-    if (MORE.stab && bx('jup', 1)) MORE.stab(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
-    if (e > IPH && bx('jup', 2)) jup(tr, f, t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d, g * DXR.u[2] * 2, true); };   // unison an octave down past PHI^-1
+    if (MORE.stab && bx('jup', 1) && grd() < 1) MORE.stab(tr, f, t + Math.pow(PHI, -11) * IPH, d, v * DXR.u[1] * 2);
+    if (e > IPH && bx('jup', 2) && grd() < 1) jup(tr, f, t + Math.pow(PHI, -11) * ((2 * IPH) % 1), d, g * DXR.u[2] * 2, true); };   // unison an octave down past PHI^-1
 
   // ---------- reverb: impulse built once, send glides up from silence ----------
   var conv = null;

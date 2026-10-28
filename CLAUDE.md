@@ -45,7 +45,7 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
   `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
 - Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
 
-## State (28 Oct 2026, 18:45 AWST)
+## State (28 Oct 2026, 19:35 AWST)
 Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
 servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
 (`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed) ·
@@ -72,6 +72,18 @@ for a breakdown; tracks glide). Style strip: tempo, tempo lock, a BPM readout. E
 Electro, measured over 12 min (28 Oct): drums, 303 bass and track length are right; tempo was 112 (now home); no breakdown in 3
 tracks; no voice in 3 tracks; solos too common (now rare). Proposed next for electro, waiting on Danny's pick: breakdowns likely in
 electro, the machine voice more often, straighter swing, a denser repeating riff for the lead, the hard/soft vibe knob.
+**Cut-outs on the phone after tempo1** (Danny 19:01 28 Oct): headless runs of load1 and tempo1 are equally clean, so the phone struggles
+at electro's new ~121 BPM (~25% more notes than ~95). `guard1`: health every PHI^4 s (late steps, skips, worst clock gap, audio clock vs
+wall clock) -> the sound log ('health:' lines); a load guard (`GRD`, DIAL `ldG`, System strip) holds back stacked layers (1: Jupiter
+stab/octave units, 808 sub/snap; 2: also the house kit, pad under, ghost snares) and widens the look-ahead cap to 1 s. Tests:
+`tests/guard-test.js` (in CI). Next: Danny's 'share sound log' after a cut-out says which it is.
+**Parked in `git stash`** (not live, built before the cut-out report): the vibe macro (`vb` + reaches `vbD/vbY/vbT/vbS`; engine, 808,
+pad attack; the dj-fx.js part and the desk Vibe strip not yet written), electro breakdowns likely (planned: emerge LO lowered by
+PHI^-3 for electro, 53% -> ~89% in 600 simulated tracks), electro voice PHI^-3 -> PHI^-1 (dj-voice.js VCH). Danny said yes to all three
+(18:57): vibe for every style, soft to hard, hard end drives every channel into clipping and reaches into the effects.
+**GitHub listen runs** (Danny 19:17): `.github/workflows/listen.yml` + `tests/probes/` (listen.js, listen.sh, report.py); start with
+`gh workflow run listen.yml -f minutes=5 -f genre=electro -f compare=<sha> -f capture=yes`; read results from the run's annotations
+(`gh api repos/EdgerEquals/dad-page/check-runs/<job id>/annotations`). Use these for long runs instead of the session.
 
 Next, in Danny's agreed order (12:53 28 Oct):
 1. ~~Melody~~ (live 28 Oct, melody1; waiting on Danny's listen).
@@ -88,7 +100,10 @@ switch (`<input type=checkbox switch>`, iOS 17.4+) is clicked on each kick; firs
 what the test finds out.
 DeepSeek's held list (13:44 28 Oct, 13 items, for discussion only): schematic modelling, Pi rack, AES HAT, BPM drift/catch-up, S&H
 freeze, chord genome, soft/hard electro vibe, vibe bus + genre chops, build/riser dials, haptics, roadmap, Mono/Poly + organ + strings,
-era dial. Nothing goes in until Danny says go.
+era dial; + (19:0x-19:26) MIDI out to hardware, a PHI-to-CC map, audio/MIDI mutes + snap-sync, mic-based analog lock, a modulation
+matrix with LFOs, variation / loop breaks (fresh seed on play, 303 rests, 808 via vibe), non-Roland drums (DMX, LinnDrum, Simmons,
+RZ-1: sample playback needs licence-checked kits; a buffer source plays once, so no node 'pool'), an orchestral stab rack, SP-1200
+signal chain. Nothing goes in until Danny says go.
 Older queue: Instruments/Composition split of the Style row · per-part memory faders · tap a fader name for its description ·
 feedback strip · what the Changes strip's mute/solo should do · mix templates steps 3–6.
 Waiting on Danny: his "share my moves" paste (System strip) to set electro's default balance from his night-of-27-Oct settings.

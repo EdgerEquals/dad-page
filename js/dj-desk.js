@@ -387,6 +387,11 @@
       var done = function (m) { slb.textContent = m; setTimeout(function () { slb.textContent = SLL; }, 2600); }, copy = function () { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done('copied: paste it to Claude'); }, function () { done('could not copy'); }); else done('could not copy'); };
       if (navigator.share) navigator.share({ title: "Ed's DJ sound log", text: t }).then(function () { done('shared'); }, copy); else copy(); });
     shr.appendChild(slb); sy.appendChild(shr);
+    // LOAD GUARD (Danny 19:01 AWST 28 Oct: cutting out on the phone after the tempo update): when the phone struggles (late notes, skips, the audio
+    // clock falling behind) the engine holds back stacked layers rather than cut out; this sets how far it may go, and the line says what it is doing.
+    sy.appendChild(E('div', 'dk-sub', 'load guard'));
+    bank(sy, [{ id: 'dial.ldG', name: 'load guard', k: 'N', L: [0, 1, 2], def: 2, note: 'when the phone struggles, hold back layers instead of cutting out: 1 the stacked units (Jupiter, 808), 2 also the house kit, pad under and ghost snares', lab: function (v) { return ['off', 'stacks', 'stacks + extras'][v] || String(v); }, get: function () { return D.dial('ldG'); }, set: function (v) { D.dial('ldG', v); } }]);
+    var LGL = E('div', 'dk-hint dk-txl'); sy.appendChild(LGL); LGLF = function () { var K = window.DadAutoDJ && DadAutoDJ._kit, h = K && K.health ? K.health() : null, t = !h ? '' : (h.guard ? 'holding back layers (level ' + h.guard + ')' : 'all layers playing') + ' \u00B7 audio clock \u00D7' + h.ratio.toFixed(3) + ' \u00B7 look-ahead ' + h.lookAhead.toFixed(2) + ' s'; if (LGL.textContent !== t) LGL.textContent = t; LGL.hidden = !t; };
   }
 
   // ---------- VISUAL page (Danny 18:15 AWST 27 Oct: 'a duplicate page but for the visual layer, again with visual reference to the actual
@@ -434,7 +439,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null, TPLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null, TPLF = null, LGLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -448,7 +453,7 @@
     KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (LDLF) try { LDLF(); } catch (e) {} if (TPLF) try { TPLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (LDLF) try { LDLF(); } catch (e) {} if (TPLF) try { TPLF(); } catch (e) {} if (LGLF) try { LGLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

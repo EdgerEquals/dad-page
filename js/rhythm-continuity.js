@@ -326,7 +326,7 @@
   doc.addEventListener('visibilitychange', function () { hbWrite(false); });
   try { var MSn = navigator.mediaSession; if (MSn) { var sa = MSn.setActionHandler.bind(MSn);   // the lock screen / Control Center play button also starts the ladder
     MSn.setActionHandler = function (k, f) { return sa(k, k === 'play' && f ? function (d) { note('session: play'); var r = f(d); setTimeout(poke('session-play'), 0); return r; } : f); }; } } catch (e) {}
-  root.RhythmContinuity.audio = { info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },
+  root.RhythmContinuity.audio = { note: function (m) { note(String(m)); }, info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },
     log: function () { return AU.log.map(function (l) { return new Date(l[0]).toTimeString().slice(0, 8) + ' ' + l[1]; }); }, clearLog: function () { AU.log = []; try { root.localStorage.removeItem(LOGK); } catch (e) {} },
     retry: function () { poke('manual')(); } };
 })(window);
