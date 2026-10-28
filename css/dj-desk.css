@@ -99,3 +99,49 @@ html[data-desk-full] #dj-desk .dk-tabs{padding-right:3.2rem}                 /* 
 /* NO SELECTING (Danny 08:28 AWST 28 Oct: 'make any other text in there non-selectable ... I don't need to select anything on this panel at all'): nothing on the desk selects, no long-press callout, no double-tap zoom on its controls */
 #dj-desk,#dj-desk *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#dj-desk button,#dj-desk .dk-trk{touch-action:manipulation}
 .dk-fnote{margin-top:.2rem;font-size:.55rem;line-height:1.25;color:var(--dk-dim);text-align:center}   /* a fader's one-line note (hints, 08:28) */
+
+/* KNOBS + STEREO VU (Danny 08:43-08:49 AWST 28 Oct: push-encoder knobs with an OLED window and an LED ring, a stereo VU on the left in
+   the traditional green / yellow / red, 'much darker and just the information I need to glow'). The knob is dark in both themes, like
+   hardware; colour by kind: L blue, R cyan, C green, V amber, N pink. Only transforms and classes move. */
+#dj-desk{--k-L:#4d8dff;--k-R:#38e1f2;--k-C:#3cf2a3;--k-V:#ffb547;--k-N:#ff5fd2;--kn-off:#0b131b;--kn-a:#0e151d;--kn-b:#03060a;--kn-home:#6b5a3a;
+  --vu-g:#23e06b;--vu-y:#f7d544;--vu-r:#ff4141;--vu-off:#06100a;--dk-bg:rgba(2,5,9,.97);--dk-pan:rgba(5,9,14,.98);--dk-line:#0f2131}
+#dj-desk .dk-tab{background:#04101b}#dj-desk .dk-sw{background:#05121e;border-color:#163047}#dj-desk .dk-mini{background:#04101b}
+html[data-desk-full]:not([data-theme="light"]) #home-main{background:#020509}
+.dk-bank{grid-template-columns:repeat(auto-fill,minmax(6.9rem,1fr));gap:.6rem .35rem}
+.dk-f.dk-kn{--k:var(--k-R);gap:.15rem}
+.dk-kn[data-k="L"]{--k:var(--k-L)}.dk-kn[data-k="C"]{--k:var(--k-C)}.dk-kn[data-k="V"]{--k:var(--k-V)}.dk-kn[data-k="N"]{--k:var(--k-N)}
+.dk-kn .dk-nm{height:auto;min-height:1.1em;gap:.3rem;align-items:center;color:#8aa3b6;letter-spacing:.04em}
+.dk-kl{font:700 .55rem/1 ui-monospace,monospace;color:var(--k);text-shadow:0 0 5px var(--k)}
+.dk-knr{display:flex;align-items:center;justify-content:center;gap:.3rem;width:100%}
+.dk-knob{position:relative;flex:0 0 auto;width:4.9rem;height:4.9rem;touch-action:manipulation}
+.dk-knob svg{display:block;width:100%;height:100%;overflow:visible}
+.dk-knob:focus-visible{outline:2px solid var(--k);outline-offset:3px;border-radius:50%}
+.dk-ks{fill:none;stroke:var(--kn-off);stroke-width:5;stroke-linecap:round;transition:stroke .236s ease-out,opacity .236s}
+.dk-ks.on{stroke:var(--k);opacity:.78}.dk-ks.at{stroke:#fff;opacity:1}
+.dk-kg{fill:none;stroke:var(--k);stroke-width:9;opacity:.1}
+.dk-kh{fill:none;stroke:var(--kn-home);stroke-width:3;stroke-linecap:round}
+.dk-kb{fill:var(--kn-b);stroke:#14212d;stroke-width:1}
+.dk-kp{transform-origin:60px 60px;transition:transform .236s cubic-bezier(.2,.9,.3,1.2)}.dk-kp circle{fill:#fff}
+.dk-ko{fill:#000;stroke:#14212d;stroke-width:.8}
+.dk-kc{fill:var(--k);opacity:0;transition:opacity .146s}.dk-knob.up .dk-kc.u,.dk-knob.dn .dk-kc.d{opacity:.13}
+.dk-kv{fill:color-mix(in srgb,var(--k) 30%,#000);transition:fill .09s}.dk-knob.up .dk-kv.u,.dk-knob.dn .dk-kv.d{fill:var(--k)}
+.dk-kt{font-family:VT323,ui-monospace,SFMono-Regular,Menlo,monospace;fill:var(--k);filter:drop-shadow(0 0 2px var(--k))}
+.dk-kbar{fill:var(--k);opacity:.7;transform-origin:31px 72px;transform:scaleX(0)}
+.dk-kh2{position:absolute;left:8%;width:84%;height:42%;border:0!important;padding:0;background:transparent!important}
+.dk-kh2.u{top:8%;border-radius:999px 999px 0 0}.dk-kh2.d{bottom:8%;border-radius:0 0 999px 999px}
+.dk-kn .dk-val{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}   /* the value lives in the OLED; this copy is for screen readers */
+.dk-f.dk-kn.is-grey .dk-knob{opacity:.35}
+.dk-vu{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:2px;width:1.2rem;height:4.7rem;padding:2px;border-radius:.3rem;background:#000;border:1px solid #13202b}
+.dk-vb{position:relative;overflow:hidden;border-radius:2px;background:var(--vu-off)}
+.dk-vl{position:absolute;inset:0;background:linear-gradient(to top,var(--vu-g) 0 62%,var(--vu-y) 62% 85%,var(--vu-r) 85%)}
+.dk-vm{position:absolute;inset:0;transform-origin:50% 0;transform:scaleY(1);will-change:transform;background:var(--vu-off)}   /* the cover over the unlit part, scaled from the top */
+.dk-vp{position:absolute;left:0;right:0;bottom:0;height:3px;margin-bottom:-1px;background:#fff;opacity:0;will-change:transform}
+.dk-vb::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to top,transparent 0 3px,#000 3px 5px)}
+/* the mixer: two channels a row on a phone, each the M / S row over a stereo VU and its level knob */
+.dk-mix{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:600px){.dk-mix{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.dk-ch{background:#03080d;border-color:#0f2131}
+.dk-chr{align-items:center;justify-content:center;gap:.3rem}
+.dk-chr .dk-vu{height:5.6rem;width:1.45rem}.dk-chr .dk-knob{width:5.4rem;height:5.4rem}
+.dk-chr .dk-f .dk-nm{display:none}
+@media (prefers-reduced-motion:reduce){#dj-desk .dk-ks,#dj-desk .dk-kp,#dj-desk .dk-kv,#dj-desk .dk-kc{transition:none}}

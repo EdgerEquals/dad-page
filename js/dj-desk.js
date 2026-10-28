@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=hint1';
+  var CSS = 'css/dj-desk.css?v=knob1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -38,25 +38,62 @@
   // spec: { id, name, k (R C V L N), L (ladder values), lab (fn v -> label), get (), set (v), live () -> 0..1 or null, grey: hint }
   var FD = [], MIX = [];
   function near(L, v) { var b = 0; for (var i = 1; i < L.length; i++) if (Math.abs(L[i] - v) < Math.abs(L[b] - v)) b = i; return b; }
+  // KNOBS (Danny 08:43-08:49 AWST 28 Oct, Claude chat: 'I want it next to a knob ... press on the top of the button to turn it right and
+  // the bottom to turn it left ... the position ... rotate around on the knob ... OLED ... really crisp ... a rotary encoder around it ...
+  // super lightweight but nicely animated'; 'stereo VU meters ... on the left of the knob ... a bit wider ... traditional colours';
+  // 'much darker and just the information I need to glow'; draft: claude.ai/artifact/Rctkmox4JYbCCQ4YMtD6su; 08:49 'build them in'):
+  // every fader is now a push encoder: an LED ring of 21 segments (Fibonacci) lit to the setting, a pointer that glides round, a dim tick
+  // at the default, and an OLED window with the value. The top half turns it right a step, the bottom half left; hold to keep turning,
+  // faster each step (PHI^-1 of the last wait, from 0.38 s down to 70 ms). A fader with a live reading gets a stereo VU on its left
+  // (green / yellow / red, a peak that holds and falls). Colour by kind: L blue, R cyan, C green, V amber, N pink. Drawn once; only
+  // classes, the pointer angle and the meter transforms change. Same spec as the faders it replaces (the desk's other code is unchanged).
+  var KSEG = 21, KA0 = -135, KA1 = 135, KNO = 0, KV = [], SVGNS = 'http://www.w3.org/2000/svg';
+  function karc(r, a, b) { var p = function (d) { var t = (d - 90) * Math.PI / 180; return [60 + r * Math.cos(t), 60 + r * Math.sin(t)]; }, s0 = p(a), e0 = p(b); return 'M' + s0[0].toFixed(2) + ' ' + s0[1].toFixed(2) + 'A' + r + ' ' + r + ' 0 ' + (b - a > 180 ? 1 : 0) + ' 1 ' + e0[0].toFixed(2) + ' ' + e0[1].toFixed(2); }
+  function sv0(n, at, txt) { var e = doc.createElementNS(SVGNS, n); for (var k in at) e.setAttribute(k, at[k]); if (txt != null) e.textContent = txt; return e; }
+  function vuMake() { var vu = E('div', 'dk-vu'), bars = []; for (var i = 0; i < 2; i++) { var b = E('div', 'dk-vb'), c = E('i', 'dk-vl'), l = E('i', 'dk-vm'), pk = E('b', 'dk-vp'); b.appendChild(c); b.appendChild(l); b.appendChild(pk); vu.appendChild(b); bars.push({ l: l, pk: pk, p: 0, hold: 0 }); } return { el: vu, bars: bars }; }   // the colours stay put (green low, red high); a dark cover lifts off them
+  function vuSet(v, ys, dt) { v.bars.forEach(function (b, i) { var y = clamp(ys[i] || 0, 0, 1); if (y >= b.p) { b.p = y; b.hold = IPH; } else if ((b.hold -= dt) < 0) b.p = Math.max(y, b.p - dt * IPH);   // phi: the peak holds PHI^-1 s, then falls PHI^-1 of the scale a second
+    b.l.style.transform = 'scaleY(' + (1 - y).toFixed(3) + ')'; b.pk.style.transform = 'translateY(' + (-b.p * 100).toFixed(1) + '%)'; b.pk.style.opacity = b.p > 0.02 ? '' : '0'; }); }
   function fader(f) {
-    var w = E('div', 'dk-f' + (f.grey ? ' is-grey' : '')), nm = E('div', 'dk-nm', f.name), up = E('button', 'dk-ar', '▲'), dn = E('button', 'dk-ar', '▼'),
-        tr = E('div', 'dk-trk'), mt = E('div', 'dk-mt'), mb = E('i'), slot = E('span', 'dk-slot'), cap = E('span', 'dk-cap'), kd = E('span', 'dk-k', f.k), val = E('div', 'dk-val');
-    up.type = dn.type = 'button'; up.setAttribute('aria-label', f.name + ' up a step'); dn.setAttribute('aria-label', f.name + ' down a step');
-    mt.appendChild(mb); tr.appendChild(mt); tr.appendChild(slot); tr.appendChild(cap); tr.appendChild(kd);
-    tr.setAttribute('role', 'slider'); tr.setAttribute('tabindex', f.grey ? '-1' : '0'); tr.setAttribute('aria-label', f.name);
-    w.appendChild(nm); w.appendChild(up); w.appendChild(tr); w.appendChild(dn); w.appendChild(val);
+    var id = 'dkk' + (KNO++), w = E('div', 'dk-f dk-kn' + (f.grey ? ' is-grey' : '')), nm = E('div', 'dk-nm', f.name), row = E('div', 'dk-knr'), kn = E('div', 'dk-knob'), val = E('div', 'dk-val');
+    w.setAttribute('data-k', f.k); nm.appendChild(E('span', 'dk-kl', f.k));
+    var vu = f.live ? vuMake() : null; if (vu) row.appendChild(vu.el);
+    var svg = sv0('svg', { viewBox: '0 0 120 120', 'aria-hidden': 'true' }), segs = [], span = (KA1 - KA0) / KSEG, n = f.L.length;
+    var glow = sv0('path', { class: 'dk-kg', d: karc(54, KA0, KA0 + 0.01) }); svg.appendChild(glow);
+    for (var i = 0; i < KSEG; i++) { var sg = sv0('path', { class: 'dk-ks', d: karc(54, KA0 + i * span + 2.5, KA0 + (i + 1) * span - 2.5) }); svg.appendChild(sg); segs.push(sg); }
+    var di = f.def != null ? near(f.L, f.def) : 0, da = KA0 + (KA1 - KA0) * (n > 1 ? di / (n - 1) : 0);
+    svg.appendChild(sv0('path', { class: 'dk-kh', d: karc(61.5, da - 2, da + 2) }));
+    svg.appendChild(sv0('circle', { class: 'dk-kb', cx: 60, cy: 60, r: 46 }));
+    var ptr = sv0('g', { class: 'dk-kp' }); ptr.appendChild(sv0('circle', { cx: 60, cy: 18.5, r: 2.4 })); svg.appendChild(ptr);
+    svg.appendChild(sv0('rect', { class: 'dk-ko', x: 25, y: 40, width: 70, height: 40, rx: 7 }));
+    svg.appendChild(sv0('rect', { class: 'dk-kc u', x: 26, y: 41, width: 68, height: 19, rx: 6 })); svg.appendChild(sv0('rect', { class: 'dk-kc d', x: 26, y: 60, width: 68, height: 19, rx: 6 }));
+    svg.appendChild(sv0('path', { class: 'dk-kv u', d: 'M56 47l4-3.2 4 3.2z' })); svg.appendChild(sv0('path', { class: 'dk-kv d', d: 'M56 73l4 3.2 4-3.2z' }));
+    var tv = sv0('text', { class: 'dk-kt', x: 60, y: 65, 'text-anchor': 'middle' }); svg.appendChild(tv);
+    var lb = sv0('rect', { class: 'dk-kbar', x: 31, y: 71.5, width: 58, height: 1.4 }); svg.appendChild(lb);
+    kn.appendChild(svg);
+    var up = E('button', 'dk-kh2 u'), dn = E('button', 'dk-kh2 d'); up.type = dn.type = 'button'; up.setAttribute('aria-label', f.name + ' up a step'); dn.setAttribute('aria-label', f.name + ' down a step'); kn.appendChild(up); kn.appendChild(dn);
+    kn.setAttribute('role', 'slider'); kn.setAttribute('tabindex', f.grey ? '-1' : '0'); kn.setAttribute('aria-label', f.name);
+    row.appendChild(kn); w.appendChild(nm); w.appendChild(row); w.appendChild(val);
     var h = E('div', 'dk-hint'); w.appendChild(h); if (f.note) w.appendChild(E('div', 'dk-fnote', f.note));   // HINTS (Danny 08:28 AWST 28 Oct, 'Yes please'): a fader may carry a one-line note of what it measures
-    function greyNow() { var g = f.greyFn ? f.greyFn() : f.grey; w.classList.toggle('is-grey', !!g); h.textContent = g || ''; h.hidden = !g; up.disabled = dn.disabled = !!g; tr.setAttribute('tabindex', g ? '-1' : '0'); return g; }
-    var n = f.L.length;
+    function greyNow() { var g = f.greyFn ? f.greyFn() : f.grey; w.classList.toggle('is-grey', !!g); h.textContent = g || ''; h.hidden = !g; up.disabled = dn.disabled = !!g; kn.setAttribute('tabindex', g ? '-1' : '0'); return g; }
     function idx() { var v = f.get(); return v == null ? near(f.L, f.def != null ? f.def : f.L[0]) : near(f.L, v); }
-    function paint() { greyNow(); var i = idx(), y = n > 1 ? i / (n - 1) : 0; cap.style.bottom = 'calc((100% - var(--dk-capr)) * ' + y.toFixed(4) + ' + var(--dk-pad))';
-      val.textContent = f.lab(f.L[i]); tr.setAttribute('aria-valuenow', String(i)); tr.setAttribute('aria-valuetext', val.textContent); tr.setAttribute('aria-valuemin', '0'); tr.setAttribute('aria-valuemax', String(n - 1)); }
-    function to(i) { if (greyNow()) return; i = clamp(i, 0, n - 1); if (i === idx()) return; f.set(f.L[i]); log(f.id, f.L[i]); paint(); }
-    up.addEventListener('click', function () { to(idx() + 1); }); dn.addEventListener('click', function () { to(idx() - 1); });
-    tr.addEventListener('click', function (e) { var r = tr.getBoundingClientRect(); if (!r.height) return; to(Math.round((1 - clamp((e.clientY - r.top) / r.height, 0, 1)) * (n - 1))); });   // a tap jumps to the nearest step
-    tr.addEventListener('keydown', function (e) { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); to(idx() + 1); } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); to(idx() - 1); } });
+    function paint() { greyNow(); var i = idx(), y = n > 1 ? i / (n - 1) : 0, lit = Math.round(y * (KSEG - 1)), a = KA0 + (KA1 - KA0) * y;
+      for (var j = 0; j < KSEG; j++) { segs[j].classList.toggle('on', j < lit); segs[j].classList.toggle('at', j === lit); }
+      glow.setAttribute('d', karc(54, KA0, Math.max(KA0 + 0.01, a))); ptr.style.transform = 'rotate(' + a.toFixed(1) + 'deg)';
+      val.textContent = f.lab(f.L[i]); tv.textContent = val.textContent; tv.setAttribute('font-size', val.textContent.length > 9 ? 11.5 : val.textContent.length > 6 ? 14 : 16.5);   // a long value steps down a size to stay inside the window
+      kn.setAttribute('aria-valuenow', String(i)); kn.setAttribute('aria-valuetext', val.textContent); kn.setAttribute('aria-valuemin', '0'); kn.setAttribute('aria-valuemax', String(n - 1)); }
+    function to(i) { if (greyNow()) return false; i = clamp(i, 0, n - 1); if (i === idx()) return false; f.set(f.L[i]); log(f.id, f.L[i]); paint(); return true; }
+    function hold(btn, d, cls) { var t = 0, wait = 0;
+      function go() { if (!to(idx() + d)) return stop(); wait = Math.max(70, wait * IPH); t = setTimeout(go, wait); }   // unit: 70 ms, the fastest repeat
+      function stop() { clearTimeout(t); kn.classList.remove(cls); }
+      btn.addEventListener('pointerdown', function (e) { if (btn.disabled) return; e.preventDefault(); kn.classList.add(cls); to(idx() + d); wait = IPH * IPH * MS; t = setTimeout(go, wait); });   // phi: the first repeat after PHI^-2 s
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
+      btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); to(idx() + d); } });
+      btn.addEventListener('contextmenu', function (e) { e.preventDefault(); }); }
+    hold(up, 1, 'up'); hold(dn, -1, 'dn');
+    kn.addEventListener('keydown', function (e) { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); to(idx() + 1); } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); to(idx() - 1); } });
     paint();
-    var o = { el: w, paint: paint, meter: function () { if (!f.live) { mt.style.visibility = 'hidden'; return; } var x = f.live(); if (x == null || !isFinite(x)) { mt.style.visibility = 'hidden'; return; } mt.style.visibility = ''; mb.style.transform = 'scaleY(' + clamp(x, 0, 1).toFixed(3) + ')'; }, f: f };
+    var kv = vu ? { vu: vu, lb: lb, f: f } : null; if (kv) KV.push(kv);
+    var o = { el: w, paint: paint, meter: function () { if (!kv) return; }, f: f };
     FD.push(o); return o;
   }
   function sw(lab, on, click, cls) { var b = E('button', 'dk-sw' + (cls ? ' ' + cls : ''), lab); b.type = 'button'; b.setAttribute('aria-pressed', on() ? 'true' : 'false');
@@ -98,18 +135,21 @@
     // MIXER
     var m = strip(host, 'mixer', 'Mixer', 'mute · solo · the energy in each channel'), grid = E('div', 'dk-mix');
     D.CHS.forEach(function (ch) {
-      var c = E('div', 'dk-ch'), top = E('div', 'dk-chn', CHN[ch]), ms = E('div', 'dk-ms'), meter = E('div', 'dk-chm'), mi = E('i'), sends = E('div', 'dk-snds');
-      meter.appendChild(mi); c.appendChild(top);
+      var c = E('div', 'dk-ch'), top = E('div', 'dk-chn', CHN[ch]), ms = E('div', 'dk-ms'), vu = vuMake();
+      c.appendChild(top);
       ms.appendChild(sw('M', function () { return !!D.mx.m[ch]; }, function () { var v = !D.mx.m[ch]; D.mute(ch, v); log('mute.' + ch, v ? 1 : 0); }, 'dk-m'));
       ms.appendChild(sw('S', function () { return !!D.mx.s[ch]; }, function () { var v = !D.mx.s[ch]; D.solo(ch, v); log('solo.' + ch, v ? 1 : 0); }, 'dk-so'));
       c.appendChild(ms);
       // NO SENDS (Danny 07:48 AWST 28 Oct: 'Remove effect sends'): the echo and wash send faders are gone from the channels; any that
       // were up go back to off, so nothing hidden stays routed. The effects' own returns (the Effects strip) are untouched.
       ['e', 'w'].forEach(function (k) { if (((k === 'e' ? D.mx.e : D.mx.w)[ch] | 0) > 0) D.send(ch, k, 0); });
-      var row = E('div', 'dk-chr'); row.appendChild(meter); row.appendChild(sends); c.appendChild(row); grid.appendChild(c);
+      // LEVEL (Danny 08:43 'lost my ability to change the volumes'; 08:49 'build them in'): a loss knob, 0 dB down a rung at a time to off,
+      // with the channel's stereo VU on its left (the energy in the circuit after the level; mono channels move both sides together)
+      var lvk = fader({ id: 'level.' + ch, name: 'level', k: 'L', L: [6, 5, 4, 3, 2, 1, 0], def: 0, lab: function (v) { return v >= 6 ? 'off' : v === 0 ? '0 dB' : '\u2212' + (v * 20 * Math.log10(PHI)).toFixed(1) + ' dB'; }, get: function () { return D.level ? D.level(ch) : 0; }, set: function (v) { if (D.level) D.level(ch, v); } });
+      var row = E('div', 'dk-chr'); row.appendChild(vu.el); row.appendChild(lvk.el); c.appendChild(row); grid.appendChild(c);
       FD.push({ el: c, paint: function () { c.querySelectorAll('.dk-sw').forEach(function (b) { if (b._sync) b._sync(); }); c.classList.toggle('is-off', !D.on(ch)); },
         meter: null, f: { id: 'ch.' + ch } });
-      MIX.push({ ch: ch, mi: mi, v: 0 });
+      MIX.push({ ch: ch, vu: vu, v: 0 });
     });
     m.appendChild(grid);
     // STYLE
@@ -321,8 +361,9 @@
   // engine set x the layer's arc gain x the crossfade, discharging over PHI^-1 of a beat). No audio is measured. Read every PHI^-5 s while
   // the Sound tab is open, transform only.
   var MSTEP = Math.pow(PHI, -5);                                          // phi: read every PHI^-5 s (~90 ms)
-  function fast() { clearTimeout(fT); if (!isOpen() || UI.tab !== 'sound') return; var D = DK(); if (D && D.meter) MIX.forEach(function (m) {
-      m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
+  function fast() { clearTimeout(fT); if (!isOpen() || UI.tab !== 'sound') return; var D = DK();
+    if (D && D.meter) MIX.forEach(function (m) { m.v = clamp(D.meter(m.ch), 0, 1); vuSet(m.vu, [m.v, m.v], MSTEP); });   // mono channels: both sides together
+    KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
   function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
@@ -331,6 +372,7 @@
   function build() {
     if (el) return; var main = doc.getElementById('home-main'); if (!main) return;
     if (!doc.querySelector('link[data-desk]')) { var l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = CSS; l.setAttribute('data-desk', '1'); doc.head.appendChild(l); }
+    if (!doc.querySelector('link[data-desk-font]')) { var lf = doc.createElement('link'); lf.rel = 'stylesheet'; lf.href = 'https://fonts.googleapis.com/css2?family=VT323&display=swap'; lf.setAttribute('data-desk-font', '1'); doc.head.appendChild(lf); }   // the knobs' OLED face (VT323, SIL Open Font License, Peter Hull), only with the desk; a monospace stands in until it lands
     el = E('section', 'dk'); el.id = 'dj-desk'; el.setAttribute('aria-label', 'Ed’s desk'); el.setAttribute('data-guard', 'dj-desk');
     var top = E('div', 'dk-top');                                          // no title, close or readout line (Danny 18:43 AWST 27 Oct: 'Remove this part'); the faders button, Esc, or the floating X in full screen
     var tb = E('div', 'dk-tabs'); tb.setAttribute('role', 'tablist');
