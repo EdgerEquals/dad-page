@@ -1,0 +1,42 @@
+# Long listening runs on GitHub instead of in Claude's session (Danny 19:17 AWST 28 Oct, Claude chat: 'push go with setting up GitHub to do
+# those things'). Started by hand (Actions > listen > Run workflow) or by Claude through the API. Plays a style headless with the desk open for
+# N minutes and reports late sounds, main-thread stalls and the audio clock; 'compare' runs the same on an older commit first; 'capture' also
+# keeps every note and prints the music report (tempo, drum grid, bass, chords, lead, sections). Results: the run's summary page and its
+# annotations (readable without a login).
+name: listen
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'minutes to listen'
+        default: '5'
+      genre:
+        description: 'style to play'
+        default: 'electro'
+      compare:
+        description: 'an older commit to run first, for a before / after (blank = none)'
+        default: ''
+      capture:
+        description: 'keep every note and print the music report (yes / no)'
+        default: 'no'
+jobs:
+  listen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        working-directory: tests
+        run: npm install --no-audit --no-fund && npx playwright install --with-deps chromium
+      - name: Listen
+        env:
+          MINS: ${{ inputs.minutes }}
+          GENRE: ${{ inputs.genre }}
+          COMPARE: ${{ inputs.compare }}
+          CAPTURE: ${{ inputs.capture }}
+        run: bash tests/probes/listen.sh
