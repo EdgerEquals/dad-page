@@ -4,7 +4,7 @@
 #   bash tests/run.sh desk-test voice-test   just those
 # Prints every FAIL line and a summary; exits 1 if any FAIL is not listed in tests/flaky.txt.
 cd "$(dirname "$0")/.." || exit 1; R=$(pwd); PORT=${PORT:-8812}
-CORE="desk-test keys-test ms-test tpl-test bus2-test emerge-test form-test voice-test groove-test bell-test melody-test load-test"
+CORE="desk-test keys-test ms-test tpl-test bus2-test emerge-test form-test voice-test groove-test bell-test melody-test load-test tempo-test"
 LIST=${*:-$CORE}
 (bash tests/serve.sh "$R" "$PORT" >/dev/null 2>&1 &); sleep 1
 bad=0

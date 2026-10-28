@@ -158,6 +158,14 @@
     var st = strip(host, 'style', 'Style', 'style · form'), row = E('div', 'dk-sws');
     ['auto', 'random'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });   // auto = the pumps choose; random = chance, each new track (Danny 18:53)
     st.appendChild(E('div', 'dk-sub', 'style')); st.appendChild(row);
+    // TEMPO (Danny 18:19 AWST 28 Oct, Claude chat: electro in 120-130 'locks into resonance ... because we can't have rules and I still would like to
+    // be able to change the BPM on the fly ... slide it all the way down slowly'): tempo is his move on top of everything (rungs, PHI^-5 a step, the
+    // tracks glide there); tempo lock is how strongly a style's energy is held in its home tempo (electro 120-130).
+    var TPV = []; for (var tk = -18; tk <= 7; tk++) TPV.push(tk * P(-5));   // phi: steps of PHI^-5 rung (x1.044, ~5 BPM at 125), from x0.46 to x1.35
+    st.appendChild(E('div', 'dk-sub', 'tempo'));
+    bank(st, [{ id: 'dial.tpo', name: 'tempo', k: 'R', L: TPV, def: 0, note: 'your tempo move: slide it down for a breakdown, the music glides there', lab: function (v) { return Math.abs(v) < 1e-9 ? 'as the style' : '\u00D7' + Math.pow(PHI, v).toFixed(2); }, get: function () { return D.dial('tpo'); }, set: function (v) { D.dial('tpo', v); } },
+      { id: 'dial.tLk', name: 'tempo lock', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: 1, note: "how strongly a style's energy is held in its home tempo (electro 120-130)", lab: function (v) { return v === 0 ? 'free' : v === 1 ? 'held' : Math.round(v * 100) + '%'; }, get: function () { return D.dial('tLk'); }, set: function (v) { D.dial('tLk', v); } }]);
+    var TPL = E('div', 'dk-hint dk-txl'); st.appendChild(TPL); TPLF = function () { var l = D.live && D.live(), t = l && l.bpm ? Math.round(l.bpm) + ' BPM' + (l.home ? ' \u00B7 home ' + l.home[0] + '\u2013' + l.home[1] : '') : ''; if (TPL.textContent !== t) TPL.textContent = t; TPL.hidden = !t; };
     // FORM (Danny 07:46 AWST 28 Oct: 'Can you add form'): the shape over time, sections that bring whole parts in and take them out.
     // emergent = the pumps choose the sections (the default since 09:59 28 Oct), written = the style's own written form, off = the old
     // arc (short tracks), random = a written form per track; the named written forms follow; the readout shows where the track is.
@@ -242,7 +250,7 @@
     var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('mRh', 'own rhythm', 'C', 0, 1, IPH * IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }),
       { id: 'dial.belS', name: 'bells', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how many phrases a bell plays, as lead or answer', lab: function (v) { return v === 0 ? 'none' : Math.round(v * 100) + '% of phrases'; }, get: function () { return D.dial('belS'); }, set: function (v) { D.dial('belS', v); } },
       { id: 'dial.lN', name: 'lead voices', k: 'N', L: [1, 2, 3], def: 3, note: 'how many instruments a track hands the lead between: its own in the middle, another at the peaks, the softest in breakdowns', lab: function (v) { return ['', 'one', 'a pair', 'pair or trio'][v] || String(v); }, get: function () { return D.dial('lN'); }, set: function (v) { D.dial('lN', v); } },
-      { id: 'dial.soloP', name: 'solo chance', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'the share of tracks that take a solo at a long peak', lab: function (v) { return v === 0 ? 'never' : Math.round(v * 100) + '% of tracks'; }, get: function () { return D.dial('soloP'); }, set: function (v) { D.dial('soloP', v); } },
+      { id: 'dial.soloP', name: 'solo chance', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'the share of tracks that take a solo at a long peak (electro: rare, about 1 in 8 at the default; full = always)', lab: function (v) { return v === 0 ? 'never' : Math.round(v * 100) + '% of tracks'; }, get: function () { return D.dial('soloP'); }, set: function (v) { D.dial('soloP', v); } },
       { id: 'dial.soloA', name: 'solo climb', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how far a solo climbs: notes per bar, register, leaps', lab: function (v) { return v === 0 ? 'off' : Math.round(v * 100) + '%'; }, get: function () { return D.dial('soloA'); }, set: function (v) { D.dial('soloA', v); } },
       { id: 'dial.soloL', name: 'solo after', k: 'V', L: [1, 2, 3, 5], def: 2, note: 'the shortest peak section that gets a solo', lab: function (v) { return v + (v === 1 ? ' phrase' : ' phrases'); }, get: function () { return D.dial('soloL'); }, set: function (v) { D.dial('soloL', v); } },
       { id: 'dial.mDr', name: 'drift', k: 'N', L: [0, 1, 2, 3, 5, 8], def: 3, note: 'how many notes of the motif drift away before it comes home', lab: function (v) { return v === 0 ? 'off' : 'up to ' + v + (v === 1 ? ' note' : ' notes'); }, get: function () { return D.dial('mDr'); }, set: function (v) { D.dial('mDr', v); } },
@@ -426,7 +434,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null, TPLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -440,7 +448,7 @@
     KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (LDLF) try { LDLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (LDLF) try { LDLF(); } catch (e) {} if (TPLF) try { TPLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

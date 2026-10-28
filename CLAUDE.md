@@ -45,7 +45,7 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
   `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
 - Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
 
-## State (28 Oct 2026, 15:30 AWST)
+## State (28 Oct 2026, 18:45 AWST)
 Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
 servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
 (`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed) ·
@@ -64,6 +64,14 @@ foot-push.js reads its font size once (it forced a style recalc several times a 
 strip's 'share sound log' (resume log + 'reloaded by the phone' lines from a heartbeat). Tests: `tests/load-test.js` (in CI).
 Probes worth reusing: count late `start()` calls (patch AudioBufferSourceNode.prototype.start too, it has its own); CDP WebAudio
 getRealtimeData on the realtime context only (offline renders create contexts too).
+**Tempo** (`tempo1`, Danny 18:19 28 Oct): a style may have a home window (`g.home`, electro [120, 130], the genre's convention);
+`lockBpm` folds the live (pump) tempo by octaves and draws it in with tanh in log tempo (a resonance, not a clamp); `tLk` (tempo lock,
+C) blends free/held; a tap goes straight through; `tpo` (tempo, R, PHI^-5 a step) is his live move on top of every style (slide down
+for a breakdown; tracks glide). Style strip: tempo, tempo lock, a BPM readout. Electro solos rare: `g.solo` is an exponent on
+`soloP` (electro PHI^3: ~13% of tracks at the default, full = always). Tests: `tests/tempo-test.js` (in CI).
+Electro, measured over 12 min (28 Oct): drums, 303 bass and track length are right; tempo was 112 (now home); no breakdown in 3
+tracks; no voice in 3 tracks; solos too common (now rare). Proposed next for electro, waiting on Danny's pick: breakdowns likely in
+electro, the machine voice more often, straighter swing, a denser repeating riff for the lead, the hard/soft vibe knob.
 
 Next, in Danny's agreed order (12:53 28 Oct):
 1. ~~Melody~~ (live 28 Oct, melody1; waiting on Danny's listen).

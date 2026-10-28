@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [desk-test, keys-test, ms-test, tpl-test, bus2-test, emerge-test, form-test, voice-test, groove-test, bell-test, melody-test, load-test]
+        test: [desk-test, keys-test, ms-test, tpl-test, bus2-test, emerge-test, form-test, voice-test, groove-test, bell-test, melody-test, load-test, tempo-test]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
