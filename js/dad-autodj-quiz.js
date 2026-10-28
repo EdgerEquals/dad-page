@@ -1316,16 +1316,23 @@
   };
   var TPAL = { electro: 'electro', electronic: 'club', 'indie-pop': 'pop', 'upbeat-pop': 'pop', soul: 'soul', acoustic: 'acoustic', folk: 'acoustic', piano: 'piano', cinematic: 'orchestral', ambient: 'ambient' };
   var SATN = { none: 0, soft: 1, tube: 2, tape: 3, transistor: 4 }, MDET = [null, 'peak', 'peak', 'rms', 'rms'], MNAME = [null, 'VCA', 'FET', 'opto', 'vari-mu'];
-  var busHit = 0, busOff = 0, busTpl = null;                                                    // the hits' reduction (dB, decaying peak); the servo's threshold offset (dB)
+  var busHit = 0, busOff = 0, busTpl = null, busOffs = {}, busLoud = null;                       // the hits' reduction (dB, decaying peak); the servo's threshold offset (dB), remembered per palette; the music's loud level (dB)
+  // SERVO FIXES (Danny 08:31 AWST 28 Oct 'Yes', to the three points from DeepSeek's review he relayed at 08:28): (1) a QUIET GATE, the servo
+  // only adjusts while the music sits within PHI^3 dB of its loud level (a peak that falls PHI^-1 dB a step), so a long breakdown can't drag
+  // the threshold down and squash the first hit after it; (2) a DEADBAND, no correction within max(PHI^-3, PHI^-3 x target) dB of the target, and
+  // the step scales with the target below 1 dB (an orchestral 0.5 dB can't hunt); (3) each palette REMEMBERS where its servo settled.
   function tplName(tr) { var m = DIAL.tpM | 0; if (m === -1) return null; if (m > 0) return TPLK[m - 1] || null; return TPAL[tr && tr.genre] || 'electro'; }
   function busSet(step) {
     if (!busNode) return; var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tn = tplName(tr), T = tn ? TPL[tn] : null, mm = DIAL.mbM | 0;
     if (!T || mm === -1) { busP = { tpl: tn, model: null }; busNode.port.postMessage({ k: 'p', p: { model: 0 } }); return; }
-    if (tn !== busTpl) { busTpl = tn; busOff = 0; }                                         // a new palette starts its servo from the level
+    if (tn !== busTpl) { if (busTpl) busOffs[busTpl] = busOff; busTpl = tn; busOff = busOffs[tn] || 0; }   // a palette picks up where its servo last settled
     var mo = mm > 0 ? mm : T.m, M = MBM[mo], own = mo === T.m, base = own ? { a: T.a, r: T.r, k: T.k, q: T.q } : { a: Math.pow(PHI, M.a), r: Math.pow(PHI, M.r), k: Math.pow(PHI, M.k), q: Math.pow(PHI, M.q) };   // a forced model brings its own settings
     var u = energy(), tgt = T.gr * Math.pow(PHI, DIAL.mbT) * Math.pow(PHI, DIAL.mbE * 2 * (u - IPH));   // the squeeze: the template's, in rungs, leaning with the energy
-    if (step && busHit >= 0) busOff = clamp(busOff + clamp((busHit - tgt) * IPH, -PHI, PHI), -Math.pow(PHI, 5), Math.pow(PHI, 5));   // phi: the servo: PHI^-1 of the error per PHI s, at most PHI dB a step, within PHI^5 dB of the level
-    var lv = preS > 0 ? 20 * Math.log10(preS) : -Math.pow(PHI, 6), thr = lv + busOff, ov = DIAL.mbS < 0 ? 0 : T.sat === 'none' ? (DIAL.mbS > 0 ? 8 * Math.pow(PHI, -DIAL.mbS) : 0) : T.over * Math.pow(PHI, -DIAL.mbS);   // unit: dB; phi: -PHI^6 dB before the first reading; a template with no saturation takes a soft one from 8 dB when pushed
+    var lv = preS > 0 ? 20 * Math.log10(preS) : -Math.pow(PHI, 6);   // phi: -PHI^6 dB before the first reading
+    if (step && preS > 0) busLoud = busLoud == null ? lv : Math.max(lv, busLoud - IPH);   // phi: the loud level falls PHI^-1 dB a step (a PHI s step)
+    var er = busHit - tgt, sm = Math.min(1, tgt), dbd = Math.max(Math.pow(PHI, -3), tgt * Math.pow(IPH, 3));
+    if (step && busHit >= 0 && busLoud != null && lv > busLoud - Math.pow(PHI, 3) && Math.abs(er) > dbd) busOff = clamp(busOff + clamp(er * IPH * sm, -PHI * sm, PHI * sm), -Math.pow(PHI, 5), Math.pow(PHI, 5));   // phi: PHI^-1 of the error per PHI s, at most PHI dB a step (scaled below a 1 dB target), within PHI^5 dB of the level
+    var thr = lv + busOff, ov = DIAL.mbS < 0 ? 0 : T.sat === 'none' ? (DIAL.mbS > 0 ? 8 * Math.pow(PHI, -DIAL.mbS) : 0) : T.over * Math.pow(PHI, -DIAL.mbS);   // unit: dB; phi: -PHI^6 dB before the first reading; a template with no saturation takes a soft one from 8 dB when pushed
     var st = DIAL.mbS < 0 ? 0 : T.sat === 'none' ? (DIAL.mbS > 0 ? SATN.soft : 0) : SATN[T.sat];
     busP = { tpl: tn, model: MNAME[mo], own: own, target: tgt, hit: busHit, thr: thr, lv: lv, base: base, sat: st ? (T.sat === 'none' ? 'soft' : T.sat) : null, over: ov };
     busNode.port.postMessage({ k: 'p', p: { model: mo, det: MDET[mo], opto: mo === 3, mu: mo === 4, thr: thr, ratio: Math.max(1, base.q * Math.pow(PHI, DIAL.mbR)), atk: base.a * Math.pow(PHI, DIAL.mbA), rel: base.r * Math.pow(PHI, DIAL.mbRl), knee: base.k * Math.pow(PHI, DIAL.mbK),
