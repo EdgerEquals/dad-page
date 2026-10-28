@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=ms1';
+  var CSS = 'css/dj-desk.css?v=tpl1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -96,16 +96,16 @@
     var D = DK(), d = DJ(); if (!D) { host.appendChild(E('p', 'dk-note', 'The DJ is still loading. Tap the music button first, then open the desk again.')); return; }
     var mx = D.mx, SL = D.SENDL;
     // MIXER
-    var m = strip(host, 'mixer', 'Mixer', 'mute · solo · echo + wash sends'), grid = E('div', 'dk-mix');
+    var m = strip(host, 'mixer', 'Mixer', 'mute · solo · the energy in each channel'), grid = E('div', 'dk-mix');
     D.CHS.forEach(function (ch) {
       var c = E('div', 'dk-ch'), top = E('div', 'dk-chn', CHN[ch]), ms = E('div', 'dk-ms'), meter = E('div', 'dk-chm'), mi = E('i'), sends = E('div', 'dk-snds');
       meter.appendChild(mi); c.appendChild(top);
       ms.appendChild(sw('M', function () { return !!D.mx.m[ch]; }, function () { var v = !D.mx.m[ch]; D.mute(ch, v); log('mute.' + ch, v ? 1 : 0); }, 'dk-m'));
       ms.appendChild(sw('S', function () { return !!D.mx.s[ch]; }, function () { var v = !D.mx.s[ch]; D.solo(ch, v); log('solo.' + ch, v ? 1 : 0); }, 'dk-so'));
       c.appendChild(ms);
-      ['e', 'w'].forEach(function (k) { var L = SL.map(function (_, i) { return i; });
-        var o = fader({ id: 'send.' + k + '.' + ch, name: k === 'e' ? 'echo' : 'wash', k: 'C', L: L, def: 0, lab: sendLab, get: function () { return (k === 'e' ? D.mx.e : D.mx.w)[ch] | 0; }, set: function (v) { D.send(ch, k, v); } });
-        o.el.classList.add('dk-mini-f'); sends.appendChild(o.el); });
+      // NO SENDS (Danny 07:48 AWST 28 Oct: 'Remove effect sends'): the echo and wash send faders are gone from the channels; any that
+      // were up go back to off, so nothing hidden stays routed. The effects' own returns (the Effects strip) are untouched.
+      ['e', 'w'].forEach(function (k) { if (((k === 'e' ? D.mx.e : D.mx.w)[ch] | 0) > 0) D.send(ch, k, 0); });
       var row = E('div', 'dk-chr'); row.appendChild(meter); row.appendChild(sends); c.appendChild(row); grid.appendChild(c);
       FD.push({ el: c, paint: function () { c.querySelectorAll('.dk-sw').forEach(function (b) { if (b._sync) b._sync(); }); c.classList.toggle('is-off', !D.on(ch)); },
         meter: null, f: { id: 'ch.' + ch } });
@@ -113,15 +113,26 @@
     });
     m.appendChild(grid);
     // STYLE
-    var st = strip(host, 'style', 'Style'), row = E('div', 'dk-sws');
+    var st = strip(host, 'style', 'Style', 'style · form'), row = E('div', 'dk-sws');
     ['auto', 'random'].concat(D.genres).forEach(function (gk) { row.appendChild(sw(gk, function () { return (D.pick || 'auto') === gk; }, function () { D.setPick(gk === 'auto' ? null : gk); log('style', gk); row.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });   // auto = the pumps choose; random = chance, each new track (Danny 18:53)
-    st.appendChild(row);
+    st.appendChild(E('div', 'dk-sub', 'style')); st.appendChild(row);
+    // FORM (Danny 07:46 AWST 28 Oct: 'Can you add form'): the shape over time, sections that bring whole parts in and take them out.
+    // auto = the style's own form, off = the old arc (short tracks), random = a form per track; the readout shows where the track is.
+    var fr = E('div', 'dk-sws'), FMS = [['auto', 0], ['off', -1], ['random', -2]].concat((D.forms || []).map(function (n, i) { return [n, i + 1]; }));
+    FMS.forEach(function (x) { fr.appendChild(sw(x[0], function () { return (D.dial('fmM') | 0) === x[1]; }, function () { D.dial('fmM', x[1]); log('dial.fmM', x[1]); fr.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
+    st.appendChild(E('div', 'dk-sub', 'form')); st.appendChild(fr);
+    var FML = E('div', 'dk-hint dk-txl'); st.appendChild(FML);
+    FMLF = function () { var l = D.live && D.live(), f = l && l.form, t = !l ? '' : !f ? 'form off: one arc per track' : f.name + ' · ' + f.sec + ', bar ' + f.bar + ' of ' + f.bars + (f.next ? ' · next: ' + f.next : ' · then the next track'); if (FML.textContent !== t) FML.textContent = t; };
+    var ffl = bank(st, [{ id: 'dial.fmU', name: 'phrase', k: 'N', L: [1, 2, 4, 8], def: 4, lab: function (v) { return v + (v > 1 ? ' bars' : ' bar'); }, get: function () { return D.dial('fmU'); }, set: function (v) { D.dial('fmU', v); } },
+      { id: 'dial.fmR', name: 'build roll', k: 'N', L: [0, 1, 2, 4], def: 1, lab: function (v) { return v ? v + (v > 1 ? ' bars' : ' bar') : 'off'; }, get: function () { return D.dial('fmR'); }, set: function (v) { D.dial('fmR', v); } },
+      { id: 'dial.fmS', name: 'drop stop', k: 'N', L: [0, 2, 4, 8], def: 4, lab: function (v) { return v ? v + ' sixteenths' : 'off'; }, get: function () { return D.dial('fmS'); }, set: function (v) { D.dial('fmS', v); } }]);
+    tools(st, ffl);
     // CHANGES (Danny 18:55-18:59 AWST 27 Oct: 'Can the transition happen faster when I change a parameter?' ... 'build it as dials so that I
     // can adjust it ... from my usage data ... where I generally land'): how a change made here lands; the DJ's own changes keep the radio pacing
     var cg = strip(host, 'changes', 'Changes', 'how fast your changes land');
-    var BB = [1, 2, 3, 5, 8, 0], FDL = [IPH, 1, PHI, PHI * PHI, PHI * PHI * PHI, PHI * PHI * PHI * PHI, 0], DPL = [0, P(-4), P(-3), P(-2), IPH, 1, -1];
+    var BB = [1, 2, 3, 5, 8, 0], FDL = [1 / 4, 1 / 2, 1, 2, 4, 8, 0], DPL = [0, P(-4), P(-3), P(-2), IPH, 1, -1];
     var cl = bank(cg, [{ id: 'dial.dkBars', name: 'build', k: 'R', L: BB, def: 1, lab: function (v) { return v === 0 ? 'radio' : v + (v === 1 ? ' bar' : ' bars'); }, get: function () { return D.dial('dkBars'); }, set: function (v) { D.dial('dkBars', v); } },
-      { id: 'dial.dkFade', name: 'fade', k: 'R', L: FDL, def: PHI, lab: function (v) { return v === 0 ? 'style' : v.toFixed(1) + ' s'; }, get: function () { return D.dial('dkFade'); }, set: function (v) { D.dial('dkFade', v); } },
+      { id: 'dial.dkFade', name: 'fade', k: 'R', L: FDL, def: 1, lab: function (v) { return v === 0 ? 'style' : (v < 1 ? '1/' + Math.round(1 / v) + ' bar' : v + (v === 1 ? ' bar' : ' bars')); },   /* bars, not seconds (Danny 08:14 28 Oct) */ get: function () { return D.dial('dkFade'); }, set: function (v) { D.dial('dkFade', v); } },
       { id: 'dial.dkDepth', name: 'sweep', k: 'C', L: DPL, def: -1, lab: function (v) { return v < 0 ? 'auto' : v === 0 ? 'none' : v === 1 ? 'full' : v.toFixed(2); }, get: function () { return D.dial('dkDepth'); }, set: function (v) { D.dial('dkDepth', v); } }]);
     var nowRow = E('div', 'dk-sws'); cg.appendChild(E('div', 'dk-sub', 'harmony + melody faders'));
     [['next track', 0], ['now', 1]].forEach(function (x) { nowRow.appendChild(sw(x[0], function () { return (D.dial('dkNow') | 0) === x[1]; }, function () { D.dial('dkNow', x[1]); log('dial.dkNow', x[1]); nowRow.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
@@ -194,25 +205,31 @@
     fbk.addEventListener('click', function () { var F = d && d.fx; if (F && F.back) F.back(); log('fx.live', 1); setTimeout(paintAll, 60); });
     fxr.appendChild(fb); fxr.appendChild(fbk); ef.appendChild(fxr);
     // MASTER BUS (Danny 22:06 AWST 27 Oct: 'it's really really missing Master bus compression' ... 'and distortion the same way' ...
-    // 'however it goes, I'll work with it'): its own strip after the effects, since it sits after everything. Model switches, then the
-    // compressor's faders (threshold in dB over the running level; ratio, attack, release, knee in rungs from the model's own; parallel
-    // mix; energy follow), then saturation. The threshold fader's meter is the compressor's gain reduction (its control voltage, the
-    // circuit's own state; no output level is measured).
-    var mbs = strip(host, 'master', 'Master bus', 'compressor · saturation · after everything');
-    var MBN = [['off', 0], ['VCA', 1], ['FET', 2], ['opto', 3], ['vari-mu', 4]], mbw = E('div', 'dk-sws');
-    MBN.forEach(function (x) { mbw.appendChild(sw(x[0], function () { return (D.dial('mbM') | 0) === x[1]; }, function () { D.dial('mbM', x[1]); log('dial.mbM', x[1]); mbw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
+    // 'however it goes, I'll work with it'); TEMPLATES (08:02-08:10 AWST 28 Oct: 'the way all the effects are wired will change with
+    // each pallet' ... 'I approve that draft go with that'): a template row (auto follows the style's palette; none is a dry reference),
+    // a model row (the template's, off, or one forced), then faders in rungs from the template: squeeze (how hard the loudest moments
+    // are pushed; the threshold finds it), ratio, attack, release, knee, mix, energy follow; saturation (off, the template's, heavier),
+    // even harmonics. The squeeze meter is the compressor's gain reduction (its control voltage, the circuit's own state).
+    var mbs = strip(host, 'master', 'Master bus', 'templates · compressor · saturation');
+    var bp = function () { var b = D.bus && D.bus(); return b && b.p || {}; };
+    var tpw = E('div', 'dk-sws'), TPN = [['auto', 0], ['none', -1]].concat((D.templates || []).map(function (n, i) { return [n, i + 1]; }));
+    TPN.forEach(function (x) { tpw.appendChild(sw(x[0], function () { return (D.dial('tpM') | 0) === x[1]; }, function () { D.dial('tpM', x[1]); log('dial.tpM', x[1]); tpw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); setTimeout(paintAll, 60); })); });
+    mbs.appendChild(E('div', 'dk-sub', 'template')); mbs.appendChild(tpw);
+    var MBN = [['template', 0], ['off', -1], ['VCA', 1], ['FET', 2], ['opto', 3], ['vari-mu', 4]], mbw = E('div', 'dk-sws');
+    MBN.forEach(function (x) { mbw.appendChild(sw(x[0], function () { return (D.dial('mbM') | 0) === x[1]; }, function () { D.dial('mbM', x[1]); log('dial.mbM', x[1]); mbw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); setTimeout(paintAll, 60); })); });
     mbs.appendChild(E('div', 'dk-sub', 'compressor · SSL-, 1176-, LA-2A-, Fairchild-style')); mbs.appendChild(mbw);
     var MBL = E('div', 'dk-hint dk-txl'); mbs.appendChild(MBL);
-    var mbAv = 0, mbPk = 0; MBLF = function () { var b = D.bus && D.bus(); if (b && b.on) { mbAv += ((+b.av || 0) - mbAv) * IPH; mbPk = Math.min(b.gr, mbPk * IPH + b.gr * (1 - IPH)); }   // phi: the readout settles over a few beats
-      var t = !b || !b.on ? 'loading…' : (D.dial('mbM') | 0) ? 'squeezing ' + (-mbAv).toFixed(1) + ' dB on average, ' + (-mbPk).toFixed(1) + ' dB on the hits' : 'off'; if (MBL.textContent !== t) MBL.textContent = t; };
-    var db1 = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB'; }, pct = function (v) { return Math.round(v * 100) + '%'; };
-    var mfl = bank(mbs, [Object.assign(dial('mbT', 'threshold', 'V', -Math.pow(PHI, 3), Math.pow(PHI, 3), 0, db1), { live: function () { var b = D.bus && D.bus(); return b && b.on && (D.dial('mbM') | 0) ? clamp(-b.gr / Math.pow(PHI, 4), 0, 1) : null; } }),
-      dial('mbR', 'ratio', 'R', -2, 3, 0, rg), dial('mbA', 'attack', 'R', -3, 3, 0, rg), dial('mbRl', 'release', 'R', -3, 3, 0, rg), dial('mbK', 'knee', 'R', -3, 3, 0, rg),
+    var mbAv = 0; MBLF = function () { var b = D.bus && D.bus(), P = b && b.p || {}; if (b && b.on) mbAv += ((+b.av || 0) - mbAv) * IPH;   // phi: the average settles over a few beats
+      var t = !b || !b.on ? 'loading…' : !P.model ? (P.tpl ? 'off' : 'no template: dry') : P.model + (P.own ? ' from the ' + P.tpl + ' template' : ' (forced) on ' + P.tpl) + ' · the hits ' + (+b.hit || 0).toFixed(1) + ' dB (aiming ' + (+P.target || 0).toFixed(1) + '), ' + (-mbAv).toFixed(1) + ' dB on average' + (P.sat ? ' · ' + P.sat + ' bends +' + (+P.over).toFixed(1) + ' dB' : '');
+      if (MBL.textContent !== t) MBL.textContent = t; };
+    var pct = function (v) { return Math.round(v * 100) + '%'; }, rr = function (k, unit, dp) { return function (v) { var B = bp().base; return B && isFinite(B[k]) ? (B[k] * Math.pow(PHI, v)).toFixed(dp) + unit : (Math.abs(v) < 1e-9 ? 'own' : (v > 0 ? '+' : '') + num(v)); }; };
+    var mfl = bank(mbs, [Object.assign(dial('mbT', 'squeeze', 'V', -3, 3, 0, function (v) { var P = bp(), T = P.target && D.dial('mbT') != null ? P.target / Math.pow(PHI, D.dial('mbT')) : null; return T ? (T * Math.pow(PHI, v)).toFixed(1) + ' dB' : (Math.abs(v) < 1e-9 ? 'template' : (v > 0 ? '+' : '') + num(v)); }), { live: function () { var b = D.bus && D.bus(); return b && b.on && b.p && b.p.model ? clamp(-b.gr / Math.pow(PHI, 4), 0, 1) : null; } }),
+      dial('mbR', 'ratio', 'R', -2, 3, 0, function (v) { var B = bp().base; return B ? Math.max(1, B.q * Math.pow(PHI, v)).toFixed(1) + ':1' : num(v); }), dial('mbA', 'attack', 'R', -3, 3, 0, rr('a', ' ms', 1)), dial('mbRl', 'release', 'R', -3, 3, 0, rr('r', ' ms', 0)), dial('mbK', 'knee', 'R', -3, 3, 0, rr('k', ' dB', 1)),
       { id: 'dial.mbX', name: 'mix', k: 'C', L: [0, Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1], def: 1, lab: pct, get: function () { return D.dial('mbX'); }, set: function (v) { D.dial('mbX', v); } },
       { id: 'dial.mbE', name: 'energy follow', k: 'C', L: CPL, def: IPH, lab: cplLab, get: function () { return D.dial('mbE'); }, set: function (v) { D.dial('mbE', v); } }]);
     tools(mbs, mfl);
     mbs.appendChild(E('div', 'dk-sub', 'saturation'));
-    var sfl = bank(mbs, [{ id: 'dial.mbS', name: 'saturate', k: 'V', L: [0, 1, 2, 3, 4, 5], def: 0, lab: function (v) { return v > 0 ? 'bends +' + (20 * Math.log10(Math.pow(PHI, 5 - v))).toFixed(1) + ' dB' : 'off'; }, get: function () { return D.dial('mbS'); }, set: function (v) { D.dial('mbS', v); } },
+    var sfl = bank(mbs, [{ id: 'dial.mbS', name: 'saturate', k: 'V', L: [-1, 0, 1, 2, 3, 4], def: 0, lab: function (v) { var P = bp(); return v < 0 ? 'off' : v === 0 ? (P.sat ? 'template' : 'template: none') : 'heavier ' + v; }, get: function () { return D.dial('mbS'); }, set: function (v) { D.dial('mbS', v); } },
       { id: 'dial.mbH', name: 'even harmonics', k: 'C', L: [0, Math.pow(IPH, 4), Math.pow(IPH, 3), IPH * IPH], def: 0, lab: pct, get: function () { return D.dial('mbH'); }, set: function (v) { D.dial('mbH', v); } }]);
     tools(mbs, sfl);
     // VOICE
@@ -295,7 +312,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -308,7 +325,7 @@
       m.v = clamp(D.meter(m.ch), 0, 1); m.mi.style.transform = 'scaleY(' + m.v.toFixed(3) + ')'; m.mi.parentNode.title = m.ch + ': energy ' + m.v.toFixed(2); });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

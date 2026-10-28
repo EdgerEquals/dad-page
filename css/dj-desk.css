@@ -64,6 +64,7 @@ html[data-desk] #home-main{z-index:4}                                   /* the d
 .dk-chm{position:relative;flex:0 0 .45rem;border-radius:.25rem;background:#020a12;border:1px solid #163d58;overflow:hidden}
 .dk-chm i{position:absolute;inset:2px;transform-origin:50% 100%;transform:scaleY(0);background:linear-gradient(to top,#1fa98f,var(--dk-led) 62%,var(--dk-amb));transition:transform .09s linear;will-change:transform}
 .dk-snds{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:.15rem;min-width:0}
+.dk-snds:empty{display:none}.dk-snds:empty+*{display:none}.dk-chr:has(.dk-snds:empty) .dk-chm{flex:1 1 auto;height:4.25rem}   /* no sends (Danny 07:48 28 Oct): the channel's energy meter fills the strip */
 .dk-mini-f .dk-nm{height:auto;font-size:.55rem;color:var(--dk-dim)}
 .dk-mini-f .dk-ar{height:1.25rem}
 .dk-mini-f .dk-trk{height:3.4rem}
