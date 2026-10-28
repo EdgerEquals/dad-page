@@ -95,3 +95,7 @@ html[data-desk-full] #dj-desk{padding-top:max(env(safe-area-inset-top,0px),.5rem
 html[data-desk-full] .dk-fx{display:block}
 #dj-desk .dk-ttl,#dj-desk .dk-read{display:none}
 html[data-desk-full] #dj-desk .dk-tabs{padding-right:3.2rem}                 /* room for the floating X */
+
+/* NO SELECTING (Danny 08:28 AWST 28 Oct: 'make any other text in there non-selectable ... I don't need to select anything on this panel at all'): nothing on the desk selects, no long-press callout, no double-tap zoom on its controls */
+#dj-desk,#dj-desk *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}#dj-desk button,#dj-desk .dk-trk{touch-action:manipulation}
+.dk-fnote{margin-top:.2rem;font-size:.55rem;line-height:1.25;color:var(--dk-dim);text-align:center}   /* a fader's one-line note (hints, 08:28) */

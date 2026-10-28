@@ -15,7 +15,7 @@
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
-  var CSS = 'css/dj-desk.css?v=tpl1';
+  var CSS = 'css/dj-desk.css?v=hint1';
   function P(n) { return Math.pow(PHI, n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -45,7 +45,7 @@
     mt.appendChild(mb); tr.appendChild(mt); tr.appendChild(slot); tr.appendChild(cap); tr.appendChild(kd);
     tr.setAttribute('role', 'slider'); tr.setAttribute('tabindex', f.grey ? '-1' : '0'); tr.setAttribute('aria-label', f.name);
     w.appendChild(nm); w.appendChild(up); w.appendChild(tr); w.appendChild(dn); w.appendChild(val);
-    var h = E('div', 'dk-hint'); w.appendChild(h);
+    var h = E('div', 'dk-hint'); w.appendChild(h); if (f.note) w.appendChild(E('div', 'dk-fnote', f.note));   // HINTS (Danny 08:28 AWST 28 Oct, 'Yes please'): a fader may carry a one-line note of what it measures
     function greyNow() { var g = f.greyFn ? f.greyFn() : f.grey; w.classList.toggle('is-grey', !!g); h.textContent = g || ''; h.hidden = !g; up.disabled = dn.disabled = !!g; tr.setAttribute('tabindex', g ? '-1' : '0'); return g; }
     var n = f.L.length;
     function idx() { var v = f.get(); return v == null ? near(f.L, f.def != null ? f.def : f.L[0]) : near(f.L, v); }
@@ -131,12 +131,12 @@
     // can adjust it ... from my usage data ... where I generally land'): how a change made here lands; the DJ's own changes keep the radio pacing
     var cg = strip(host, 'changes', 'Changes', 'how fast your changes land');
     var BB = [1, 2, 3, 5, 8, 0], FDL = [1 / 4, 1 / 2, 1, 2, 4, 8, 0], DPL = [0, P(-4), P(-3), P(-2), IPH, 1, -1];
-    var cl = bank(cg, [{ id: 'dial.dkBars', name: 'build', k: 'R', L: BB, def: 1, lab: function (v) { return v === 0 ? 'radio' : v + (v === 1 ? ' bar' : ' bars'); }, get: function () { return D.dial('dkBars'); }, set: function (v) { D.dial('dkBars', v); } },
-      { id: 'dial.dkFade', name: 'fade', k: 'R', L: FDL, def: 1, lab: function (v) { return v === 0 ? 'style' : (v < 1 ? '1/' + Math.round(1 / v) + ' bar' : v + (v === 1 ? ' bar' : ' bars')); },   /* bars, not seconds (Danny 08:14 28 Oct) */ get: function () { return D.dial('dkFade'); }, set: function (v) { D.dial('dkFade', v); } },
-      { id: 'dial.dkDepth', name: 'sweep', k: 'C', L: DPL, def: -1, lab: function (v) { return v < 0 ? 'auto' : v === 0 ? 'none' : v === 1 ? 'full' : v.toFixed(2); }, get: function () { return D.dial('dkDepth'); }, set: function (v) { D.dial('dkDepth', v); } }]);
+    var cl = bank(cg, [{ id: 'dial.dkBars', name: 'build', k: 'R', L: BB, def: 1, note: 'bars your change builds before it lands', lab: function (v) { return v === 0 ? 'radio' : v + (v === 1 ? ' bar' : ' bars'); }, get: function () { return D.dial('dkBars'); }, set: function (v) { D.dial('dkBars', v); } },
+      { id: 'dial.dkFade', name: 'fade', k: 'R', L: FDL, def: 1, note: 'bars the old and new overlap', lab: function (v) { return v === 0 ? 'style' : (v < 1 ? '1/' + Math.round(1 / v) + ' bar' : v + (v === 1 ? ' bar' : ' bars')); },   /* bars, not seconds (Danny 08:14 28 Oct) */ get: function () { return D.dial('dkFade'); }, set: function (v) { D.dial('dkFade', v); } },
+      { id: 'dial.dkDepth', name: 'sweep', k: 'C', L: DPL, def: -1, note: 'how much of the transition effects fire', lab: function (v) { return v < 0 ? 'auto' : v === 0 ? 'none' : v === 1 ? 'full' : v.toFixed(2); }, get: function () { return D.dial('dkDepth'); }, set: function (v) { D.dial('dkDepth', v); } }]);
     var nowRow = E('div', 'dk-sws'); cg.appendChild(E('div', 'dk-sub', 'harmony + melody faders'));
     [['next track', 0], ['now', 1]].forEach(function (x) { nowRow.appendChild(sw(x[0], function () { return (D.dial('dkNow') | 0) === x[1]; }, function () { D.dial('dkNow', x[1]); log('dial.dkNow', x[1]); nowRow.querySelectorAll('.dk-sw').forEach(function (b) { b._sync(); }); })); });
-    cg.appendChild(nowRow); tools(cg, cl);
+    cg.appendChild(nowRow); cg.appendChild(E('div', 'dk-hint dk-txl', 'now: the music rebuilds as you move them · next track: they wait for it')); tools(cg, cl);
     // DRUMS
     var rd = function (k, name, kind, lo, hi, def, live) { return { id: 'rd.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return v === def ? 'mid' : num(v); }, get: function () { return D.rd(k); }, set: function (v) { D.rd(k, v); }, live: live }; };
     var lv = function () { return D.live() || {}; }, rp = function (k) { return function () { var r = lv().rp; return r && r[k] != null ? r[k] : null; }; };
