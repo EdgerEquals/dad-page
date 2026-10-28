@@ -208,6 +208,7 @@
     mRh: IPH * IPH,
     voM: 0,   // MACHINE VOICE (Danny 08:57 AWST 28 Oct): the voice's mode, 0 auto (electro speaks as the machine), 1 singer, 2 machine
     fmM: -1, fmU: SPB, fmR: 1, fmS: SPB,   // FORM is built but PAUSED (Danny 08:02 AWST 28 Oct 'pause everything else into this first'): off until he turns it on
+    fmSP: 5, fmTP: 13, fmMn: 8, fmHi: Math.pow(IPH, 3), fmLo: Math.pow(IPH, 4), fmHy: Math.pow(IPH, 4), fmDr: 1,   // EMERGENT FORM (Danny 09:09 AWST 28 Oct 'All'): section pump period (phrases), track pump period (phrases), minimum track (phrases), peak threshold, breakdown threshold, let-go, length drift (phrases)
       // FORM (Danny 07:46 AWST 28 Oct): form (0 auto, -1 off, -2 random, 1.. by name), bars per phrase, build-roll bars, stop sixteenths before a drop (counts)
     mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2 };   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
@@ -552,7 +553,7 @@
   // Forms are ours, written from the conventions: electro (Detroit / Kraftwerk: groove first, stabs in, full, a breakdown to pad and lead,
   // a build back with a snare roll, the drop, an outro of kick and bass), club (house / trance: a long breakdown, the kick out through
   // the build), song (verse / chorus / bridge), ternary (A B A coda, piano), arch (cinematic: swell to a climax and back), tide (ambient).
-  // DIAL.fmM: 0 auto (the style's own), -1 off (the old arc, ~37 s tracks), -2 random (a form per track), 1.. a form by name.
+  // DIAL.fmM: 0 auto (the style's own), -1 off (the old arc, ~37 s tracks), -2 random (a form per track), 1.. a form by name.; -3 emergent (below: the pumps choose the sections)
   var FE = [Math.pow(IPH, 3), IPH * IPH, IPH, 1 - Math.pow(IPH, 3), 1 - Math.pow(IPH, 4), 1];   // phi: section energies on the golden ladder
   var FORMS = {
     electro: [['intro', 2, 1, 1, 'kh'], ['groove', 2, 2, 2, 'kshcb'], ['stabs in', 2, 3, 3, 'kshcbCa'], ['full', 4, 5, 5, 'kshcbCapl', 'B'], ['breakdown', 2, 0, 0, 'pla', 'B', 'bd'],
@@ -570,7 +571,8 @@
   var FTOK = { bass: 'b', chords: 'C', arp: 'a', pad: 'p', lead: 'l', answer: 'l' }, FDRUM = { kick: 'k', snare: 's', clap: 's', hat: 'h', shaker: 'h', tom: 'c', cow: 'c' };
   function formName(tr) { var m = DIAL.fmM | 0; if (m === -1) return null; if (m > 0) return FKEYS[m - 1] || null;
     if (m === -2) { if (!tr.fRand) tr.fRand = FKEYS[Math.floor(gold(tr, 5, 71) * FKEYS.length)]; return tr.fRand; } return FAUTO[tr.genre] || 'song'; }
-  function formOf(tr) { var nm = formName(tr), u = Math.max(1, Math.round(DIAL.fmU)), sg = nm + ':' + u; if (tr.fsg === sg) return tr.fz; tr.fsg = sg; tr.fxBar = -1; if (!nm) return (tr.fz = null);
+  function formOf(tr) { var nm = formName(tr), em = (DIAL.fmM | 0) === -3, u = Math.max(1, Math.round(DIAL.fmU)), sg = nm + ':' + u + (em ? ':' + EMK.map(function (k) { return DIAL[k]; }).join(',') : ''); if (tr.fsg === sg) return tr.fz; tr.fsg = sg; tr.fxBar = -1; if (!nm) return (tr.fz = null);
+    if (em) { var E = emerge(nm, tr, u), EL = E[E.length - 1]; return (tr.fz = { name: 'emergent ' + nm, S: E, bars: EL.s0 + EL.b, outro: EL.b, em: 1 }); }   // EMERGENT FORM: the plan from the pumps
     var b0 = 0, S = FORMS[nm].map(function (x) { var q = { n: x[0], b: x[1] * u, e0: FE[x[2]], e1: FE[x[3]], P: x[4], h: x[5] || 'A', f: x[6] || '', s0: b0 }; b0 += q.b; return q; }), L = S[S.length - 1];
     return (tr.fz = { name: nm, S: S, bars: b0, outro: L.f === 'out' ? L.b : 0 }); }
   function secAt(tr, bar) { var F = formOf(tr); if (!F) return null; if (tr.fxBar === bar && tr.fx) return tr.fx;
@@ -578,6 +580,52 @@
     tr.fxBar = bar; return { i: i, s: q, bi: bi, next: S[i + 1] || null, F: F, e: q.e0 + (q.e1 - q.e0) * (q.b > 1 ? bi / (q.b - 1) : 1) }; }
   function fOn(tk, ch, k) { var fx = tk && tk.fx; if (!fx) return true; var tok = ch === 'drums' ? FDRUM[k] : FTOK[ch]; return !tok || fx.s.P.indexOf(tok) >= 0; }
   function lenOf(tr, c) { var F = tr && formOf(tr); return F ? Math.max(1, F.bars - F.outro) * SPB * SPM / tr.bpm : (c || compute()).trackLen; }   // unit: a bar = SPB beats
+  // ===== EMERGENT FORM (Danny 09:09 AWST 28 Oct, Claude chat: 'All', after 08:58 'Which ever one you think is best to do first or work
+  // through all three'; the nested-pump form from DeepSeek's note he relayed): DIAL.fmM -3. Nobody writes the order. The style's form table
+  // above is only its vocabulary (its intro, middle sections, peak, breakdown, build, outro). Three track pumps use the pump-tree formula
+  // (js/phi-pumps.js: n sine modes on half-rung golden steps, golden-angle phases from the track's seed), run in bars, not seconds:
+  // SECTION pump (3 modes around DIAL.fmSP phrases): at each section line, above DIAL.fmHi the peak, below -DIAL.fmLo the breakdown, else
+  // the middle; a level holds until the pump falls back DIAL.fmHy past its threshold (hysteresis), and its height picks which section of
+  // that level. Out of a breakdown, a style with a build goes build (roll), drop (stop + slam); into the peak from the middle it lifts.
+  // A breakdown needs something to break down from (not until a section past the intro), and in a style with a build it always resolves.
+  // LENGTH pump (2 modes, PHI x the section period): each section drifts up to DIAL.fmDr whole phrases either way, and a level that holds
+  // grows its section to at most PHI x its written length + the drift, so changes land on phrase lines but never on a fixed grid.
+  // TRACK pump (2 modes around DIAL.fmTP phrases): the track ends at the first section line after its first peak past DIAL.fmMn phrases
+  // (at the latest DIAL.fmMn + DIAL.fmTP), then the outro. The track's drive leans the section pump +-PHI^-2 / 2. The plan is a pure
+  // function of the seed, the style and these dials, so a reload lands in the same section. Defaults tuned offline over 600 tracks:
+  // 91% reach a peak, 68% a breakdown, 40% a build and drop; 36-80 bars before the outro.
+  function fpump(sd, n, P, x) { var s = 0; for (var j = 0; j < n; j++) s += Math.sin(2 * Math.PI * x / (P * Math.pow(PHI, (j - (n - 1) / 2) / 2)) + 2 * Math.PI * frac((j + 1 + sd) * IPH)); return s / n; }   // phi: the pump-tree formula, periods on half rungs around P (bars)
+  function emerge(nm, tr, u) {
+    var R = FORMS[nm].map(function (x) { return { n: x[0], ph: x[1], e0: FE[x[2]], e1: FE[x[3]], P: x[4], h: x[5] || 'A', f: x[6] || '', top: x[3] }; }), mid = R.slice(1, -1);
+    var by = function (q) { return mid.filter(q).sort(function (a, b) { return a.top - b.top; }); };
+    var V = { low: by(function (r) { return r.f === 'bd'; }), build: by(function (r) { return r.f === 'roll'; }), high: by(function (r) { return r.top >= 4 && r.f !== 'bd' && r.f !== 'roll'; }), mid: by(function (r) { return r.top < 4 && r.f !== 'bd' && r.f !== 'roll'; }) };
+    if (R[0].top >= 2 || V.mid.length < 2) V.mid = V.mid.concat([R[0]]).sort(function (a, b) { return a.top - b.top; });   // a real opening section (or a thin middle) is a middle section too
+    if (!V.high.length) V.high = V.mid.slice(-1); if (!V.low.length) V.low = V.mid.slice(0, 1);
+    var sd = tr.seed | 0, lean = ((tr.dm ? tr.dm.drive : 1 / 2) - 1 / 2) * IPH * IPH, SP = DIAL.fmSP * u, TP = DIAL.fmTP * u, MN = DIAL.fmMn * u, DR = Math.round(DIAL.fmDr), HI = DIAL.fmHi, LO = DIAL.fmLo, HY = DIAL.fmHy;   // data: drive
+    var sec = function (b) { return fpump(sd, 3, SP, b) + lean; }, lenP = function (b) { return fpump(sd + 3, 2, SP * PHI, b); }, trk = function (b) { return fpump(sd + 7, 2, TP, b); };   // phi: pump counts 3, 2, 2 (Fibonacci, as the tree)
+    var S = [], b0 = 0, lvl = 'intro', seen = 0, end = false, up = false, drop = function () { var d = V.high.filter(function (r) { return r.f === 'drop'; }); put(V.build[0], 'build'); put(d[0] || V.high[V.high.length - 1], 'high', 'drop'); };
+    var cap = function (r) { return Math.round(r.ph * PHI + DR) * u; };
+    var put = function (r, lv, f) { var ph = lv === 'out' ? r.ph : Math.max(1, r.ph + Math.round(DR * lenP(b0))), L = S[S.length - 1];
+      if (L && L.r === r && L.b + ph * u <= cap(r)) L.b += ph * u; else S.push({ n: r.n, b: ph * u, e0: r.e0, e1: r.e1, P: r.P, h: r.h, f: f == null ? r.f : f, s0: b0, r: r, lv: lv }); b0 += ph * u; };
+    put(R[0], 'intro');
+    for (var k = 0; k < 89; k++) {   // phi: at most F(11) sections
+      for (var p = seen + u; p <= b0; p += u) if (p >= MN && trk(p) >= trk(p - u) && trk(p) > trk(p + u)) end = true;
+      seen = b0; if (end || b0 >= MN + TP) { if (lvl === 'low' && V.build.length) drop(); break; }
+      var s = sec(b0), nl = lvl === 'high' ? (s < HI - HY ? (s < -LO ? 'low' : 'mid') : 'high') : lvl === 'low' ? (s > -LO + HY ? (s > HI ? 'high' : 'mid') : 'low') : (s > HI ? 'high' : s < -LO ? 'low' : 'mid');
+      if (nl === 'low' && !up) nl = 'mid';   // a breakdown needs something to break down from
+      if (nl !== 'low' && lvl === 'low' && V.build.length) { drop(); lvl = 'high'; continue; }
+      var C = V[nl], L = S[S.length - 1], x = clamp((s + LO) / Math.max(1e-6, HI + LO), 0, 1 - 1e-9);
+      if (nl === 'high' && lvl !== 'high') { var lf = C.filter(function (r) { return r.f !== 'drop'; }); if (lf.length) C = lf; }
+      var pick = C[Math.floor(x * C.length)];
+      if (nl === lvl && C.indexOf(L.r) >= 0) pick = L.r;
+      if (pick === L.r && L.b + pick.ph * u > cap(pick) && C.length > 1) pick = C[(C.indexOf(pick) + 1) % C.length];
+      put(pick, nl, nl === 'high' && lvl !== 'high' ? (pick.f === 'drop' ? 'lift' : pick.f || (pick.top >= 4 ? 'lift' : '')) : pick.f === 'drop' ? '' : null); lvl = nl; if (pick !== R[0]) up = true;   // a drop needs a build before it; without one it lifts
+    }
+    put(R[R.length - 1], 'out');
+    return S;
+  }
+  var EMK = ['fmSP', 'fmTP', 'fmMn', 'fmHi', 'fmLo', 'fmHy', 'fmDr'];
+  function formPumps(tr) { var u = Math.max(1, Math.round(DIAL.fmU)), b = tr.step / 16, sd = tr.seed | 0; return { sec: fpump(sd, 3, DIAL.fmSP * u, b) + ((tr.dm ? tr.dm.drive : 1 / 2) - 1 / 2) * IPH * IPH, trk: fpump(sd + 7, 2, DIAL.fmTP * u, b) }; }   // the section and track pumps now, for the desk (the same formulas as emerge)
   var AXIS = [3, -3, 6], K332 = [0, 6, 12];                               // cite: axis substitutes (minor third, tritone); 3+3+2 eighths in sixteenths
   // ===== RHYTHM + DYNAMICS (MIDI Bot rhythm study, Danny 19:18 AWST 26 Oct: 'send the rhythm and reload fix') =====
   // Each bar rplan() draws a rhythm plan from the track's birth dims, the arc energy and its own phi pump (dj:rhy): the genre's home
@@ -644,7 +692,7 @@
     p.stop = bl === 0 && gold(tr, bar, 11) < drv * 2 * RD.stop; p.L16 = clamp(Math.round(SPB * Math.pow(PHI, 2 * drv - 1)), 2, 8);
     var fx = tr.fx; if (fx && fx.next && fx.next.f === 'drop' && fx.bi === fx.s.b - 1) { p.stop = DIAL.fmS > 0; p.L16 = clamp(Math.round(DIAL.fmS), 1, 16); }   // FORM: the stop before the drop
     if (fx && fx.bi === 0 && (fx.s.f === 'drop' || fx.s.f === 'lift') && bar > 0) p.slam = true;   // ... and the drop (or a lift) slams its first downbeat
-    p.slam = prev && prev.stop && prev.bar === bar - 1;
+    p.slam = !!(p.slam || (prev && prev.stop && prev.bar === bar - 1));   // FORM fix (emergent form, 09:2x 28 Oct): this line used to overwrite the lift's slam just above, so a lift never slammed
     p.c = Math.pow(PHI, (2 * drv - 1) * 2 * RD.contrast) * Math.pow(PHI, o);                           // accent contrast exponent PHI^-1 .. PHI; djcollide x PHI^o
     p.roll = p.an.half && gold(tr, bar, 12) < dm.tension * 2 * RD.roll * (1 + o * PHI) && bar % 2 === 1; p.rollN = gold(tr, bar, 13) < 1 / 2 ? 2 : 3;   // trap hat rolls: 32nds or 16th-note triplets on the last beat
     p.lb = (SPM / tr.bpm) * Math.pow(PHI, -5) * clamp(spc * (1 - drv) * 2 * RD.laid * 2, 0, 1);       // laid-back snare/comp: up to a beat x PHI^-5 (Danielsen: 8-12% of a quarter)
@@ -1388,10 +1436,10 @@
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k === 'tpM') busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
-    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
+    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
     get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
-  window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, emerge: function (nm, seed, drive, u) { return emerge(nm, { seed: seed, dm: { drive: drive } }, u || SPB).map(function (q) { return { n: q.n, b: q.b, f: q.f, lv: q.lv, P: q.P }; }); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },

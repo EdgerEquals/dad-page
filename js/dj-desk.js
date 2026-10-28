@@ -158,7 +158,7 @@
     st.appendChild(E('div', 'dk-sub', 'style')); st.appendChild(row);
     // FORM (Danny 07:46 AWST 28 Oct: 'Can you add form'): the shape over time, sections that bring whole parts in and take them out.
     // auto = the style's own form, off = the old arc (short tracks), random = a form per track; the readout shows where the track is.
-    var fr = E('div', 'dk-sws'), FMS = [['auto', 0], ['off', -1], ['random', -2]].concat((D.forms || []).map(function (n, i) { return [n, i + 1]; }));
+    var fr = E('div', 'dk-sws'), FMS = [['emergent', -3], ['auto', 0], ['off', -1], ['random', -2]].concat((D.forms || []).map(function (n, i) { return [n, i + 1]; }));
     FMS.forEach(function (x) { fr.appendChild(sw(x[0], function () { return (D.dial('fmM') | 0) === x[1]; }, function () { D.dial('fmM', x[1]); log('dial.fmM', x[1]); fr.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });
     st.appendChild(E('div', 'dk-sub', 'form')); st.appendChild(fr);
     var FML = E('div', 'dk-hint dk-txl'); st.appendChild(FML);
@@ -166,7 +166,20 @@
     var ffl = bank(st, [{ id: 'dial.fmU', name: 'phrase', k: 'N', L: [1, 2, 4, 8], def: 4, lab: function (v) { return v + (v > 1 ? ' bars' : ' bar'); }, get: function () { return D.dial('fmU'); }, set: function (v) { D.dial('fmU', v); } },
       { id: 'dial.fmR', name: 'build roll', k: 'N', L: [0, 1, 2, 4], def: 1, lab: function (v) { return v ? v + (v > 1 ? ' bars' : ' bar') : 'off'; }, get: function () { return D.dial('fmR'); }, set: function (v) { D.dial('fmR', v); } },
       { id: 'dial.fmS', name: 'drop stop', k: 'N', L: [0, 2, 4, 8], def: 4, lab: function (v) { return v ? v + ' sixteenths' : 'off'; }, get: function () { return D.dial('fmS'); }, set: function (v) { D.dial('fmS', v); } }]);
-    tools(st, ffl);
+    // EMERGENT FORM (Danny 09:09 AWST 28 Oct 'All'): the pumps choose the sections; these set the pumps. The meters beside 'peak at' and
+    // 'breakdown at' show the section pump against them, the one beside 'ends after' the track pump (parameters, not the audio).
+    var fpv = function (k) { return function () { var l = D.live && D.live(), f = l && l.form; return f && f.pump ? Math.max(0, Math.min(1, (f.pump[k] + 1) / 2)) : null; }; };
+    var fd = function (k, name, kind, L, def, note, lab, live) { return { id: 'dial.' + k, name: name, k: kind, L: L, def: def, note: note, lab: lab, get: function () { return D.dial(k); }, set: function (v) { D.dial(k, v); }, live: live }; };
+    var phl = function (v) { return v + (v === 1 ? ' phrase' : ' phrases'); }, TH = [0, P(-5), P(-4), P(-3), P(-2), IPH];
+    st.appendChild(E('div', 'dk-sub', 'emergent form'));
+    var efl = bank(st, [fd('fmSP', 'sections', 'R', [3, 5, 8, 13], 5, 'how long the section pump takes to rise and fall', phl),
+      fd('fmHi', 'peak at', 'V', TH, P(-3), 'the pump goes over this: the peak (a lift, or a drop after a build)', num, fpv('sec')),
+      fd('fmLo', 'breakdown at', 'V', TH, P(-4), 'the pump goes under minus this: the breakdown', num, fpv('sec')),
+      fd('fmHy', 'let go', 'V', TH, P(-4), 'how far back the pump must fall before a level lets go', num),
+      fd('fmDr', 'drift', 'N', [0, 1, 2], 1, 'whole phrases a section may grow or shrink', function (v) { return v ? '+-' + phl(v) : 'none'; }),
+      fd('fmMn', 'at least', 'R', [5, 8, 13, 21], 8, 'the shortest track, before its outro', phl),
+      fd('fmTP', 'ends after', 'R', [8, 13, 21, 34], 13, 'the track pump: the track ends at its first peak after the shortest', phl, fpv('trk'))]);
+    tools(st, ffl.concat(efl));   // one reset + dice for both Form banks
     // CHANGES (Danny 18:55-18:59 AWST 27 Oct: 'Can the transition happen faster when I change a parameter?' ... 'build it as dials so that I
     // can adjust it ... from my usage data ... where I generally land'): how a change made here lands; the DJ's own changes keep the radio pacing
     var cg = strip(host, 'changes', 'Changes', 'how fast your changes land');
