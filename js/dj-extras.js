@@ -140,11 +140,33 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
       var R = ROLE[u], k = fr(u * IPH + Math.min(dp, 1) * ch.rot), sp = Math.pow(PHI, 2 * dp * ch.th), cents = (k - 1 / 2) * Math.pow(PHI, 5) * sp, dt = k * Math.pow(PHI, -11) * sp;   // phi: golden cents and ms per unit, spread a rung wider (thick) or narrower (tight) per track
       var kn = { tune: cl(R.tune + dp * ch.pt * IPH * IPH), decay: cl(R.decay + dp * ch.th * IPH * IPH), tone: cl(R.tone + dp * ch.br * IPH * IPH), colour: cl(R.colour + dp * ch.br * IPH * IPH) };   // phi: each knob moves up to PHI^-2 x depth / 2
       var pan = kind === 'hat' || kind === 'cow' || kind === 'shaker' ? (u % 2 ? -1 : 1) * Math.pow(IPH, 3) : 0;   // phi: hats a little wide, the rest centred
-      var spec = retune(V.build({ tune: kn.tune, decay: kn.decay, tone: kn.tone, colour: kn.colour, level: 1, pan: (1 + pan) / 2 }, acc), Math.pow(2, cents / 1200));
+      var aq = Math.round(acc * 2) / 2, spec = retune(V.build({ tune: kn.tune, decay: kn.decay, tone: kn.tone, colour: kn.colour, level: 1, pan: (1 + pan) / 2 }, aq), Math.pow(2, cents / 1200));   // accent in three steps (off, half, full) so the sound can be kept
       spec.trim = V.trim * KM * v * SHARE[u];
-      try { var o = D8.renderVoice(c, spec, tr.out, t + dt); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
+      try { var o = play808(c, spec, tr.out, t + dt, tk, id + '|' + u + '|' + aq + '|' + dp); d8live.push(o.endsAt); if (id === '808.oh') (tr.oh = tr.oh || []).push(o.output); } catch (er) {}
     });
   }
+  // 808 KEPT AS RECORDINGS (Danny 14:15 AWST 28 Oct, Claude chat: 'The Audio is dropping out ... at some point it times out I think the
+  // website reloads'). A 12-minute headless listen found no leak but load peaks: in electro's full and drop sections the engine made ~450
+  // audio nodes a second and the audio thread sat at 95-99%, and 58% of those nodes were the 808 bank (driftbox renderVoice builds a whole
+  // voice per hit, up to six oscillators for a hat, up to three units layered, on every sixteenth). Now each sound this track uses (which
+  // 808, which unit, the accent in three steps, the character depth) is rendered once in the background (OfflineAudioContext, the same
+  // renderVoice, trim 1) into F(4) = 3 takes; every later hit plays a take (a buffer and a gain: 2 nodes, no oscillators), taking turns, so
+  // the noisy voices (hats, snare, clap) still vary hit to hit. The level (trim) and the hat's choke stay live on the gain. Until a sound's
+  // first take lands (a fraction of a second), hits play live as before. Takes live on the track, so they go with it.
+  var TK8 = 3;   // unit: takes per sound (a Fibonacci count)
+  function render8(c, spec, E) { var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC || E.busy) return; var sp = Object.assign({}, spec, { trim: 1 }), oc;
+    try { oc = new OC(spec.pan ? 2 : 1, Math.ceil((spec.duration + Math.pow(PHI, -5)) * c.sampleRate), c.sampleRate); D8.renderVoice(oc, sp, oc.destination, 0); } catch (er) { E.dead = true; return; }   // phi: PHI^-5 s of room after the voice; mono unless the voice is panned (the hats)
+    E.busy = true; var done = function (b) { E.busy = false; if (b) E.b.push(trim8(c, b)); if (E.b.length < TK8 && b) render8(c, spec, E); }, q = null;
+    try { q = oc.startRendering(); } catch (er) { E.busy = false; E.dead = true; return; } if (q && q.then) q.then(done, function () { E.busy = false; E.dead = true; }); else oc.oncomplete = function (ev) { done(ev.renderedBuffer); }; }
+  var K8L = null; K.k8 = function () { var M = K8L && K8L.k8 || {}, ks = Object.keys(M); return { sounds: ks.length, takes: ks.reduce(function (a, k) { return a + M[k].b.length; }, 0), mb: +(ks.reduce(function (a, k) { return a + M[k].b.reduce(function (x, q) { return x + q.length * q.numberOfChannels * 4; }, 0); }, 0) / 1e6).toFixed(1) }; };   // test hook: the latest track's kept sounds and takes
+  function trim8(c, b) { var n = b.length, k, ch; for (k = n - 1; k > 0; k--) { var on = false; for (ch = 0; ch < b.numberOfChannels; ch++) if (Math.abs(b.getChannelData(ch)[k]) > 1e-4) { on = true; break; } if (on) break; }   // unit: -80 dB, the end of the take
+    var m = Math.min(n, k + Math.ceil(c.sampleRate * Math.pow(PHI, -9))); if (m >= n * (1 - Math.pow(IPH, 4))) return b; var o = c.createBuffer(b.numberOfChannels, m, b.sampleRate);   // phi: PHI^-9 s past the last sound; keep it whole if trimming saves under PHI^-4
+    for (ch = 0; ch < b.numberOfChannels; ch++) o.copyToChannel(b.getChannelData(ch).subarray(0, m), ch); return o; }
+  function play808(c, spec, dest, t, tk, key) {
+    var M = tk.k8 || (tk.k8 = {}), E = M[key] || (M[key] = { b: [], i: 0, busy: false, dead: false }); K8L = tk;
+    if (!E.b.length) { if (!E.dead) render8(c, spec, E); return D8.renderVoice(c, spec, dest, t); }   // the first hits play live while the takes render
+    var b = E.b[E.i++ % E.b.length], s = c.createBufferSource(), g = c.createGain(); s.buffer = b; g.gain.setValueAtTime(spec.trim, t); s.connect(g); g.connect(dest);
+    s.start(t); s.stop(t + b.duration); s.onended = function () { try { g.disconnect(); } catch (er) {} }; return { output: g, endsAt: t + b.duration }; }
   function hit(tr, kind, t, v, a) { if (tr.g && tr.g.bank) bank(tr, kind, t, v, a); else house(tr, kind, t, v); }
 
   // ---------- 303 RACK (Danny 15:42 AWST 27 Oct, Claude chat: 'we get the 303 as well ... you can write one of those two'; the rack is
@@ -307,7 +329,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   // ----- Ed's Jupiter -----
   function jup(tr, f, t, d, v, oct) {
     var c = C(), o1 = c.createOscillator(), o2 = c.createOscillator(), xm = c.createGain(), p1 = c.createStereoPanner ? c.createStereoPanner() : null, p2 = c.createStereoPanner ? c.createStereoPanner() : null,
-        l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain(), end = t + d + 1;
+        l1 = c.createBiquadFilter(), l2 = c.createBiquadFilter(), a = c.createGain(), end = t + d + 7 * Math.pow(PHI, -5);   // LOAD (Danny 14:15 AWST 28 Oct, dropouts): stop 7 release time constants after the note (-61 dB), not a whole second (~30% of the Jupiter's running time was silence)
     f = f * (oct ? 1 / 2 : 1); o1.type = o2.type = 'sawtooth'; o1.frequency.value = f; o2.frequency.value = f * Math.pow(2, Math.pow(PHI, 3) / 1200);   // phi: VCO 2 PHI^3 cents sharp
     xm.gain.value = f * Math.pow(IPH, 4); o2.connect(xm); xm.connect(o1.frequency);                     // phi: the cross-mod quirk, PHI^-4 of the pitch
     l1.type = l2.type = 'lowpass'; l1.Q.value = 0; l2.Q.value = PHI;

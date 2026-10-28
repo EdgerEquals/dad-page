@@ -296,7 +296,7 @@
   // This file is the minimal start engine, loaded at tier 1 (just after first paint). js/dj-extras.js (lead voices, drums + noise,
   // reverb impulse, knob chips) loads after sound has begun (or when the pumps panel opens, or at background idle) and glides in over
   // PHI^2 s. The first touch anywhere silently creates/resumes the AudioContext and unlocks the <audio> bridge, so the switch only starts sound.
-  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=bass1';
+  var X = null, XL = 0, xReq = false, XURL = 'js/dj-extras.js?v=load1';
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
@@ -500,13 +500,13 @@
     var xo = ctx.createGain(), xoM = ctx.createGain(), xoF = ctx.createGain(); xo.gain.value = xoM.gain.value = xoF.gain.value = XL; xo.connect(out); xoM.connect(oM); xoF.connect(oF);   // extras glide in here: drums, the arp (music bus), the lead, answer and voice (front bus)
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var sE = ctx.createGain(), sW = ctx.createGain(); sE.gain.value = sW.gain.value = 0.0001;   // the track's echo / wash send busses, faded with it (the mixer)
-    var lay = function (to, ch) { var n = ctx.createGain(), lv = ctx.createGain(), ov = ctx.createWaveShaper(); n.gain.value = 1; lv.gain.value = levelG(ch) / OVH; ov.curve = ovCurve(); ov.oversample = '2x'; n.connect(lv); lv.connect(ov); ov.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');   // DRIVE: level -> the channel's overload -> the bus and the sends
-      ov.connect(se); se.connect(sE); ov.connect(sw); sw.connect(sW); return { g: gx, out: n, lv: lv, rev: rv, ch: ch, se: se, sw: sw }; };   // lv: the channel's level (a loss), after the arc, before the sends   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
+    var lay = function (to, ch) { var n = ctx.createGain(), lv = ctx.createGain(), ov = ctx.createWaveShaper(); n.gain.value = 1; lv.gain.value = levelG(ch) / OVH; ov.curve = ovCurve(); ov.oversample = rungOf(ch) > 0 ? '2x' : 'none'; n.connect(lv); lv.connect(ov); ov.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');   // DRIVE: level -> the channel's overload -> the bus and the sends
+      ov.connect(se); se.connect(sE); ov.connect(sw); sw.connect(sW); return { g: gx, out: n, lv: lv, ov: ov, rev: rv, ch: ch, se: se, sw: sw }; };   // lv: the channel's level (a loss), after the arc, before the sends   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
     var dk = ctx.createGain(), dkB = ctx.createGain(); dk.gain.value = dkB.gain.value = 1; dk.connect(oM); dkB.connect(oB); var L = { drums: lay(xo, 'drums'), lead: lay(xoF, 'lead'), answer: lay(xoF, 'answer'), voice: lay(xoF, 'voice'), bass: lay(dkB, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xoM, 'arp');   // the kick's duck: dk (pad, chords) and dkB (bass)   // voice: js/dj-voice.js sings here
     var hb0 = phoneBass(L.bass.out, dkB, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
     var T = { dk: dk, dkB: dkB, outs: OUTS, xos: [xo, xoM, xoF], dr: M.donor && !g.own ? GEN[M.donor] : g, shift: g.own ? 0 : M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: X0, sE: sE, sW: sW, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; });
     Object.keys(L).forEach(function (k) { L[k].trk = T; }); X0.trk = T;   // PAD SHAPES fix (19:58): a layer can find its track (energy, seed, tempo) without becoming one (tk changes how notes are shaped)
-    var S0 = Object.create(T), so = lay(dk, 'chords'); S0.out = so.out; S0.lv = so.lv; S0.se = so.se; S0.sw = so.sw; S0.ch = 'chords'; S0.tk = T; L.chords = S0; fxSends(T); return T;   // chords: the track's own fields, its own channel   // phi: first step PHI^-6 s out
+    var S0 = Object.create(T), so = lay(dk, 'chords'); S0.out = so.out; S0.lv = so.lv; S0.ov = so.ov; S0.se = so.se; S0.sw = so.sw; S0.ch = 'chords'; S0.tk = T; L.chords = S0; fxSends(T); return T;   // chords: the track's own fields, its own channel   // phi: first step PHI^-6 s out
   }
   // ---------- richer DJ (Danny 14:42 AWST 26 Oct; MIDI Bot directions top 3) ----------
   // ENERGY ARC: a = track age / track length (analytic from tr.born, so continuity keeps the place). e(a) rises to a peak at
@@ -833,7 +833,7 @@
   function rungOf(ch) { return MX.g[ch] != null ? MX.g[ch] : -(MX.l[ch] | 0); }
   function levelG(ch) { var k = rungOf(ch); return k <= -LVMAX ? 0 : Math.pow(PHI, k); }
   function ovCurve() { if (OVC) return OVC; var n = 4097, a = new Float32Array(n), K = IPH; for (var i = 0; i < n; i++) { var x = (i / (n - 1) * 2 - 1) * OVH, ax = Math.abs(x), y = ax <= K ? ax : K + (1 - K) * Math.tanh((ax - K) / (1 - K)); a[i] = x < 0 ? -y : y; } return (OVC = a); }   // phi: straight to PHI^-1, a tanh to full scale over the last PHI^-2
-  function applyLevels() { var t = ctx ? ctx.currentTime : 0; tracks.forEach(function (tr) { layers(tr).forEach(function (L) { if (L.lv) L.lv.gain.setTargetAtTime(levelG(L.ch) / OVH, t, Math.pow(PHI, -5)); }); }); }   // phi: glide PHI^-5 s
+  function applyLevels() { var t = ctx ? ctx.currentTime : 0; tracks.forEach(function (tr) { layers(tr).forEach(function (L) { if (L.lv) L.lv.gain.setTargetAtTime(levelG(L.ch) / OVH, t, Math.pow(PHI, -5)); if (L.ov) try { L.ov.oversample = rungOf(L.ch) > 0 ? '2x' : 'none'; } catch (e) {} }); }); }   // phi: glide PHI^-5 s; LOAD (Danny 14:15 AWST 28 Oct, dropouts): the overload shaper oversamples only when the channel is driven (below the knee it is a straight line, nothing to alias; 16 oversampled shapers cost ~6% of real time)
   function chOn(ch) { var any = false, k; for (k in MX.s) if (MX.s[k]) { any = true; break; } return any ? !!MX.s[ch] : !MX.m[ch]; }
   function chOf(part, tr) { return tr && tr.ch || (part === 'bass' ? 'bass' : part === 'lead' ? 'lead' : part === 'drums' ? 'drums' : 'chords'); }
   function sendV(ch, k) { var i = (k === 'e' ? MX.e : MX.w)[ch] | 0; return Math.max(1e-4, SENDL[clamp(i, 0, SENDL.length - 1)]); }
@@ -1031,15 +1031,22 @@
   var JOBS = [], clk = 0;
   function every(fn, ms) { var j = { fn: fn, ms: ms, due: Date.now() + ms }; JOBS.push(j); if (!clk) clk = setInterval(oneClock, Math.pow(PHI, -6) * MS); return j; }   // phi: the clock period
   function never(j) { if (j) j.off = true; }
+  // STALL-AWARE LOOK-AHEAD (Danny 14:15 AWST 28 Oct, Claude chat: 'The Audio is dropping out'): the notes are scheduled on the page's main
+  // thread, PHI^-4 s ahead. A headless 3-minute electro listen saw the main thread stall past that ~70 times a minute (the page's visuals:
+  // layout, drawing), so notes landed late in a bunch (the chug and catch-up) and a stall past 0.5 s skipped the track. The clock now
+  // watches its own gaps: STL is the longest recent gap (a peak hold falling with tau PHI^5 s), and the visible look-ahead is PHI x STL,
+  // kept between PHI^-4 s (as before, when the page is calm, so knobs and mutes stay quick) and PHI^-1 s. Hidden stays PHI^3 s.
+  var STL = 0, CLK0 = 0;
+  function lookAhead() { return document.hidden ? Math.pow(PHI, 3) : clamp(PHI * STL, Math.pow(PHI, -4), IPH); }   // phi: PHI x the longest recent stall, PHI^-4 .. PHI^-1 s
   function oneClock() {
-    var now = Date.now(); if (sched) tick();
+    var now = Date.now(), gp = CLK0 ? (now - CLK0) / MS : 0; CLK0 = now; STL = Math.max(gp, STL * Math.exp(-gp / Math.pow(PHI, 5))); if (sched) tick();   // phi: the stall memory falls with tau PHI^5 s
     for (var i = 0; i < JOBS.length; i++) { var j = JOBS[i]; if (j.off) { JOBS.splice(i--, 1); continue; } if (now >= j.due) { j.due = Math.max(j.due + j.ms, now); try { j.fn(); } catch (e) {} } }
     while (LED.length && LED[0][0] <= now) { var x = LED.shift(); if (led) { if (x[1] < 0) led.classList.remove('on', 'on2'); else led.classList.add(x[1] ? 'on2' : 'on'); } }
   }
   var LED = [];                                                           // beat-LED flashes on the clock: [wall ms, 1 downbeat / 0 beat / -1 off]
   function tick() {
     if (!ctx) return;
-    var horizon = ctx.currentTime + Math.pow(PHI, document.hidden ? 3 : -4);   // phi: look PHI^-4 s ahead, PHI^3 s while hidden (throttled timers)
+    var horizon = ctx.currentTime + lookAhead();   // phi: look PHI^-4 .. PHI^-1 s ahead by the recent stalls, PHI^3 s while hidden (throttled timers)
     tracks.forEach(function (tr) {
       if (tr.next < ctx.currentTime - 0.5) tr.next = ctx.currentTime + 0.02;   // resumed after being hidden
       while (tr.next < horizon && !tr.dead) { if (tr.step % 2 === 0) tr.ga = [tr.next, tr.step]; playStep(tr, tr.next); tglide(tr); tr.next += stepLen(tr); tr.step++; }   // ga: audio-clock anchor on an even (unswung) step

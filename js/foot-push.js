@@ -67,7 +67,7 @@
   function speed() { var tr = fcr.querySelector('.ct'); if (!tr) return; var m = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--phi-marquee')) || Math.pow(PHI, 8);   // phi: the PHI^8 marquee clock
     tr.style.animationDuration = m * Math.pow(IP, 2) + 's'; }           // phi: two rungs faster
   room(); speed();
-  var rq = 0, needW = true; addEventListener('resize', function () { if (!rq) rq = requestAnimationFrame(function () { rq = 0; room(); needW = true; geo = null; }); });
+  var rq = 0, needW = true; addEventListener('resize', function () { if (!rq) rq = requestAnimationFrame(function () { rq = 0; fsC = 0; room(); needW = true; geo = null; }); });
   if (RM || !('translate' in doc.documentElement.style)) { root.FootPush = { info: function () { return { width: fcr.style.width, still: true, box: true }; } }; return; }
   // ---------- forces ----------
   var nc = null, nt = null, feeds = {};
@@ -81,7 +81,7 @@
     if (side === 'c') return PHI * pump('c') * (1 + Math.pow(IP, 2) * sub('moon') + Math.pow(IP, 3) * Math.sin(TAU * t / Math.pow(PHI, 2)));   // phi: lead PHI; moon feed PHI^-2; crest every PHI^2 s
     return pump('t') * (1 + Math.pow(IP, 2) * sub('tide') + Math.pow(IP, 3) * sub('daytime'));   // phi: tide feed PHI^-2, time of day PHI^-3
   }
-  function reach() { var fs = parseFloat(getComputedStyle(fcr).fontSize) || parseFloat(getComputedStyle(doc.documentElement).fontSize); return fs; }   // unit: one critter glyph
+  var fsC = 0; function reach() { if (!fsC) fsC = parseFloat(getComputedStyle(fcr).fontSize) || parseFloat(getComputedStyle(doc.documentElement).fontSize); return fsC; }   // unit: one critter glyph; LOAD (Danny 14:15 AWST 28 Oct, audio dropouts): read once and on resize, not several times a frame (each read forced a style recalc; ~9% of the page's main thread)
   // ---------- pack ----------
   var note = fcr.parentElement, host = note.parentElement || note, track = fcr.querySelector('.ct'), GA = TAU * IP * IP, N = Math.round(Math.pow(PHI, 3));   // phi: golden angle; pack of round(PHI^3)
   var CREST = Math.pow(PHI, 2), BREATH = Math.pow(PHI, 5), BUILD = Math.pow(IP, 7), CEL = Math.pow(PHI, 2), SET = Math.pow(PHI, 3), SUB = Math.pow(IP, 7), WAIT = Math.pow(PHI, 7), POLL = Math.pow(IP, 4);   // phi: crest, breath slot, build rate, celebrate, settle, sub-step, wait by the pad, explosion poll

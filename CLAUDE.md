@@ -45,7 +45,7 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
   `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
 - Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
 
-## State (28 Oct 2026, 14:00 AWST)
+## State (28 Oct 2026, 15:30 AWST)
 Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
 servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
 (`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed) ·
@@ -54,6 +54,16 @@ style's palette `LROS` (first lead section = its own voice, later peaks the seco
 `soloP` of tracks, drift (almost-repeats, out and home over `mDrT` phrases), build (hook first, fills with energy). Measured on electro:
 a solo peak ~4 notes/bar over 16 pitches; without a solo the DX7's sections are unchanged at under 1 note/bar (sparse bells + electro's
 sparse motif, `mel: 0.12`). Tests: `tests/melody-test.js` (in CI).
+**Load / dropouts** (`load1`, Danny 14:15 28 Oct): the cause was the main thread, not a leak (memory flat over 12 min). Notes are
+scheduled on the main thread; the page's visuals stalled it past the old PHI^-4 s look-ahead ~70x a minute (late notes = the
+'chug and catch-up', >0.5 s = a skip). Now: a stall-aware look-ahead (`lookAhead`, PHI x the longest recent clock gap, PHI^-4 ..
+PHI^-1 s); the 808 bank plays rendered takes (`play808` / `render8` in dj-extras.js: 3 takes per sound per track, mono unless
+panned, silent tails trimmed, ~6 MB a track); the layer overload shaper oversamples only when driven; the Jupiter stops 7 release
+time constants after the note. Measured (3 min electro, headless): late sounds 2.8% -> ~0.4%; 808 nodes per 4 min 47k -> 8.5k.
+foot-push.js reads its font size once (it forced a style recalc several times a frame). Diagnostics on Danny's phone: the System
+strip's 'share sound log' (resume log + 'reloaded by the phone' lines from a heartbeat). Tests: `tests/load-test.js` (in CI).
+Probes worth reusing: count late `start()` calls (patch AudioBufferSourceNode.prototype.start too, it has its own); CDP WebAudio
+getRealtimeData on the realtime context only (offline renders create contexts too).
 
 Next, in Danny's agreed order (12:53 28 Oct):
 1. ~~Melody~~ (live 28 Oct, melody1; waiting on Danny's listen).
