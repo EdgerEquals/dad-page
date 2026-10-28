@@ -110,6 +110,58 @@
       o.onended = function () { live--; try { Z.lfo.disconnect(vd); env.disconnect(); } catch (e) {} };   // let the note's nodes go
     } catch (e) {}
   }
+  // ---------- THE MACHINE VOICE (Danny 08:55-08:57 AWST 28 Oct, Claude chat: the voice 'dizzying'; Anthony Rother's 'Little Computer
+  // People' as the reference; DeepSeek's diagnosis he relayed, checked against this file: female formants, 5-7 Hz vibrato, a 0.15-0.4 s
+  // glide and long releases make a singer, and Rother's voice talks in tune; 'whichever one you think is best ... or work through all three').
+  // For electro (auto) or when picked on the desk (DIAL voM: 0 auto, 1 singer, 2 machine): MALE formants (Peterson & Barney 1952 male
+  // averages), a bright buzzy source, attack tau PHI^-11 s (~5 ms), release tau PHI^-8 s (~21 ms, gone in ~60 ms), glide tau PHI^-8 s,
+  // NO vibrato, wider formants (Q PHI^1..PHI^2.2), little breath. It speaks a 2-bar PHRASE of short syllables on the 16th grid (about ten,
+  // most on the beats and eighths), mostly on one note with steps of one scale degree, seeded per track; the phrase REPEATS for 8 bars,
+  // each 8-bar block nudges one syllable (a step up or down, or a syllable in or out), and the block's last phrase ends on a leap.
+  // It speaks in PHI^-1 of the 8-bar blocks (golden draw per block), never in the rhythm plan's stop, never when the energy is under PHI^-3.
+  var MV = [[300, 870, 2240], [570, 840, 2410], [730, 1090, 2440], [270, 2290, 3010], [640, 1190, 2390]];   // cite: Peterson & Barney, JASA 24 (1952) Table II male averages: /u/, /o/ ('bought'), /a/ ('father'), /i/, /uh/ (Hz)
+  function vMode(tk) { var m = 0; try { m = D.desk && D.desk.dial ? D.desk.dial('voM') | 0 : 0; } catch (e) {} return m === 1 ? 'singer' : m === 2 ? 'machine' : tk && tk.genre === 'electro' ? 'machine' : 'singer'; }
+  function singM(lay, m, from, t, dur, lvl, vw) {
+    var DK = D.desk; if (DK && !DK.on('voice')) return; if (DK) DK.act('voice', t, lvl);
+    if (!lay || !lay.out || !(lvl > LEAD * Math.pow(PHI, -8))) return; var Z = shared(); if (!Z) return; var c = Z.c;
+    var f = mtof(m), f0 = mtof(from == null ? m : from), tg = Math.pow(PHI, -8), ta = Math.pow(PHI, -11), tr = Math.pow(PHI, -8), end = t + dur + tr * Math.pow(PHI, 3), F = MV[vw % MV.length];
+    try {
+      var o = c.createOscillator(); o.setPeriodicWave(wave(1)); o.frequency.setValueAtTime(f0, t); o.frequency.setTargetAtTime(f, t, tg);   // the brightest source: a buzzier, machine edge
+      var bg = c.createGain(), env = c.createGain(); bg.gain.value = 0; env.gain.value = 0; bg.gain.setValueAtTime(0, t); bg.gain.setTargetAtTime(Math.pow(PHI, -4), t, ta); bg.gain.setTargetAtTime(0, t + dur, tr);   // phi: breath PHI^-4
+      var nz = c.createBufferSource(); nz.buffer = Z.nb; nz.loop = true; nz.connect(bg);
+      F.forEach(function (fv, j) { var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fv; bp.Q.value = Math.pow(PHI, 1 + j * IPH); o.connect(bp); bg.connect(bp); bp.connect(env); });   // phi: Q PHI^1, PHI^1.6, PHI^2.2
+      env.gain.setValueAtTime(0, t); env.gain.setTargetAtTime(lvl, t, ta); env.gain.setTargetAtTime(0, t + dur, tr); env.connect(bus(lay));
+      o.start(t); o.stop(end); nz.start(t, frac(sung * IPH)); nz.stop(end); live++; sung++;
+      o.onended = function () { live--; try { env.disconnect(); } catch (e) {} };
+    } catch (e) {}
+  }
+  function mPhrase(tk, blk) {                                          // the track's 2-bar phrase, nudged once per 8-bar block (cached per block)
+    var key = (tk.seed | 0) + ':' + blk; if (tk.__mvk === key) return tk.__mv; var sd = (tk.seed | 0) >>> 0, g = function (k) { return frac(sd * IPH * IPH + k * IPH); }, P = [];
+    var st = 0;
+    for (var i = 0; i < 32; i++) { var w = i % 4 === 0 ? IPH : i % 2 === 0 ? IPH * IPH : Math.pow(IPH, 4), on = i === 0 || g(i) < w;   // phi: beats PHI^-1, eighths PHI^-2, sixteenths PHI^-4 (about ten syllables)
+      if (!on) { P.push(null); continue; }
+      var q = g(i + 40); if (i && q >= IPH) st = clamp(st + (g(i + 80) < 1 / 2 ? 1 : -1), -2, 2);   // phi: a walk: stays on its note PHI^-1 of the time, else one scale step, within two either way
+      P.push({ st: st, vw: Math.floor(g(i + 120) * MV.length), len: i % 2 === 0 && g(i + 160) < IPH * IPH ? 2 : 1 }); }
+    if (blk > 0) { var j = 1 + Math.floor(g(200 + blk) * 31), x = P[j]; if (x) { if (g(300 + blk) < IPH) x.st += g(400 + blk) < 1 / 2 ? 1 : -1; else P[j] = null; } else P[j] = { st: 0, vw: Math.floor(g(500 + blk) * MV.length), len: 1 }; }   // the block's nudge
+    tk.__mvk = key; return (tk.__mv = P);
+  }
+  var mNext = -1, mTk = null, mPrev = null;
+  function machine(G, tk) {
+    var ahead = Math.pow(PHI, -2), d16 = G.d16;
+    if (tk !== mTk || mNext < G.step || (mNext - G.step) * d16 > ahead + SPB * SPB * d16) { mTk = tk; mNext = G.step + 1; mPrev = null; }
+    for (;;) {
+      var t = G.t + (mNext - G.step) * d16; if (t - K.ctx.currentTime > ahead) break; if (t < K.ctx.currentTime) { mNext++; continue; }
+      var st = mNext, s32 = st % 32, ph = Math.floor(st / 32), blk = Math.floor(ph / SPB), rp = tk.rp, s16 = st % (SPB * SPB);
+      var sd = (tk.seed | 0) >>> 0, speak = frac(sd * IPH + blk * IPH * IPH) < IPH && (tk.e == null || tk.e >= Math.pow(IPH, 3)) && !(rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0));   // phi: PHI^-1 of the 8-bar blocks
+      var x = speak ? mPhrase(tk, blk)[s32] : null;
+      if (x) { var sc = tk.scNow || tk.sc || [0, 2, 3, 5, 7, 8, 10], ln = sc.length, base = 45 + (((tk.root - 45) % 12) + 12) % 12;   // unit: the male register, the tonic placed from A2 (MIDI 45) up
+        var dg = x.st + (ph % SPB === SPB - 1 && s32 >= 24 && x === lastOf(mPhrase(tk, blk)) ? SPB : 0), n = base + sc[((dg % ln) + ln) % ln] + 12 * Math.floor(dg / ln);   // the leap: the block's last phrase ends a fifth-ish up
+        var lv = LEAD * VD.peak * IPH * Math.pow(PHI, -(s16 % SPB ? 1 : 0) * IPH * IPH);   // phi: off-beat syllables a touch softer
+        singM(tk.L ? tk.L.voice || tk.L.lead : null, n, mPrev, t, x.len * d16 * IPH, lv, x.vw); mPrev = n; LOG.push([t, 'm', n, +lv.toFixed(4)]); }
+      mNext++;
+    }
+  }
+  function lastOf(P) { for (var i = P.length - 1; i >= 0; i--) if (P[i]) return P[i]; return null; }
   // ---------- harmonise: a diatonic third or sixth under each lead note ----------
   var hPrev = null, oPrev = null, lPrev = null, lastTk = null, LOG = [];
   function inScale(tk, n) { var sc = tk.scNow || tk.sc; return !sc || sc.indexOf(pc(n - tk.root)) >= 0; }
@@ -122,7 +174,7 @@
   }
   function onNote(part, lay, m, t, d, v) {
     var tk = lay && (lay.tk || lay); if (!tk) return; if (!tk.leaving) lastTk = tk;
-    if (part !== 'lead' || !D.playing) return; lPrev = m;
+    if (part !== 'lead' || !D.playing) return; lPrev = m; if (vMode(tk) === 'machine') return;   // the machine voice speaks its own phrase
     var S = state(t, tk), n = harm(tk, m); if (n == null) return;
     var lv = S.lvl * Math.sqrt(1 - S.h) * clamp(v, 0, 1);
     sing(tk.L ? tk.L.voice || tk.L.lead : lay, n, hPrev, t, d, lv, S.I, false); hPrev = n; LOG.push([t, 'h', n, +lv.toFixed(4)]);
@@ -131,6 +183,7 @@
   var oNext = -1, oTk = null;
   function own() {
     var G = K.grid && K.grid(), tk = lastTk; if (!K.ctx || !G || !tk || !D.playing || tk.leaving || tk.dead) return;
+    if (vMode(tk) === 'machine') return machine(G, tk);
     var ahead = Math.pow(PHI, -2), d16 = G.d16;                          // phi: write PHI^-2 s ahead on the audio clock
     if (tk !== oTk || oNext < G.step || (oNext - G.step) * d16 > ahead + SPB * SPB * d16) { oTk = tk; oNext = G.step + 1; }   // a new track restarts its own grid count
     for (;;) {
@@ -155,6 +208,6 @@
   }
   K.voiceHook(onNote);
   (K.every || setInterval)(own, Math.pow(PHI, -4) * MS);               // phi: look-ahead every PHI^-4 s on the one clock
-  D.voice = { state: function () { return state(K.ctx ? K.ctx.currentTime : 0, lastTk); }, get live() { return live; }, get sung() { return sung; }, log: function () { return LOG.slice(); },
+  D.voice = { mode: function () { return vMode(lastTk); }, state: function () { return state(K.ctx ? K.ctx.currentTime : 0, lastTk); }, get live() { return live; }, get sung() { return sung; }, log: function () { return LOG.slice(); },
     dial: function (k, v) { if (VD.hasOwnProperty(k) && isFinite(v)) VD[k] = clamp(+v, VR[k][0], VR[k][1]); return VD[k]; }, get dials() { return JSON.parse(JSON.stringify(VD)); }, ranges: VR };
 })();

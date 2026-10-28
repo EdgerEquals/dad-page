@@ -274,6 +274,8 @@
     tools(mbs, sfl);
     // VOICE
     var vo = strip(host, 'voice', 'Voice', null, ['voice']);
+    var vmw = E('div', 'dk-sws'); [['auto', 0], ['singer', 1], ['machine', 2]].forEach(function (x) { vmw.appendChild(sw(x[0], function () { return (D.dial('voM') | 0) === x[1]; }, function () { D.dial('voM', x[1]); log('dial.voM', x[1]); vmw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });   // MACHINE VOICE (Danny 08:57): auto = electro speaks as the machine
+    vo.appendChild(E('div', 'dk-sub', 'voice · auto: electro talks in tune, the rest sing')); vo.appendChild(vmw);
     var vd = function (k, name, kind, lo, hi, def) { return { id: 'voice.' + k, name: name, k: kind, L: gl(lo, hi, def), def: def, lab: function (v) { return Math.abs(v - def) < 1e-9 ? 'mid' : num(v); }, get: function () { var V = d && d.voice; return V && V.dial ? V.dial(k) : null; }, set: function (v) { var V = d && d.voice; if (V && V.dial) { V.dial(k, v); var R = root.RhythmContinuity; if (R && R.save) try { R.save(); } catch (e) {} } } }; };
     var vl = bank(vo, [vd('floor', 'floor', 'V', P(-4), P(-2), P(-3)), vd('club', 'club', 'C', 1, PHI * PHI, PHI), vd('tc', 'timing', 'R', 1 / 3, 2 / 3, 1 / 2), vd('nw', 'width', 'C', 0, IPH, IPH / 2), vd('soar', 'soar', 'R', IPH, PHI, 1), vd('vib', 'vibrato', 'R', IPH, PHI, 1)]);
     tools(vo, vl);

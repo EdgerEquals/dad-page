@@ -206,6 +206,7 @@
     padM: 0, padA: 0, padD: 0, padS: 0, padR: 0, padF: 0, padG: 0, padO: IPH,
     bLib: IPH, bMut: 2, bSl: 1, bAc: 1, bShp: 0,
     mRh: IPH * IPH,
+    voM: 0,   // MACHINE VOICE (Danny 08:57 AWST 28 Oct): the voice's mode, 0 auto (electro speaks as the machine), 1 singer, 2 machine
     fmM: -1, fmU: SPB, fmR: 1, fmS: SPB,   // FORM is built but PAUSED (Danny 08:02 AWST 28 Oct 'pause everything else into this first'): off until he turns it on
       // FORM (Danny 07:46 AWST 28 Oct): form (0 auto, -1 off, -2 random, 1.. by name), bars per phrase, build-roll bars, stop sixteenths before a drop (counts)
     mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2 };   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
@@ -303,7 +304,7 @@
   var FXURL = 'js/dj-fx.js?v=multi1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
-  var VURL = 'js/dj-voice.js?v=meter1', vReq = false, VH = null;
+  var VURL = 'js/dj-voice.js?v=voice2', vReq = false, VH = null;
   function loadV() { if (vReq || !ctx) return; vReq = true; var sc = document.createElement('script'); sc.src = VURL; sc.async = true; document.head.appendChild(sc); }
   function idleV() { var ric = window.requestIdleCallback || function (f) { return setTimeout(f, Math.pow(PHI, 2) * MS); }; ric(loadV, { timeout: Math.pow(PHI, 5) * MS }); }   // phi: idle, at the latest PHI^5 s later
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
