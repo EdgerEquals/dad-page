@@ -45,15 +45,18 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
   `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
 - Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
 
-## State (28 Oct 2026, 13:15 AWST)
+## State (28 Oct 2026, 14:00 AWST)
 Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
 servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
-(`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed).
+(`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed) ·
+**melody** (`melody1`, Melody strip, 8 dials; `roster`, `lVoice`, `soloK`, `melAt`, `mKeep` after `melDev`): lead voices per track from the
+style's palette `LROS` (first lead section = its own voice, later peaks the second, breakdowns the softest), a solo at long peaks on
+`soloP` of tracks, drift (almost-repeats, out and home over `mDrT` phrases), build (hook first, fills with energy). Measured on electro:
+a solo peak ~4 notes/bar over 16 pitches; without a solo the DX7's sections are unchanged at under 1 note/bar (sparse bells + electro's
+sparse motif, `mel: 0.12`). Tests: `tests/melody-test.js` (in CI).
 
 Next, in Danny's agreed order (12:53 28 Oct):
-1. **Melody**: the lead moves between the style's instruments by section; a solo at long peaks (notes per bar and register climbing,
-   reset at the next section); the motif evolves (almost-repeats); a melodic build across the track. Lead in his 10:23 MIDI: 18 notes
-   a minute, mostly one pitch.
+1. ~~Melody~~ (live 28 Oct, melody1; waiting on Danny's listen).
 2. **Genres**: electronic → dance; then techno, house, trance… two at a time. Open question: does the quirky arp over a half-time beat
    go into ambient, or a new Crossover style (ambient stays drumless)?
 3. **CPU**: measure on his phone first; a polyphony cap as a safety net (not DeepSeek's "voice pool" as written).
@@ -61,7 +64,13 @@ Next, in Danny's agreed order (12:53 28 Oct):
    scaled by how big the coming drop is.
 5. Later: era dial (vintage/modern, humanise, fault engine) · the Motown team (a background group that writes soul/funk records for
    hip-hop to sample; chords cross over with the hip-hop track; era templates; 45-on-33 speed) · sampler (SP-1200 chop + grain cloud) ·
-   vocoder · licence-checked audio samples · morph dial (after genres) · hardware (Bela/ESP32: nothing to build yet).
+   vocoder · licence-checked audio samples · morph dial (after genres) · hardware (Bela/ESP32: nothing to build yet) ·
+**haptic test** (Danny 13:16-13:18 28 Oct: yes, one minute, 'not urgent, do it later'): a desk button; for a minute a hidden Safari
+switch (`<input type=checkbox switch>`, iOS 17.4+) is clicked on each kick; first tick inside the tap, the rest from timers, which is
+what the test finds out.
+DeepSeek's held list (13:44 28 Oct, 13 items, for discussion only): schematic modelling, Pi rack, AES HAT, BPM drift/catch-up, S&H
+freeze, chord genome, soft/hard electro vibe, vibe bus + genre chops, build/riser dials, haptics, roadmap, Mono/Poly + organ + strings,
+era dial. Nothing goes in until Danny says go.
 Older queue: Instruments/Composition split of the Style row · per-part memory faders · tap a fader name for its description ·
 feedback strip · what the Changes strip's mute/solo should do · mix templates steps 3–6.
 Waiting on Danny: his "share my moves" paste (System strip) to set electro's default balance from his night-of-27-Oct settings.

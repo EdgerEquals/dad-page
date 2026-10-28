@@ -213,6 +213,7 @@
     mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2,
     bsM: 0, bsD: 0, bsP: 0, bsB: 0, bsU: 0, bsF: 0, bsS: 0,
     kdC: -1,
+    lN: 3, soloP: IPH, soloA: IPH, soloL: 2, mDr: 3, mDrT: 8, mBl: IPH, mBp: 2,   // THE MELODY (Danny 12:53 AWST 28 Oct 'lock them in'): lead voices per track (count: 1 one, 2 a pair, 3 a pair or a trio), solo chance (share of tracks), solo climb, solo after (phrases), drift (notes, count), drift time (phrases), build, build pace (phrases)
     belS: IPH };   // BELLS (Danny 10:10 AWST 28 Oct: 'I want bells used more sparsely generally across all styles'): the share of 2-bar phrases a bell (the FM bell, the DX7) plays as lead or answer   // KICK DUCK (Danny 10:05 AWST 28 Oct 'Yes'): -1 the template's, else a coupling 0 (off) .. 1 (the drive curve, up to ~8 dB)   // FOUR BUSES (Danny 09:09 AWST 28 Oct 'All'; the draft's step 2): 0 template / -1 off; squeeze rungs for drums, bass, music, front; the drums' parallel blend (rungs, -5 off); saturation (-1 off, 0 template, n heavier)   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
@@ -745,7 +746,7 @@
   function playStep(tr, t) { tr.fx = secAt(tr, Math.floor(tr.step / 16)); rplan(tr, t);
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v, fx = tr.fx;
     var a0 = ageOf(tr, t), secB = fx ? fx.s.h === 'B' : a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
-    if (s16 === 0 && (fx ? fx.i !== tr.fsi : secB !== tr.secB)) { tr.secB = secB; tr.secBar = bar; if (fx) tr.fsi = fx.i; }   // FORM: the motif starts again each section
+    if (s16 === 0 && (fx ? fx.i !== tr.fsi : secB !== tr.secB)) { tr.secB = secB; tr.secBar = bar; if (fx) tr.fsi = fx.i; tr.sCur = tr.sAn = null; }   // FORM: the motif starts again each section (and a solo with it)
     var slot = Math.max(SPB * SPB / 2, Math.round(SPB * SPB * (tr.hb || g.bars))), ci = Math.floor(st / slot);   // unit: sixteenths per chord (half a bar at the fastest)
     var deg = pr[ci % pr.length], barLen = dur16 * slot, first = st % slot === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
@@ -755,7 +756,7 @@
     // CALL AND RESPONSE BETWEEN PARTS (Danny 17:43 AWST 27 Oct, 'Go'): the lead's 64-step motif is a 2-bar call and its 2-bar answer
     // (the call inverted); in PHI^-1 of phrases (DIAL.resp, a coupling; golden draw per phrase) another voice gives the answer in its
     // own register (the genre's resp / ro), and the arp drops to the beat while it does, to leave it room. Otherwise the lead answers itself.
-    var ans = st % 64 >= 32 && g.resp && INST[g.resp] && gold(tr, Math.floor(st / 64), 50) < DIAL.resp, room = ans && chOn('answer');   // room: the arp leaves space only for an answer that sounds
+    var sk = tr.skNow = soloK(tr), ans = !(sk > 0) && st % 64 >= 32 && g.resp && INST[g.resp] && gold(tr, Math.floor(st / 64), 50) < DIAL.resp, room = ans && chOn('answer');   // sk: the solo's climb now (THE MELODY), the answer sits out a solo   // room: the arp leaves space only for an answer that sounds
     var bx = tr.bx, bs = null; if (bx && t >= bx.start - dur16 / 2) bs = t >= bx.drop - dur16 / 2 ? bx.home : bx.segs[clamp(Math.floor((t - bx.start + dur16 / 2) / bx.bar), 0, bx.segs.length - 1)];   // the bridge owns the harmony
     if (bs && bs !== tr.bxSeg) { tr.bxSeg = bs; first = true; tr.ch = voicePcs(tr, bs.pcs); }
     if (first && !bs && tr.scHi) tr.scNow = frac((ci + 1) * IPH + (tr.seed | 0) * IPH * IPH) < tr.mf ? tr.scHi : tr.scLo;   // this chord's mode: the sharper neighbour for a share mf of chords
@@ -780,12 +781,20 @@
     if (g.bass === 'octave' && s16 % 2 === 0) pl('bass', INST.bass, tr.L.bass, bn + (s16 % 4 ? 12 : 0), t, dur16 * 1.5, vl(s16, dyn));
     if (g.bass === 'acid') acidStep(tr, t, s16, bn, dur16, dyn);
     // melody (Dad's tune): motif from the seed, a note shifted now and then
-    var dv = melDev(tr, st), md = tr.mel[dv.i]; if (md != null) md += rise + dv.add; var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
-    if (md != null && dv.oct) md += dv.oct * ln; if (md != null) md = clamp(md, 0, 3 * ln);   // the lift is an octave of this scale; at most three octaves up
-    if (md != null && INST[g.lead]) { if (tr.r() < 0.12) md += tr.r() < 0.5 ? 1 : -1; var li = g.lead === 'square' && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[g.lead], lk = g.lead, lo = 0;
+    var dv = melDev(tr, st), md0 = tr.mel[dv.i], md = melAt(tr, Math.floor(st / 64))[dv.i];   // THE MELODY: the motif as the drift has it this phrase
+    var wob = md0 != null && INST[g.lead] && tr.r() < 0.12 ? (tr.r() < 0.5 ? 1 : -1) : 0;   // the old note shift, drawn on the track's stream exactly as before (so nothing else in the track moves)
+    if (md != null && !(sk > 0) && !mKeep(tr, dv.i % 32)) md = null;   // BUILD: the section plays its share of the motif's notes
+    var lsc = tr.bd ? (g.scale === 'lydian' || tr.genre === 'cinematic' ? COLOUR.whole : g.scale === 'major' ? COLOUR.penta : COLOUR.penta_m) : tr.scNow || tr.sc, ln = lsc.length;
+    if (md != null) { md += rise + dv.add; if (dv.oct) md += dv.oct * ln; }   // the lift is an octave of this scale
+    if (sk > 0) { var lift = Math.round(sk * ln); if (md != null) { md += lift; tr.sAn = md; }   // SOLO: the motif, lifted up to an octave of the scale as it climbs
+      else if (tr.sCur != null && gold(tr, st, 89) < Math.pow(sk, Math.pow(PHI, depth(s16) - 1))) { var an = tr.sAn == null ? tr.sCur : tr.sAn, sz = gold(tr, st, 91) < sk * IPH * IPH ? 2 + Math.floor(gold(tr, st, 92) * 3) : 1;   // phi: fills at sk^(PHI^(depth-1)): beats, then eighths, then sixteenths; a leap of a 3rd-5th on sk PHI^-2 of them
+        md = tr.sCur + (gold(tr, st, 90) < clamp(1 / 2 + IPH * IPH * (an + IPH * ln - tr.sCur) / ln, Math.pow(IPH, 3), 1 - Math.pow(IPH, 3)) ? sz : -sz); } }   // phi: the line leans toward PHI^-1 of an octave over the motif, up or down PHI^-3 .. 1 - PHI^-3
+    if (md != null) md = clamp(md, 0, 3 * ln); if (md != null && sk > 0) tr.sCur = md;   // at most three octaves up
+    if (md != null && INST[g.lead]) { md = Math.max(0, md + wob); var lk = lVoice(tr); if (!INST[lk]) lk = g.lead; var li = lk === 'square' && lk === g.lead && !chipNote(tr, t) ? (INST.reed || INST.pluck) : INST[lk], lo = 0, lg = lk === 'horn' || lk === 'bell' || lk === 'dx';
       if (ans) { li = INST[g.resp]; lk = g.resp; lo = g.ro || 0; }                        // the answer goes to the responding voice, in its own register
-      if (!((lk === 'bell' || lk === 'dx') && gold(tr, Math.floor(st / 32), 61) >= DIAL.belS))   // BELLS (Danny 10:10 'more sparsely ... across all styles'): a bell sings only DIAL.belS of the 2-bar phrases (golden draw per phrase); the rest is space
-      pl('lead', li, ans ? tr.L.answer : tr.L.lead, fold(tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12) + lo, t, dur16 * (lk === 'horn' || lk === 'bell' || lk === 'dx' ? 6 : 2), 0.8); }
+      if (tr.lb0 == null && fOn(tr, 'lead')) tr.lb0 = bar;   // the lead's first entry (the build fills in from here)
+      if (sk > 0 || !((lk === 'bell' || lk === 'dx') && gold(tr, Math.floor(st / 32), 61) >= DIAL.belS))   // BELLS (Danny 10:10 'more sparsely ... across all styles'): a bell sings only DIAL.belS of the 2-bar phrases (golden draw per phrase); the rest is space, except as the soloist
+      pl('lead', li, ans ? tr.L.answer : tr.L.lead, fold(tr.root + lsc[md % ln] + 12 * Math.floor(md / ln) + 12) + lo, t, sk > 0 ? dur16 * (depth(s16) < 2 ? 2 : 1) * (lg ? PHI : 1) : dur16 * (lg ? 6 : 2), 0.8); }   // a solo's notes are short (eighths, sixteenths), a ringing voice a rung longer
     // drums
     if (fx && fx.s.f === 'roll' && DIAL.fmR > 0 && X && X.hit && fx.s.b - fx.bi <= DIAL.fmR) { var rp0 = (DIAL.fmR - (fx.s.b - fx.bi) + s16 / 16) / DIAL.fmR, rdv = rp0 < IPH * IPH ? SPB : rp0 < IPH ? 2 : 1;   // FORM: the build's snare roll, quarters -> eighths -> sixteenths, rising a rung at a time
       if (s16 % rdv === 0) { var rv = Math.pow(PHI, -2 * (1 - rp0)) * (dyn || 1); X.hit(tr.L.drums, 'snare', t, rv); rec('drums', GM.snare, t, dur16, rv * gAt(tr, t)); } }
@@ -874,6 +883,63 @@
     if (op < IPH * IPH + Math.pow(IPH, 3) + Math.pow(IPH, 4)) return { i: (b2 ? st - 16 : st) % n, add: 0, oct: 0 };
     if (op < IPH * IPH + Math.pow(IPH, 3) + Math.pow(IPH, 4) + Math.pow(IPH, 5)) return { i: (st + 2) % n, add: 0, oct: 0 };
     return i >= 32 ? (e > IPH ? { i: st % n, add: 0, oct: 1 } : { i: st % n, add: -1, oct: 0 }) : { i: st % n, add: 0, oct: 0 }; }
+  // ===== THE MELODY (Danny 12:53 AWST 28 Oct, Claude chat: 'I agree with all of that ... lock them in', on the lead in his 10:23 MIDI: 18 notes a
+  // minute, mostly one pitch; 13:10 'Read CLAUDE.md. Next: the melody'). Four parts, each on desk dials (the Melody strip):
+  // LEAD VOICES: each style has a palette of lead voices (LROS); a track takes a pair or a trio from it (its own lead first, the rest golden draws
+  // on the seed; DIAL.lN), and the voice follows the section: the style's own lead in the middle sections, the second voice at the peaks, the
+  // softest of the rest (LSOFT) in breakdowns. The track's first section with a lead always has its own voice, so a style whose lead only plays
+  // at its peaks (electro: full, breakdown, drop) still opens on its own lead and hands over at the next peak. A bell (FM bell, DX7) stays
+  // sparse (DIAL.belS) except as the soloist; the soloist is the section's voice.
+  // SOLO: in a peak section at least DIAL.soloL phrases long, on the DIAL.soloP of tracks that draw one, the lead plays like a guitarist taking a
+  // solo. It starts from the motif and climbs: more notes per bar (beats first, then eighths, then sixteenths), the register rising up to an
+  // octave of the scale, wider intervals; the climb peaks PHI^-4 of the section from its end and the next section resets it. DIAL.soloA is how
+  // far it climbs. The answer sits out a solo, so the soloist has the whole phrase.
+  // DRIFT (almost-repeats): each track keeps an ordered list of small changes to its motif (a note a step up or down, now and then two, a note
+  // dropped, a gap filled from its neighbour); how many are in force rises from none to DIAL.mDr and back home over DIAL.mDrT phrases (sin^2),
+  // so a phrase differs from the one before by at most a note and the tune comes home.
+  // BUILD: the motif's notes are ranked (its first note, then downbeats, beats, eighths, sixteenths); a section plays the share e^(PHI^2 DIAL.mBl)
+  // of them (e = its energy), never fewer than three, and from the lead's first entry that share also fills in over DIAL.mBp phrases, so the
+  // lead arrives as a hook and fills in. DIAL.mBl 0 = the whole motif always (as before).
+  // Every draw is a golden draw on the seed (gold), never the track's random stream, so the rest of the track is exactly as before.
+  var LROS = { electro: ['dx', 'jup', 'juno', 'square', 'saw', 'pluck'], electronic: ['square', 'saw', 'bell', 'pluck'], ambient: ['bell', 'reed', 'ep'], acoustic: ['pluck', 'piano', 'reed'],
+    soul: ['ep', 'horn', 'reed'], folk: ['pluck', 'reed', 'piano'], cinematic: ['horn', 'bell', 'reed'], 'indie-pop': ['square', 'pluck', 'saw'], 'upbeat-pop': ['saw', 'pluck', 'square'], piano: ['piano'] };   // each style's lead palette, from its own sounds (electro: the DX7, Ed's Jupiter and Juno, square, saw, pluck)
+  var LSOFT = { bell: 0, ep: 0, pluck: 1, piano: 1, reed: 1, juno: 1, horn: 2, dx: 2, jup: 2, square: 3, saw: 3 };   // unit: softness rank, 0 softest (a breakdown takes the lowest)
+  var LNAME = { dx: 'DX7', jup: 'Jupiter', juno: 'Juno', square: 'square', saw: 'saw', pluck: 'pluck', bell: 'bell', ep: 'e-piano', piano: 'piano', reed: 'reed', horn: 'horn' };
+  function roster(tr) { var n = clamp(Math.round(DIAL.lN), 1, 3); if (tr.lrs === n && tr.lr) return tr.lr;
+    var P = (LROS[tr.genre] || []).filter(function (k) { return k !== tr.g.lead; }), r = [tr.g.lead], m = n <= 1 ? 1 : n === 2 ? 2 : gold(tr, 1, 82) < IPH ? 3 : 2;   // phi: with 'a pair or a trio', PHI^-1 of tracks a trio
+    for (var j = 0; r.length < m && P.length; j++) r.push(P.splice(Math.floor(gold(tr, j + 2, 83) * P.length), 1)[0]);
+    var sf = function (k) { return LSOFT[k] == null ? 1 : LSOFT[k]; }, pool = r.length > 2 ? [r[0], r[2]] : r, bd = pool.reduce(function (a, k) { return sf(k) < sf(a) ? k : a; }, pool[0]);
+    tr.lrs = n; return (tr.lr = { all: r, mid: r[0], peak: r[1] || r[0], bd: bd }); }
+  function lRole(tr) { var fx = tr.fx; if (fx) return fx.s.f === 'bd' ? 'bd' : fx.s.f !== 'roll' && fx.s.e1 >= FE[4] ? 'peak' : 'mid'; return tr.bd ? 'bd' : tr.e > 1 - Math.pow(PHI, -3) ? 'peak' : 'mid'; }   // the section's role: a breakdown, a peak (top two rungs of the ladder, not a build), else the middle; with Form off, the arc
+  function lVoice(tr) { var LR = roster(tr), fx = tr.fx; if (!fx) return LR[lRole(tr)] || LR.mid; var F = fx.F;   // the section's lead voice (Form off: by the arc's role)
+    if (tr.lvF !== F || tr.lvR !== LR) { var sung = false; tr.lvV = F.S.map(function (q) { var has = q.P.indexOf('l') >= 0, r = q.f === 'bd' ? 'bd' : q.f !== 'roll' && q.e1 >= FE[4] ? 'peak' : 'mid';
+      if (r === 'bd') return LR.bd; if (r === 'peak' && sung) return LR.peak; if (has) sung = true; return LR.mid; }); tr.lvF = F; tr.lvR = LR; }   // the plan for the whole form, worked out once
+    return tr.lvV[fx.i] || LR.mid; }
+  function soloOn(tr) { return gold(tr, 2, 84) < DIAL.soloP; }   // this track draws a solo (a golden draw against the dial, so the knob acts at once)
+  function soloK(tr) { var fx = tr.fx, u = Math.max(1, Math.round(DIAL.fmU)); if (!fx || !(DIAL.soloA > 0) || !soloOn(tr) || lRole(tr) !== 'peak' || fx.s.b < DIAL.soloL * u) return 0;
+    var x = (fx.bi + (tr.step % 16) / 16) / fx.s.b, y = Math.sin(Math.PI / 2 * clamp(x / (1 - Math.pow(IPH, 4)), 0, 1)); return DIAL.soloA * y * y; }   // phi: the climb peaks PHI^-4 of the section from its end (sin^2), then holds
+  function driftMods(tr) { var mo = tr.mo || [], sg = mo.join(','); if (tr.dMs === sg) return tr.dM; var on = [], gap = [], M = [];
+    mo.forEach(function (x, i) { (x == null ? gap : on).push(i); }); var pk = function (b) { return on[1 + Math.floor(b * (on.length - 1))]; };   // never the first note: the theme keeps its head
+    for (var j = 0; j < 8; j++) { var a = gold(tr, j, 85), b = gold(tr, j, 86), c = gold(tr, j, 87);   // unit: at most 8 changes (a Fibonacci count)
+      if (a < IPH && on.length > 1) M.push({ i: pk(b), d: c < 1 / 2 ? 1 : -1 });
+      else if (a < IPH + Math.pow(IPH, 4) && on.length > 1) M.push({ i: pk(b), d: c < 1 / 2 ? 2 : -2 });
+      else if (a < IPH + Math.pow(IPH, 4) + Math.pow(IPH, 5) && on.length > 3) M.push({ i: pk(b), rest: 1 });
+      else if (gap.length) M.push({ i: gap[Math.floor(b * gap.length)], add: c < 1 / 2 ? 1 : -1 }); }   // phi: a step PHI^-1, two steps PHI^-4, a rest PHI^-5, a fill the rest
+    tr.dMs = sg; return (tr.dM = M); }
+  function melAt(tr, ph) { var H = Math.max(0, Math.round(DIAL.mDr)), T = Math.max(1, DIAL.mDrT), y = Math.sin(Math.PI * ph / T), h = Math.min(H, Math.round(H * y * y)), sg = h + ':' + (tr.mo || []).join(',');   // sin^2 over T phrases: none -> DIAL.mDr -> none (home)
+    if (tr.mDs === sg) return tr.mD; tr.mDs = sg; if (!h || !tr.mo || tr.mo.length !== 32) return (tr.mD = tr.mel);
+    var c = tr.mo.slice(), M = driftMods(tr);
+    for (var j = 0; j < h && j < M.length; j++) { var q = M[j];
+      if (q.rest) c[q.i] = null; else if (q.add != null) { if (c[q.i] == null) { var k = q.i; while (k > 0 && c[k] == null) k--; if (c[k] != null) c[q.i] = clamp(c[k] + q.add, 2, 16); } } else if (c[q.i] != null) c[q.i] = clamp(c[q.i] + q.d, 2, 16); }   // unit: the motif's degree range
+    if (!c.some(function (x) { return x != null; })) c = tr.mo.slice();   // never an empty theme
+    var piv = tr.mo.filter(function (x) { return x != null; })[0]; if (piv == null) piv = 9; for (var i = 0; i < 32; i++) c.push(c[i] == null ? null : clamp(2 * piv - c[i], 2, 16));   // the answer: the drifted call inverted round the theme's own first note (as makeTrack)
+    return (tr.mD = c); }
+  function mRank(tr) { var mo = tr.mo || [], sg = mo.join(','); if (tr.mRs === sg) return tr.mR; var on = []; mo.forEach(function (x, i) { if (x != null) on.push(i); });
+    var o = on.map(function (i, j) { return [i, j === 0 ? -1 : depth(i % 16) + gold(tr, i, 88) * IPH]; }).sort(function (a, b) { return a[1] - b[1]; }), R = {};   // the first note, then by metric depth; a golden draw breaks ties
+    o.forEach(function (p, k) { R[p[0]] = k; }); tr.mRs = sg; return (tr.mR = { r: R, n: on.length }); }
+  function bShare(tr) { var e = tr.fx ? tr.fx.e : tr.e == null ? 1 : tr.e, s = Math.pow(clamp(e, 0, 1), PHI * PHI * DIAL.mBl), u = Math.max(1, Math.round(DIAL.fmU));   // phi: e^(PHI^2 x build)
+    var r = tr.lb0 == null ? 0 : clamp((Math.floor(tr.step / 16) - tr.lb0) / Math.max(1, DIAL.mBp * u), 0, 1), w = Math.sin(Math.PI / 2 * r); return s * (1 - DIAL.mBl * (1 - w * w)); }   // the lead fills in over DIAL.mBp phrases from its first entry
+  function mKeep(tr, i) { var MR = mRank(tr), rk = MR.r[i], sh = bShare(tr); if (sh >= 1 - 1e-9) return true; var k = Math.max(3, Math.ceil(sh * MR.n)); return rk == null ? k >= MR.n : rk < k; }   // never fewer than three notes (the hook); a note the drift added plays once the whole motif does
   // ELECTRO ARP (Danny 19:11 AWST 27 Oct: 'electronic arpeggiators uniquely ... a unique way to model that ... specific to electro'): a
   // programmed arpeggiator as on the Juno / SH-101, not a chord cycled up: each track draws a MODE (up, down, up-down, broken 1-3-2-4, pedal
   // on the root, skip 1-3-5-2-4-6) and a 16-step GATE (density PHI^-1 .. 1 with the arc; the downbeat always on); every phrase may switch
@@ -1494,7 +1560,7 @@
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k.indexOf('bs') === 0 || k === 'tpM') busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
-    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x, dk: tr.rp.dk, stop: !!tr.rp.stop } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
+    live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x, dk: tr.rp.dk, stop: !!tr.rp.stop } : null, phrase: Math.floor(tr.step / 64) % SPB + 1, lead: tr.lr ? { all: tr.lr.all.slice(), names: tr.lr.all.map(function (k) { return LNAME[k] || k; }), mid: tr.lr.mid, peak: tr.lr.peak, bd: tr.lr.bd, now: fOn(tr, 'lead') ? lVoice(tr) : null, nowName: fOn(tr, 'lead') ? LNAME[lVoice(tr)] || lVoice(tr) : null, role: lRole(tr), solo: soloOn(tr), sk: tr.skNow || 0 } : null } : null; },
     get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
   window.DadAutoDJ = { desk: DESK, _kit: { dimX: function (w) { return dimX(w); }, emerge: function (nm, seed, drive, u) { return emerge(nm, { seed: seed, dm: { drive: drive } }, u || SPB).map(function (q) { return { n: q.n, b: q.b, f: q.f, lv: q.lv, P: q.P }; }); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,

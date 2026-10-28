@@ -8,7 +8,7 @@ function ok(n, c, x) { R.push((c ? 'PASS ' : 'FAIL ') + n + (x ? '  [' + x + ']'
   await p.goto(process.argv[2], { waitUntil: 'load' }); await p.waitForTimeout(3000);
   const pb = await p.locator('#dj-pill').boundingBox(); await p.touchscreen.tap(pb.x + 5, pb.y + 5); await p.waitForTimeout(5000);
   await p.evaluate(() => { const I = DadAutoDJ._kit.INST; window.__r = { resp: 0, stab: 0, lead: 0, ansHalf: 0 }; window.__wrapped = {};
-    ['jup', 'horn', 'bell', 'reed', 'pluck', 'piano'].forEach(k => { const f = I[k]; if (!f || __wrapped[k]) return; __wrapped[k] = 1; I[k] = function (tr) { if (tr && tr.tk && tr.tk.L && tr === tr.tk.L.lead) { __r.resp++; __r[k] = (__r[k] || 0) + 1; } return f.apply(this, arguments); }; }); });
+    ['jup', 'horn', 'bell', 'reed', 'pluck', 'piano'].forEach(k => { const f = I[k]; if (!f || __wrapped[k]) return; __wrapped[k] = 1; I[k] = function (tr) { if (tr && tr.tk && tr.tk.L && (tr === tr.tk.L.lead || tr === tr.tk.L.answer)) { __r.resp++; __r[k] = (__r[k] || 0) + 1; } return f.apply(this, arguments); }; }); });
   let s0 = await snap(); ok('a first theme goes into memory', Array.isArray(s0.mm) && s0.mm.length >= 1, JSON.stringify(s0.mm));
   ok('the live track saves its call (mo, 32 steps)', s0.tr && Array.isArray(s0.tr.mo) && s0.tr.mo.length === 32, s0.tr && JSON.stringify(s0.tr.mo));
   // walk through several genres to build memory and catch recalls
@@ -25,10 +25,10 @@ function ok(n, c, x) { R.push((c ? 'PASS ' : 'FAIL ') + n + (x ? '  [' + x + ']'
   ok('memory grows (up to 8 themes)', mems.length >= 3 && mems.length <= 8, 'themes ' + mems.length + ' / per track ' + seen.map(x => x.mm).join(','));
   ok('some new tracks recall a remembered contour', rec.some(x => x), seen.map((x, i) => x.g + (rec[i] ? ':recall' : ':fresh')).join(' '));
   // electro: the Jupiter answers the DX7 in the answer halves
-  await p.evaluate(() => DadAutoDJ.desk.setPick('electro'));
+  await p.evaluate(() => { DadAutoDJ.desk.dial('fmM', -1); DadAutoDJ.desk.setPick('electro'); });   // Form off: the lead plays throughout and no solo (the answer sits out a solo)
   for (let i = 0; i < 100; i++) { if (await p.evaluate(() => DadAutoDJ.track.genre) === 'electro') break; await p.waitForTimeout(500); }
   await p.evaluate(() => { __r.resp = 0; __r.jup = 0; }); await p.waitForTimeout(25000); const rr = await p.evaluate(() => __r);
-  ok('another voice answers the lead (electro: Jupiter in the lead layer)', rr.resp > 0, JSON.stringify(rr));
+  ok('another voice answers the lead (electro: Jupiter on the answer channel)', rr.jup > 0, JSON.stringify(rr));
   // reload: the same track comes back with the same call
   const before = await snap(); await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(4000); const after = await snap();
   ok('reload keeps the call', JSON.stringify(before.tr && before.tr.mo) === JSON.stringify(after.tr && after.tr.mo) && after.mm && after.mm.length === before.mm.length, (before.mm || []).length + ' themes');

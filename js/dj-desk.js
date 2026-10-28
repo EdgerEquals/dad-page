@@ -240,7 +240,18 @@
     // MELODY
     var me = strip(host, 'melody', 'Melody', 'motif memory · call and response', ['lead', 'answer']);
     var ml = bank(me, [dial('recall', 'recall', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('mRh', 'own rhythm', 'C', 0, 1, IPH * IPH, function (v) { return Math.round(v * 100) + '%'; }), dial('resp', 'answer', 'C', 0, 1, IPH, function (v) { return Math.round(v * 100) + '%'; }),
-      { id: 'dial.belS', name: 'bells', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how many phrases a bell plays, as lead or answer', lab: function (v) { return v === 0 ? 'none' : Math.round(v * 100) + '% of phrases'; }, get: function () { return D.dial('belS'); }, set: function (v) { D.dial('belS', v); } }]);   // own rhythm: Danny 20:15 'Dial for now'; bells: Danny 10:10 'more sparsely'
+      { id: 'dial.belS', name: 'bells', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how many phrases a bell plays, as lead or answer', lab: function (v) { return v === 0 ? 'none' : Math.round(v * 100) + '% of phrases'; }, get: function () { return D.dial('belS'); }, set: function (v) { D.dial('belS', v); } },
+      { id: 'dial.lN', name: 'lead voices', k: 'N', L: [1, 2, 3], def: 3, note: 'how many instruments a track hands the lead between: its own in the middle, another at the peaks, the softest in breakdowns', lab: function (v) { return ['', 'one', 'a pair', 'pair or trio'][v] || String(v); }, get: function () { return D.dial('lN'); }, set: function (v) { D.dial('lN', v); } },
+      { id: 'dial.soloP', name: 'solo chance', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'the share of tracks that take a solo at a long peak', lab: function (v) { return v === 0 ? 'never' : Math.round(v * 100) + '% of tracks'; }, get: function () { return D.dial('soloP'); }, set: function (v) { D.dial('soloP', v); } },
+      { id: 'dial.soloA', name: 'solo climb', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how far a solo climbs: notes per bar, register, leaps', lab: function (v) { return v === 0 ? 'off' : Math.round(v * 100) + '%'; }, get: function () { return D.dial('soloA'); }, set: function (v) { D.dial('soloA', v); } },
+      { id: 'dial.soloL', name: 'solo after', k: 'V', L: [1, 2, 3, 5], def: 2, note: 'the shortest peak section that gets a solo', lab: function (v) { return v + (v === 1 ? ' phrase' : ' phrases'); }, get: function () { return D.dial('soloL'); }, set: function (v) { D.dial('soloL', v); } },
+      { id: 'dial.mDr', name: 'drift', k: 'N', L: [0, 1, 2, 3, 5, 8], def: 3, note: 'how many notes of the motif drift away before it comes home', lab: function (v) { return v === 0 ? 'off' : 'up to ' + v + (v === 1 ? ' note' : ' notes'); }, get: function () { return D.dial('mDr'); }, set: function (v) { D.dial('mDr', v); } },
+      { id: 'dial.mDrT', name: 'drift time', k: 'R', L: [3, 5, 8, 13], def: 8, note: 'phrases to drift out and come back home', lab: function (v) { return v + ' phrases'; }, get: function () { return D.dial('mDrT'); }, set: function (v) { D.dial('mDrT', v); } },
+      { id: 'dial.mBl', name: 'build', k: 'C', L: [0, P(-3), P(-2), IPH, 1], def: IPH, note: 'how much the lead starts as a hook and fills in with the energy', lab: function (v) { return v === 0 ? 'off' : Math.round(v * 100) + '%'; }, get: function () { return D.dial('mBl'); }, set: function (v) { D.dial('mBl', v); } },
+      { id: 'dial.mBp', name: 'build pace', k: 'R', L: [1, 2, 3, 5], def: 2, note: 'phrases for the lead to fill in from its first entry', lab: function (v) { return v + (v === 1 ? ' phrase' : ' phrases'); }, get: function () { return D.dial('mBp'); }, set: function (v) { D.dial('mBp', v); } }]);   // THE MELODY (Danny 12:53 AWST 28 Oct 'lock them in')
+    var LDL = E('div', 'dk-hint dk-txl'); me.appendChild(LDL); LDLF = function () { var l = D.live && D.live(), x = l && l.lead, t = '';   // what the lead is doing on this track
+      if (x) { var nm = function (k) { return x.names[x.all.indexOf(k)] || k; }; t = 'lead: ' + nm(x.mid) + (x.peak !== x.mid ? ', then ' + nm(x.peak) + ' at the peaks' : '') + (x.bd !== x.mid ? ', ' + nm(x.bd) + ' in breakdowns' : '') + (x.solo ? ' · solos at long peaks' : '') + (x.nowName ? ' — now ' + x.nowName + (x.sk > 0 ? ', soloing ' + Math.round(x.sk * 100) + '%' : '') : ''); }
+      if (LDL.textContent !== t) LDL.textContent = t; LDL.hidden = !t; };   // own rhythm: Danny 20:15 'Dial for now'; bells: Danny 10:10 'more sparsely'
     tools(me, ml);
     // EFFECTS (the returns; the knobs of js/dj-fx.js: a step is a nudge from the live value, as the old chips)
     var ef = strip(host, 'effects', 'Effects', 'returns · the bar = where the pumps have it');
@@ -407,7 +418,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -421,7 +432,7 @@
     KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (VPLF) try { VPLF(); } catch (e) {} if (LDLF) try { LDLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {
