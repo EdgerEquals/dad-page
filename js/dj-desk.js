@@ -263,7 +263,7 @@
     // a model row (the template's, off, or one forced), then faders in rungs from the template: squeeze (how hard the loudest moments
     // are pushed; the threshold finds it), ratio, attack, release, knee, mix, energy follow; saturation (off, the template's, heavier),
     // even harmonics. The squeeze meter is the compressor's gain reduction (its control voltage, the circuit's own state).
-    var mbs = strip(host, 'master', 'Master bus', 'templates · compressor · saturation');
+    var mbs = strip(host, 'master', 'Master bus', 'templates · compressor · saturation · buses');
     var bp = function () { var b = D.bus && D.bus(); return b && b.p || {}; };
     var tpw = E('div', 'dk-sws'), TPN = [['auto', 0], ['none', -1]].concat((D.templates || []).map(function (n, i) { return [n, i + 1]; }));
     TPN.forEach(function (x) { tpw.appendChild(sw(x[0], function () { return (D.dial('tpM') | 0) === x[1]; }, function () { D.dial('tpM', x[1]); log('dial.tpM', x[1]); tpw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); setTimeout(paintAll, 60); })); });
@@ -285,6 +285,23 @@
     var sfl = bank(mbs, [{ id: 'dial.mbS', name: 'saturate', k: 'V', L: [-1, 0, 1, 2, 3, 4], def: 0, lab: function (v) { var P = bp(); return v < 0 ? 'off' : v === 0 ? (P.sat ? 'template' : 'template: none') : 'heavier ' + v; }, get: function () { return D.dial('mbS'); }, set: function (v) { D.dial('mbS', v); } },
       { id: 'dial.mbH', name: 'even harmonics', k: 'C', L: [0, Math.pow(IPH, 4), Math.pow(IPH, 3), IPH * IPH], def: 0, lab: pct, get: function () { return D.dial('mbH'); }, set: function (v) { D.dial('mbH', v); } }]);
     tools(mbs, sfl);
+    // FOUR BUSES (Danny 09:09 AWST 28 Oct 'All'; the draft's step 2): drums, bass, music (stabs, arp, pad) and front (lead, answer, voice),
+    // each squeezed toward its template's reduction in rungs; smash = the drums' parallel copy, crushed and blended in; bus drive = the
+    // saturation before each bus compressor. The meter beside each knob is that bus's gain reduction (the circuit's own state).
+    var bb = function () { var b = D.bus && D.bus(); return b && b.buses || null; };
+    var bsw = E('div', 'dk-sws'); [['template', 0], ['off', -1]].forEach(function (x) { bsw.appendChild(sw(x[0], function () { return (D.dial('bsM') | 0) === x[1]; }, function () { D.dial('bsM', x[1]); log('dial.bsM', x[1]); bsw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); setTimeout(paintAll, 60); })); });
+    mbs.appendChild(E('div', 'dk-sub', 'buses · drums, bass, music, front')); mbs.appendChild(bsw);
+    var BXL = E('div', 'dk-hint dk-txl'); mbs.appendChild(BXL);
+    BXLF = function () { var x = bb(), N = ['drums', 'bass', 'music', 'front'], t = !x ? 'loading…' : !x.p ? '' : x.p.off || !x.p.tpl ? 'off: the buses pass straight through' : N.map(function (n, i) { var q = x.p.b[i]; return q.model ? n + ' ' + (x.r ? (+x.r.hit[i] || 0).toFixed(1) : '0.0') + ' of ' + q.tgt.toFixed(1) + ' dB' : n + ' straight'; }).join(' · ') + (x.p.par.mix > 0 ? ' · smash ' + (x.r ? (+x.r.phit || 0).toFixed(1) : '0.0') + ' dB at ' + Math.round(x.p.par.mix * 100) + '%' : '');
+      if (BXL.textContent !== t) BXL.textContent = t; };
+    var bgr = function (i) { return function () { var x = bb(), on = x && x.r && x.p && !x.p.off && (i < 0 ? x.p.par.mix > 0 : x.p.b[i].model); return on ? clamp(-(i < 0 ? x.r.pgr : x.r.gr[i]) / Math.pow(PHI, 4), 0, 1) : null; }; };
+    var bsq = function (k, name, i, note) { return Object.assign(dial(k, name, 'R', -3, 3, 0, function (v) { var x = bb(), q = x && x.p && x.p.b[i]; return q && q.model ? (q.tgt / Math.pow(PHI, D.dial(k)) * Math.pow(PHI, v)).toFixed(1) + ' dB' : (Math.abs(v) < 1e-9 ? 'template' : (v > 0 ? '+' : '') + num(v)); }), { note: note, live: bgr(i) }); };
+    var bfl = bank(mbs, [bsq('bsD', 'drums', 0, 'how hard the drum bus is squeezed'),
+      { id: 'dial.bsP', name: 'smash', k: 'C', L: [-5, -2, -1, 0, 1, 2], def: 0, note: "the drums' parallel copy, crushed and blended in", live: bgr(-1), get: function () { return D.dial('bsP'); }, set: function (v) { D.dial('bsP', v); },
+        lab: function (v) { if (v <= -5) return 'off'; var x = bb(), m = x && x.p && x.p.par, cur = D.dial('bsP'); return m && m.mix > 0 && cur > -5 ? Math.round(Math.min(1, m.mix / Math.pow(PHI, cur) * Math.pow(PHI, v)) * 100) + '%' : (v ? (v > 0 ? '+' : '') + v : 'template'); } },
+      bsq('bsB', 'bass', 1, 'how hard the bass bus is squeezed'), bsq('bsU', 'music', 2, 'stabs, arp and pad together'), bsq('bsF', 'front', 3, 'lead, answer and voice together'),
+      { id: 'dial.bsS', name: 'bus drive', k: 'V', L: [-1, 0, 1, 2, 3], def: 0, note: 'saturation before each bus compressor', lab: function (v) { return v < 0 ? 'off' : v === 0 ? 'template' : 'heavier ' + v; }, get: function () { return D.dial('bsS'); }, set: function (v) { D.dial('bsS', v); } }]);
+    tools(mbs, bfl);
     // VOICE
     var vo = strip(host, 'voice', 'Voice', null, ['voice']);
     var vmw = E('div', 'dk-sws'); [['auto', 0], ['singer', 1], ['machine', 2]].forEach(function (x) { vmw.appendChild(sw(x[0], function () { return (D.dial('voM') | 0) === x[1]; }, function () { D.dial('voM', x[1]); log('dial.voM', x[1]); vmw.querySelectorAll('.dk-sw').forEach(function (q) { q._sync(); }); })); });   // MACHINE VOICE (Danny 08:57): auto = electro speaks as the machine
@@ -367,7 +384,7 @@
 
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
-  var TXL = null, BSLF = null, MBLF = null, FMLF = null;
+  var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null;
   function txLast() { if (!TXL) return; var d = DJ(), F = d && d.fx, lt = F && F.lastTransition, t = lt ? 'last change: ' + lt.style : ''; if (TXL.textContent !== t) TXL.textContent = t; TXL.hidden = !t; }   // which set the last change played
   function paintAll() { FD.forEach(function (o) { try { o.paint(); } catch (e) {} }); }
   function meters() { FD.forEach(function (o) { try { if (o.meter) o.meter(); } catch (e) {} }); var D = DK(); if (readEl && D) { var l = D.live(); readEl.textContent = (D.read || 'Ed’s DJ is off') + (l ? ' · phrase ' + l.phrase + ' of 4' : ''); } }
@@ -381,7 +398,7 @@
     KV.forEach(function (k) { if (!k.vu.el.isConnected || k.vu.el.offsetParent === null) return; var x = null; try { x = k.f.live(); } catch (e) {} k.vu.el.style.visibility = x == null || !isFinite(x) ? 'hidden' : ''; if (x == null || !isFinite(x)) return; x = clamp(x, 0, 1); vuSet(k.vu, [x, x], MSTEP); k.lb.style.transform = 'scaleX(' + x.toFixed(3) + ')'; });
     fT = setTimeout(fast, MSTEP * MS); }
   var fT = 0;
-  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
+  function tick() { clearTimeout(mT); if (!isOpen()) return; meters(); var D = DK(), l = D && D.live(); txLast(); if (BSLF) try { BSLF(); } catch (e) {} if (MBLF) try { MBLF(); } catch (e) {} if (BXLF) try { BXLF(); } catch (e) {} if (FMLF) try { FMLF(); } catch (e) {} mT = setTimeout(tick, (l && l.bpm > 0 ? SPM / l.bpm : 1) * MS); }   // once a beat (DeepSeek check Danny relayed 18:16: a bar is too slow to read)
   function show(t) { UI.tab = t; sv(KUI, UI); Object.keys(tabs).forEach(function (k) { tabs[k].b.setAttribute('aria-selected', k === t ? 'true' : 'false'); tabs[k].p.hidden = k !== t; });
     if (t === 'visual' && !tabs.visual.p.childNodes.length) visualPage(tabs.visual.p); paintAll(); meters(); fast(); }
   function build() {

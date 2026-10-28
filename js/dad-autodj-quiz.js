@@ -210,7 +210,8 @@
     fmM: -1, fmU: SPB, fmR: 1, fmS: SPB,   // FORM is built but PAUSED (Danny 08:02 AWST 28 Oct 'pause everything else into this first'): off until he turns it on
     fmSP: 5, fmTP: 13, fmMn: 8, fmHi: Math.pow(IPH, 3), fmLo: Math.pow(IPH, 4), fmHy: Math.pow(IPH, 4), fmDr: 1,   // EMERGENT FORM (Danny 09:09 AWST 28 Oct 'All'): section pump period (phrases), track pump period (phrases), minimum track (phrases), peak threshold, breakdown threshold, let-go, length drift (phrases)
       // FORM (Danny 07:46 AWST 28 Oct): form (0 auto, -1 off, -2 random, 1.. by name), bars per phrase, build-roll bars, stop sixteenths before a drop (counts)
-    mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2 };   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
+    mbM: 0, mbT: 0, mbR: 0, mbA: 0, mbRl: 0, mbK: 0, mbX: 1, mbE: IPH, mbS: 0, mbH: 0, tpM: 0, mbV: 2,
+    bsM: 0, bsD: 0, bsP: 0, bsB: 0, bsU: 0, bsF: 0, bsS: 0 };   // FOUR BUSES (Danny 09:09 AWST 28 Oct 'All'; the draft's step 2): 0 template / -1 off; squeeze rungs for drums, bass, music, front; the drums' parallel blend (rungs, -5 off); saturation (-1 off, 0 template, n heavier)   // MASTER BUS + TEMPLATES (Danny 22:06 27 Oct; 08:10 28 Oct 'I approve that draft go with that'): template (0 auto = the style's palette, -1 none, 1.. by name), model (0 the template's, -1 off, 1 VCA, 2 FET, 3 opto, 4 vari-mu), squeeze (rungs from the template's target reduction), ratio / attack / release / knee (rungs from the template's own), mix and energy follow (couplings), saturate (-1 off, 0 the template's, 1..4 heavier), even harmonics (a coupling); mbV: the version of these meanings
   var FLO = 20, FHI = 20000;                                             // cite: the range of human hearing, 20 Hz - 20 kHz (as in dj-fx.js and dj-extras.js)                     // open range 3: root-motion direction at zero drive (+1..+1/2) and full drive (-1..-1/2)
   var DIAL0 = JSON.stringify(DIAL);
   var FLATS = [6, 2, 5, 1, 4];                                           // cite: from Ionian, each step down the line of fifths lowers the 7th, 3rd, 6th, 2nd, then 5th (Mixolydian, Dorian, Aeolian, Phrygian, Locrian)
@@ -296,7 +297,7 @@
   function loadX() { if (xReq) return; xReq = true; var sc = document.createElement('script'); sc.src = XURL; sc.async = true; document.head.appendChild(sc); }
   function extras(x) {                                                    // called by js/dj-extras.js when it lands
     X = Object.create(x); X.hit = hitW(x); XL = 1; var t = ctx ? ctx.currentTime : 0, G = Math.pow(PHI, 2);   // phi: extras glide in over PHI^2 s
-    if (ctx) { tracks.forEach(function (tr) { tr.xo.gain.cancelScheduledValues(t); tr.xo.gain.setValueAtTime(tr.xo.gain.value, t); tr.xo.gain.linearRampToValueAtTime(1, t + G); });
+    if (ctx) { tracks.forEach(function (tr) { (tr.xos || [tr.xo]).forEach(function (x) { x.gain.cancelScheduledValues(t); x.gain.setValueAtTime(x.gain.value, t); x.gain.linearRampToValueAtTime(1, t + G); }); });
       if (X.reverb) X.reverb(ctx, revIn, bus, G); }
     if (X.chips && chips) X.chips(chips);
     paint(compute()); loadFX();
@@ -346,6 +347,7 @@
       meter = ctx.createAnalyser(); meter.fftSize = 2048; ceilN.connect(meter);             // level check for tests only (what passes the ceiling, undipped)
       kMeter = ctx.createAnalyser(); kw(ctx, glueT).connect(kMeter);                         // undipped, K-weighted: the level the logos follow
       kPre = ctx.createAnalyser(); kw(ctx, master).connect(kPre);                            // the same reading before the glue: its threshold and trim
+      BIN = [0, 1, 2, 3].map(function () { var g = ctx.createGain(); g.connect(bus); return g; });   // FOUR BUSES: drums, bass, music, front; summed straight into the bus until the worklet lands
       busLoad(ctx, master, comp);                                                            // MASTER BUS (Danny 22:06): master -> the bus worklet -> the glue, once it loads
     } catch (e) { ctx = null; }
     return ctx;
@@ -466,6 +468,8 @@
     return fresh.map(function (y, i) { if (!on[i]) return null; if (n > 0) cur = clamp(cur + dl[(n - 1) % dl.length], 4, 13); n++; return cur; });   // unit: the fresh motif's degree range
   }
   function makeTrack(genre, bpm, seed, prev, root0, dm0, mo0) {
+    // ELECTRO ON THE ONE (Danny's MIDI export 09:32 AWST 28 Oct, dad-dj-20261028-0932.mid): the mix's even-step drum shift had turned electro's whole kit two
+    // sixteenths early, so its kick never landed on the 1; a style with its own kit (electro) now takes neither a donor's pattern nor the shift.
     var g = GEN[genre], r = rng(seed), sc = SCALES[g.scale], root = g.root + [-2, 0, 0, 2, 3, -3][Math.floor(r() * 6)];
     if (typeof root0 === 'number' && isFinite(root0)) root = root0; else if (prev && prev.sc) root = travel(sc, g.root, prev, frac((seed | 0) * IPH));   // restored key, or travel from the outgoing one
     var pi0 = Math.floor(r() * g.progs.length), prog = g.progs[pi0], progB = g.progs[(pi0 + 1) % g.progs.length], mel = [], deg = 7 + Math.floor(r() * 3);   // B section: the genre's other progression
@@ -486,17 +490,18 @@
     // CALL AND RESPONSE (MIDI Bot directions): the motif is 64 steps; the answer is the call inverted around its first note
     var piv = mel.filter(function (x) { return x != null; })[0] || deg; for (var i2 = 0; i2 < 32; i2++) mel.push(mel[i2] == null ? null : clamp(2 * piv - mel[i2], 2, 16));   // unit: scale-degree range
     var u = energy(), gx = Object.create(g); gx.cut = mtof(root + 12) * Math.pow(PHI, PHI * PHI + 2 * dm.brightness - 1);   // phi: brightness = PHI^(PHI^2 +- 1 rung) over the root (rule 8: no fixed cut); data: the brightness dimension
-    var out = ctx.createGain(); out.gain.value = 0.0001; out.connect(bus);
+    var out = ctx.createGain(), oB = ctx.createGain(), oM = ctx.createGain(), oF = ctx.createGain(), OUTS = [out, oB, oM, oF];   // FOUR BUSES: the crossfade gain per bus (drums, bass, music, front), all faded together
+    OUTS.forEach(function (o, i) { o.gain.value = 0.0001; o.connect(BIN ? BIN[i] : bus); });
     var wet = ctx.createGain(); wet.gain.value = 0.0001; wet.connect(revIn);                    // reverb send, faded with the track
     var rv = ctx.createGain(); rv.gain.value = g.rev * Math.pow(PHI, 2 * dm.space - 1); rv.connect(wet);   // data: space, a rung either way
-    var xo = ctx.createGain(); xo.gain.value = XL; xo.connect(out);                                // extras (leads, drums) glide in here
+    var xo = ctx.createGain(), xoM = ctx.createGain(), xoF = ctx.createGain(); xo.gain.value = xoM.gain.value = xoF.gain.value = XL; xo.connect(out); xoM.connect(oM); xoF.connect(oF);   // extras glide in here: drums, the arp (music bus), the lead, answer and voice (front bus)
     var P = window.PhiPumps, node = !P || !M.route ? null : M.route === 1 ? P.page : P.logo('dad');   // mix: which pump-tree node drives the dynamics
     var sE = ctx.createGain(), sW = ctx.createGain(); sE.gain.value = sW.gain.value = 0.0001;   // the track's echo / wash send busses, faded with it (the mixer)
     var lay = function (to, ch) { var n = ctx.createGain(), lv = ctx.createGain(); n.gain.value = 1; lv.gain.value = levelG(ch); n.connect(lv); lv.connect(to); var se = ctx.createGain(), sw = ctx.createGain(); se.gain.value = sendV(ch, 'e'); sw.gain.value = sendV(ch, 'w');
       lv.connect(se); se.connect(sE); lv.connect(sw); sw.connect(sW); return { g: gx, out: n, lv: lv, rev: rv, ch: ch, se: se, sw: sw }; };   // lv: the channel's level (a loss), after the arc, before the sends   // energy-arc layers (setTarget ramps, never gates); ch: the mixer channel
-    var dk = ctx.createGain(); dk.gain.value = 1; dk.connect(out); var L = { drums: lay(xo, 'drums'), lead: lay(xo, 'lead'), answer: lay(xo, 'answer'), voice: lay(xo, 'voice'), bass: lay(dk, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xo, 'arp');   // voice: js/dj-voice.js sings here
-    var hb0 = phoneBass(L.bass.out, dk, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
-    var T = { dk: dk, dr: M.donor && !g.own ? GEN[M.donor] : g, shift: M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: X0, sE: sE, sW: sW, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; });
+    var dk = ctx.createGain(), dkB = ctx.createGain(); dk.gain.value = dkB.gain.value = 1; dk.connect(oM); dkB.connect(oB); var L = { drums: lay(xo, 'drums'), lead: lay(xoF, 'lead'), answer: lay(xoF, 'answer'), voice: lay(xoF, 'voice'), bass: lay(dkB, 'bass'), pad: lay(dk, 'pad') }, X0 = lay(xoM, 'arp');   // the kick's duck: dk (pad, chords) and dkB (bass)   // voice: js/dj-voice.js sings here
+    var hb0 = phoneBass(L.bass.out, dkB, mtof(root - 12), dm.weight); gx.br = mtof(root - 12);   // bass fix 1: the harmonic (phone) layer beside the sub path
+    var T = { dk: dk, dkB: dkB, outs: OUTS, xos: [xo, xoM, xoF], dr: M.donor && !g.own ? GEN[M.donor] : g, shift: g.own ? 0 : M.shift, node: node, genre: genre, bpm: bpm, seed: seed, g: gx, sc: mf < 1 / 2 ? scLo : scHi, scLo: scLo, scHi: scHi, mf: mf, mode: mp, root: root, prog: prog, progB: progB, hb: hb, mel: mel, mo: mo, r: r, out: out, wet: wet, rev: rv, xo: xo, x: X0, sE: sE, sW: sW, L: L, u: u, dm: dm, cut: gx.cut, lastCh: null, step: 0, next: ctx.currentTime + Math.pow(PHI, -6), born: Date.now() }; T.s = soph(T); vibrato(T); T.x.tk = T; Object.keys(L).forEach(function (k) { L[k].tk = T; });
     Object.keys(L).forEach(function (k) { L[k].trk = T; }); X0.trk = T;   // PAD SHAPES fix (19:58): a layer can find its track (energy, seed, tempo) without becoming one (tk changes how notes are shaped)
     var S0 = Object.create(T), so = lay(dk, 'chords'); S0.out = so.out; S0.lv = so.lv; S0.se = so.se; S0.sw = so.sw; S0.ch = 'chords'; S0.tk = T; L.chords = S0; fxSends(T); return T;   // chords: the track's own fields, its own channel   // phi: first step PHI^-6 s out
   }
@@ -699,7 +704,7 @@
     p.ghost = (1 - drv) * dm.density * 2 * RD.ghost; p.ghost += o * Math.max(0, 1 - p.ghost); p.o = o;  // ghost-note layer level share (djcollide: + o)
     p.dk = Math.pow(PHI, -2 * drv);                                                                     // duck depth on each kick
     var d16 = SPM / tr.bpm / SPB;
-    if (tr.dk && p.stop) { var ts = t + (16 - p.L16) * d16, td = t + 16 * d16; tr.dk.gain.setTargetAtTime(Math.pow(PHI, -4), ts, Math.pow(PHI, -7)); tr.dk.gain.setTargetAtTime(1, td - Math.pow(PHI, -8), Math.pow(PHI, -8)); }
+    if (tr.dk && p.stop) { var ts = t + (16 - p.L16) * d16, td = t + 16 * d16; [tr.dk, tr.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(Math.pow(PHI, -4), ts, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, td - Math.pow(PHI, -8), Math.pow(PHI, -8)); }); }
     tr.rp = p; RPN = p;
   }
   function RQ(part, tk, t, v, m, d) {
@@ -714,7 +719,7 @@
     return v;
   }
   function RPAT(tr, k, home) { var p = tr.rp; if (!p || !p.pat) return home; if (k === 'kick' || k === 'snare') return p.pat[k] || home; if (k === 'hat') return p.pat.hat || home; return home; }
-  function rduck(tk, t) { if (!tk.dk || !tk.rp) return; var b = SPM / tk.bpm; tk.dk.gain.setTargetAtTime(tk.rp.dk, t, Math.pow(PHI, -7)); tk.dk.gain.setTargetAtTime(1, t + Math.pow(PHI, -6), b * Math.pow(PHI, -1 - tk.rp.drv)); }
+  function rduck(tk, t) { if (!tk.dk || !tk.rp) return; var b = SPM / tk.bpm; [tk.dk, tk.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(tk.rp.dk, t, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, t + Math.pow(PHI, -6), b * Math.pow(PHI, -1 - tk.rp.drv)); }); }
   function hitW(x) { return function (L, k, t, v, a) { if (!chOn('drums')) return; var tk = L.tk || L, p = tk.rp; if (!fOn(tk, 'drums', k)) return; var q = RQ('drum:' + k, tk, t, v, 0, 0); if (!(q > 0)) return; act('drums', t, q, tk);
     var d16 = SPM / tk.bpm / SPB, s16 = tk.step % 16;
     if (p && k === 'snare') t += p.lb;
@@ -961,7 +966,7 @@
   function curve(up) { var n = 64, a = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i / (n - 1); a[i] = Math.max(0.0001, up ? Math.sin(x * Math.PI / 2) : Math.cos(x * Math.PI / 2)); } return a; }
   function fadeGain(gn, up, t, len) { try { gn.gain.cancelScheduledValues(t); gn.gain.setValueCurveAtTime(curve(up), t, len); } catch (e) { gn.gain.setTargetAtTime(up ? 1 : 0.0001, t, len / 3); } }
 
-  function fadeTrack(tr, up, t, len) { fadeGain(tr.out, up, t, len); fadeGain(tr.wet, up, t, len); if (tr.sE) { fadeGain(tr.sE, up, t, len); fadeGain(tr.sW, up, t, len); } tr.fd = { t: t, len: len, up: up }; }   // the plan, so the export reads the level at note time
+  function fadeTrack(tr, up, t, len) { (tr.outs || [tr.out]).forEach(function (o) { fadeGain(o, up, t, len); }); fadeGain(tr.wet, up, t, len); if (tr.sE) { fadeGain(tr.sE, up, t, len); fadeGain(tr.sW, up, t, len); } tr.fd = { t: t, len: len, up: up }; }   // the plan, so the export reads the level at note time
   // MIDI Bot review: the crossfade level when the note sounds (the same sine/cosine curve as fadeGain), not when it was scheduled (up to PHI^3 s earlier in a hidden tab)
   function gAt(tr, t) { var f = tr && tr.fd; if (!f) return tr && tr.out ? Math.min(1, tr.out.gain.value) : 1; var x = clamp((t - f.t) / f.len, 0, 1); return f.up ? Math.sin(x * Math.PI / 2) : Math.cos(x * Math.PI / 2); }
   // ---------- the DJ ----------
@@ -984,7 +989,7 @@
     tracks.push(tr); fadingUntil = Date.now() + len * 1000; lastMood = c.p.mood;
     return tr;
   }
-  function kill(tr) { tr.dead = true; tracks = tracks.filter(function (x) { return x !== tr; }); setTimeout(function () { try { tr.out.disconnect(); tr.wet.disconnect(); tr.rev.disconnect(); if (tr.sE) { tr.sE.disconnect(); tr.sW.disconnect(); } if (tr.lfo) tr.lfo.stop(); } catch (e) {} }, 400); }
+  function kill(tr) { tr.dead = true; tracks = tracks.filter(function (x) { return x !== tr; }); setTimeout(function () { try { (tr.outs || [tr.out]).forEach(function (o) { o.disconnect(); }); tr.wet.disconnect(); tr.rev.disconnect(); if (tr.sE) { tr.sE.disconnect(); tr.sW.disconnect(); } if (tr.lfo) tr.lfo.stop(); } catch (e) {} }, 400); }
   function applyVol(c, len) { if (bus) bus.gain.setTargetAtTime(c.vol, ctx.currentTime, Math.max(0.05, len / 3)); }
   // EVERY CHANGE ON THE BAR GRID (MIDI Bot transitions design, Danny 16:30 AWST 26 Oct): automatic radio changes and dial changes go
   // through the same bar-grid planner as the shuffle button (js/dj-fx.js transition(), its sweeps scaled by depth); before the effects
@@ -1112,7 +1117,7 @@
   function rebuild() {                                                    // js/rhythm-continuity.js: a closed or stuck context gets a fresh graph at the same track position (dry path)
     var sp = spec(), was = playing, old = ctx; tracks.forEach(function (tr) { tr.dead = true; }); tracks = [];
     if (el) { try { el.pause(); el.srcObject = null; } catch (e) {} } el = null; direct = true; fxC = null; ctx = null; playing = false; stalled = false; pend = null; disarm();
-    X = null; XL = 0; xReq = false; busNode = null; if (chips) chips.textContent = '';    // js/dj-extras.js holds the old context: it reloads onto the new one after the first sound
+    X = null; XL = 0; xReq = false; busNode = null; bsNode = null; BIN = null; if (chips) chips.textContent = '';    // js/dj-extras.js holds the old context: it reloads onto the new one after the first sound
     try { if (old && old.state !== 'closed') old.close(); } catch (e) {}
     if (was) start(sp); return ctx;
   }
@@ -1341,14 +1346,18 @@
   // with the energy arc by DIAL.mbE x PHI^3 dB (squash at the drops, open in the breakdowns). Make-up follows the average gain reduction
   // inside the worklet (no gain dial), and the glue's trim still keeps the output level at or under the input level. Saturation: a soft
   // clip whose threshold sits PHI^(5 - mbS) x the running level (0 = off), mbH of the threshold's asymmetry for even harmonics.
-  var BUSURL = 'js/dj-bus-worklet.js?v=tpl1', busNode = null, busGR = 0, busMK = 0, busAv = 0, busCtx = null, busP = null;
+  var BIN = null, bsNode = null, BSR = null, bsP = null, bsTpl = null, bsOffs = {};             // FOUR BUSES: the four inputs, the worklet node, its last report, what was sent, the palette, each palette's servo offsets
+  var BUSURL = 'js/dj-bus-worklet.js?v=bus2', busNode = null, busGR = 0, busMK = 0, busAv = 0, busCtx = null, busP = null;
   var MBM = [null, { det: 'peak', a: 5, r: 10.5, k: 0, q: 3, t: 0 }, { det: 'peak', a: -3, r: 10, k: 2, q: 4, t: PHI * PHI }, { det: 'rms', a: 5, r: 12, k: 5, q: 2, t: 0, opto: 1 }, { det: 'rms', a: 7, r: 12.5, k: 6, q: 1, t: -PHI, mu: 1 }];   // t: the model's own threshold offset in dB (the FET sits PHI^2 dB higher, it bites hard; the vari-mu PHI dB lower, it is gentle)   // phi exponents: attack / release ms, knee dB, ratio (VCA ~11 ms / 157 ms / 1 dB / 4.2:1; FET 0.24 ms / 123 ms / 2.6 dB / 6.9:1; opto 11 ms / 322 ms / 11 dB / 2.6:1; vari-mu 29 ms / 408 ms / 18 dB / 1.6:1 rising)
   function busLoad(c, from, to) {
     if (!c.audioWorklet || !window.AudioWorkletNode) return; busCtx = c;
     c.audioWorklet.addModule(BUSURL).then(function () { if (c !== ctx || busNode) return;
       var n = new AudioWorkletNode(c, 'ed-bus', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
       n.port.onmessage = function (e) { var d = e.data; if (d && isFinite(d.gr)) { busGR = d.gr; busMK = d.mk; busAv = d.av; busHit = Math.max(-d.gr, busHit * Math.pow(IPH, Math.pow(PHI, -4) / Math.pow(PHI, 3))); } };   // the hits: a peak hold that falls by PHI^-1 every PHI^3 s
-      busNode = n; busSet(); try { from.disconnect(to); } catch (er) {} from.connect(n); n.connect(to); }).catch(function () {});
+      busNode = n; try { from.disconnect(to); } catch (er) {} from.connect(n); n.connect(to);
+      try { if (BIN) { var nb = new AudioWorkletNode(c, 'ed-buses', { numberOfInputs: 4, numberOfOutputs: 1, outputChannelCount: [2] });   // FOUR BUSES: the tracks' four outputs -> the bus worklet -> the pump volume
+        nb.port.onmessage = function (e) { var d = e.data; if (d && d.k === 'b') BSR = d; }; bsNode = nb; BIN.forEach(function (g, i) { try { g.disconnect(bus); } catch (er) {} g.connect(nb, 0, i); }); nb.connect(bus); } } catch (er) { bsNode = null; }
+      busSet(); }).catch(function () {});
   }
   // MIX TEMPLATES, step 1: the master (Danny 08:02 AWST 28 Oct: 'the way all the effects are wired will change with each pallet ... these
   // are now fixed rules but on another level ... this is artistic now so it's okay. Those rules still apply for when we're writing the
@@ -1370,6 +1379,32 @@
     ambient:    { m: 3, a: 20, r: 600, q: 1.5, k: 12, gr: 1, sat: 'none', over: 0 }
   };
   var TPAL = { electro: 'electro', electronic: 'club', 'indie-pop': 'pop', 'upbeat-pop': 'pop', soul: 'soul', acoustic: 'acoustic', folk: 'acoustic', piano: 'piano', cinematic: 'orchestral', ambient: 'ambient' };
+  // FOUR BUSES (step 2 of the draft): per palette d drums, p the drums' parallel copy (mix = its blend), b bass, mu music (stabs, arp,
+  // pad), f front (lead, answer, voice); m the model (1 VCA, 2 FET, 3 opto, 4 vari-mu), a / r ms, q ratio, k knee dB, gr the reduction it
+  // aims at on the loud moments (dB), sat a type BEFORE the compressor bending over dB above the bus's level. Electro as the draft's table
+  // (drums VCA 10 / 100 ms 4:1, 3-5 dB, light transistor before; the parallel FET 0.2 / 50 ms 10:1, 10 dB or more, at 25%; the 303 opto
+  // 10 ms 3:1, 2-4 dB, tube drive before; music and front opto 20 ms 2:1, 1-2 and about 2 dB); club, pop and soul from its palette table
+  // (club drums VCA 4:1 plus parallel; pop drums FET plus parallel, bass opto 3:1; soul drums crushed in parallel, bass opto 4:1); the
+  // rest leave their buses straight (the draft: what a template leaves out is neutral). Opto release is the T4 cell's (program-dependent).
+  var TPLB = {
+    electro: { d: { m: 1, a: 10, r: 100, q: 4, k: 3, gr: 4, sat: 'transistor', over: 10 }, p: { m: 2, a: 0.2, r: 50, q: 10, k: 2, gr: 10, mix: 0.25 },
+      b: { m: 3, a: 10, r: 300, q: 3, k: 8, gr: 3, sat: 'tube', over: 6 }, mu: { m: 3, a: 20, r: 300, q: 2, k: 8, gr: 1.5 }, f: { m: 3, a: 20, r: 300, q: 2, k: 8, gr: 2 } },
+    club: { d: { m: 1, a: 10, r: 100, q: 4, k: 3, gr: 4 }, p: { m: 2, a: 0.2, r: 50, q: 10, k: 2, gr: 10, mix: 0.25 } },
+    pop: { d: { m: 2, a: 0.8, r: 80, q: 4, k: 2, gr: 3 }, p: { m: 2, a: 0.2, r: 50, q: 10, k: 2, gr: 10, mix: 0.2 }, b: { m: 3, a: 10, r: 300, q: 3, k: 8, gr: 2.5 } },
+    soul: { p: { m: 2, a: 0.2, r: 50, q: 12, k: 2, gr: 12, mix: 0.3 }, b: { m: 3, a: 10, r: 300, q: 4, k: 8, gr: 3 } },
+    acoustic: {}, piano: {}, orchestral: {}, ambient: {}
+  };
+  var BSK = ['d', 'b', 'mu', 'f'], BSD = ['bsD', 'bsB', 'bsU', 'bsF'];
+  function bussesSet() {
+    if (!bsNode) return; var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tn = tplName(tr), T = tn && TPLB[tn] || {}, off = (DIAL.bsM | 0) === -1 || !tn, chg = tn !== bsTpl;
+    if (chg) { if (bsTpl && BSR) bsOffs[bsTpl] = { off: BSR.off.slice(), poff: BSR.poff }; bsTpl = tn; }   // a palette picks up where its servos last settled
+    var mem = bsOffs[tn], one = function (x, rung, o) { if (off || !x || !x.m) return { model: 0, tgt: 0, sat: 0, over: 0 }; var q = { model: x.m, det: MDET[x.m], opto: x.m === 3, mu: x.m === 4, ratio: x.q, atk: x.a, rel: x.r, knee: x.k, tgt: x.gr * Math.pow(PHI, rung),
+      sat: DIAL.bsS < 0 || !x.sat ? 0 : SATN[x.sat], over: x.over ? x.over * Math.pow(PHI, -Math.max(0, DIAL.bsS)) : 0 }; if (chg) q.off = o != null ? o : Math.pow(PHI, 3); return q; };   // phi: a palette with no memory starts PHI^3 dB over the level (gentle), as the worklet does   // the squeeze in rungs from the template; saturation bends a rung lower per step heavier
+    var b = BSK.map(function (k, i) { return one(T[k], DIAL[BSD[i]], mem ? mem.off[i] : null); }), par = one(T.p, 0, mem ? mem.poff : null);
+    par.mix = off || !T.p || DIAL.bsP <= -5 ? 0 : clamp(T.p.mix * Math.pow(PHI, DIAL.bsP), 0, 1);   // the parallel blend in rungs; -5 = off
+    bsP = { tpl: tn, off: off, b: b.map(function (q) { return { model: MNAME[q.model] || null, tgt: q.tgt, sat: q.sat ? Object.keys(SATN)[q.sat] : null }; }), par: { model: MNAME[par.model] || null, tgt: par.tgt, mix: par.mix } };
+    bsNode.port.postMessage({ k: 'p', b: b, par: par });
+  }
   var SATN = { none: 0, soft: 1, tube: 2, tape: 3, transistor: 4 }, MDET = [null, 'peak', 'peak', 'rms', 'rms'], MNAME = [null, 'VCA', 'FET', 'opto', 'vari-mu'];
   var busHit = 0, busOff = 0, busTpl = null, busOffs = {}, busLoud = null;                       // the hits' reduction (dB, decaying peak); the servo's threshold offset (dB), remembered per palette; the music's loud level (dB)
   // SERVO FIXES (Danny 08:31 AWST 28 Oct 'Yes', to the three points from DeepSeek's review he relayed at 08:28): (1) a QUIET GATE, the servo
@@ -1378,7 +1413,7 @@
   // the step scales with the target below 1 dB (an orchestral 0.5 dB can't hunt); (3) each palette REMEMBERS where its servo settled.
   function tplName(tr) { var m = DIAL.tpM | 0; if (m === -1) return null; if (m > 0) return TPLK[m - 1] || null; return TPAL[tr && tr.genre] || 'electro'; }
   function busSet(step) {
-    if (!busNode) return; var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tn = tplName(tr), T = tn ? TPL[tn] : null, mm = DIAL.mbM | 0;
+    bussesSet(); if (!busNode) return; var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tn = tplName(tr), T = tn ? TPL[tn] : null, mm = DIAL.mbM | 0;
     if (!T || mm === -1) { busP = { tpl: tn, model: null }; busNode.port.postMessage({ k: 'p', p: { model: 0 } }); return; }
     if (tn !== busTpl) { if (busTpl) busOffs[busTpl] = busOff; busTpl = tn; busOff = busOffs[tn] || 0; }   // a palette picks up where its servo last settled
     var mo = mm > 0 ? mm : T.m, M = MBM[mo], own = mo === T.m, base = own ? { a: T.a, r: T.r, k: T.k, q: T.q } : { a: Math.pow(PHI, M.a), r: Math.pow(PHI, M.r), k: Math.pow(PHI, M.k), q: Math.pow(PHI, M.q) };   // a forced model brings its own settings
@@ -1432,8 +1467,8 @@
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
     get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); }, get forms() { return FKEYS.slice(); },
-    bus: function () { return { on: !!busNode, gr: busGR, av: busAv, mk: busMK, hit: busHit, p: busP }; }, get templates() { return TPLK.slice(); },
-    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k === 'tpM') busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
+    bus: function () { return { on: !!busNode, gr: busGR, av: busAv, mk: busMK, hit: busHit, p: busP, buses: bsNode ? { p: bsP, r: BSR } : null }; }, get templates() { return TPLK.slice(); },
+    dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k.indexOf('bs') === 0 || k === 'tpM') busSet(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },
     rk: function (v) { if (v != null && isFinite(v)) { RK = clamp(+v, 3, 7); save(); } return RK; },
     live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x } : null, phrase: Math.floor(tr.step / 64) % SPB + 1 } : null; },
