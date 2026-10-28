@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   ok('every bus squeezes something', [0, 1, 2, 3].every(i => av(i) > 0.2), [0, 1, 2, 3].map(av));
   ok('the servos bring each bus near its target (within a factor of 2.6)', [0, 1, 2, 3].every(i => av(i) > T[i] / 2.618 && av(i) < T[i] * 2.618), [0, 1, 2, 3].map(i => av(i).toFixed(2) + '/' + T[i]));
   ok('the smash copy is crushed (5 dB or more)', av(-1) > 5, av(-1).toFixed(2));
-  ok('the output level is sane', last.every(r => r.lvl > 0.003 && r.lvl < 1), last.map(r => r.lvl));
+  const lv = last.map(r => r.lvl).sort((a, b) => a - b); ok('the output level is sane', (lv[1] + lv[2]) / 2 > 0.003 && lv[3] < 1, last.map(r => r.lvl));   // the median of the last four instants: one reading can land in a rhythmic stop
   await p.evaluate(() => DadAutoDJ.desk.dial('bsM', -1)); await p.waitForTimeout(800); const b1 = await p.evaluate(() => DadAutoDJ.desk.bus().buses.p); ok('off passes straight through', b1.off === true && b1.b.every(q => !q.model) && b1.par.mix === 0, b1);
   await p.evaluate(() => { DadAutoDJ.desk.dial('bsM', 0); DadAutoDJ.desk.setPick('piano'); }); for (let i = 0; i < 60; i++) { if (await p.evaluate(() => DadAutoDJ.track.genre) === 'piano') break; await p.waitForTimeout(500); }
   await p.waitForTimeout(6000); const b2 = await p.evaluate(() => ({ p: DadAutoDJ.desk.bus().buses.p, lvl: DadAutoDJ.out.level })); ok('piano: its template leaves the buses straight, sound still flows', b2.p.tpl === 'piano' && b2.p.b.every(q => !q.model) && b2.lvl > 0.002, { tpl: b2.p.tpl, lvl: b2.lvl });
