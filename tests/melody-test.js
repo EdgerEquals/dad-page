@@ -21,8 +21,8 @@ const { chromium } = require('playwright');
   const so = S.filter(x => x.lead.sk > 0.3); ok('a solo has a voice', so.length > 0 && so.every(x => !!x.lead.now), [...new Set(so.map(x => x.lead.now))]);
   // phase 2: the defaults, one minute, the numbers against Danny's 10:23 file (18 lead notes, mostly one pitch)
   await p.evaluate(() => { const d = DadAutoDJ.desk; d.dial('fmM', -3); d.dial('fmU', 4); d.dial('lN', 3); d.dial('soloP', 0.618034); d.dial('soloA', 0.618034); d.setPick('random'); d.setPick('electro'); });
-  await p.waitForTimeout(70000);
-  const N = await leadNotes(), U = [...new Set(N)].sort((a, b) => a - b);
+  let N = []; for (let i = 0; i < 18; i++) { await p.waitForTimeout(10000); N = await leadNotes(); if (i >= 6 && N.length >= 16) break; }   // at least 70 s, longer while the form is in sections with no lead (intro, groove, build), up to 3 minutes
+  const U = [...new Set(N)].sort((a, b) => a - b);
   console.log('defaults, last minute: lead notes', N.length, 'distinct pitches', U.length, U.join(','));
   ok('lead has more than one pitch', U.length >= 4, U.length);
   ok('no page errors', !errs.length, errs.join(' / ') || 'none'); await b.close(); })();
