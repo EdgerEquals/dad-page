@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+(async () => { const b = await chromium.launch(); const c = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p = await c.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
+  const ok = (n, v, x) => console.log((v ? 'PASS ' : 'FAIL ') + n + '  [' + (typeof x === 'string' ? x : JSON.stringify(x)) + ']');
+  await p.goto(process.argv[2], { waitUntil: 'load' }); await p.waitForTimeout(3000);
+  const bb = await p.locator('#dj-pill').boundingBox(); await p.touchscreen.tap(bb.x + 5, bb.y + 5); await p.waitForTimeout(7000);
+  await p.evaluate(() => DadDJPanel.open()); await p.waitForTimeout(1500);
+  await p.evaluate(() => document.querySelectorAll('#dj-desk .is-folded').forEach(s => s.classList.remove('is-folded')));
+  const tapSw = async lab => { const l = p.locator('[data-strip="effects"] .dk-sw', { hasText: new RegExp('^' + lab + '$') }).first(); await l.scrollIntoViewIfNeeded(); await l.tap(); };
+  await tapSw('techno cut'); await tapSw('echo out');
+  const st = await p.evaluate(() => ({ set: DadAutoDJ.fx.tset, pressed: [...document.querySelectorAll('[data-strip="effects"] .dk-sws .dk-sw')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')).join(' ') }));
+  ok('two styles picked at once', JSON.stringify(st.set) === '[1,3]' && /techno cut:true/.test(st.pressed) && /echo out:true/.test(st.pressed) && /auto:false/.test(st.pressed), st);
+  const change = async g0 => { const cur = await p.evaluate(() => DadAutoDJ.track.genre), gs = await p.evaluate(() => DadAutoDJ.desk.genres), g = g0 !== cur ? g0 : gs.find(x => x !== cur && x !== 'auto' && x !== 'random'); const before = await p.evaluate(() => (DadAutoDJ.fx.lastTransition || {}).start || 0); await p.evaluate(g => DadAutoDJ.desk.setPick(g), g);
+    for (let i = 0; i < 60; i++) { await p.waitForTimeout(500); const lt = await p.evaluate(() => DadAutoDJ.fx.lastTransition); if (lt && lt.start !== before) { await p.waitForTimeout(6000); return lt; } } return null; };
+  await p.waitForTimeout(15000); let lt = await change('house'); ok('the change plays both together', lt && lt.style === 'techno cut + echo out', lt && lt.style);
+  const rd = await p.evaluate(() => document.querySelector('.dk-txl').textContent); ok('desk shows the last change', /techno cut \+ echo out/.test(rd), rd);
+  await tapSw('techno cut'); const s2 = await p.evaluate(() => DadAutoDJ.fx.tset); ok('a second tap takes one off', JSON.stringify(s2) === '[3]', s2);
+  await tapSw('echo out'); const s3 = await p.evaluate(() => ({ set: DadAutoDJ.fx.tset, auto: DadAutoDJ.fx.autoSweep() })); ok('the last one off goes back to auto', s3.auto && !s3.set.length, s3);
+  await tapSw('random'); await p.evaluate(() => DadAutoDJ.fx.tn(5)); const seen = [];
+  for (const g of ['electro', 'soul', 'house', 'folk', 'electro']) { const x = await change(g); if (x) seen.push(x.set.length + ':' + x.style); }
+  ok('random draws sets of different sizes', new Set(seen.map(x => x.split(':')[0])).size >= 2 || seen.some(x => +x.split(':')[0] > 1), seen.join(' | '));
+  await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(4000); await p.evaluate(() => { try { DadAutoDJ.fx } catch (e) {} });
+  const kept = await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('dadRhythm.radio.v1') || localStorage.getItem('dadRhythm.v1') || '{}'); return JSON.stringify(s).match(/"djfx":\{[^}]*\}/) ? 1 : 0; });
+  ok('no page errors', !errs.length, errs.join(' / ') || 'none'); await b.close(); })();

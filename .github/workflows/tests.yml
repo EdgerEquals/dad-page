@@ -1,0 +1,27 @@
+# Headless regression tests for Ed's DJ on every push to main and every pull request (Danny 13:01 AWST 28 Oct, Claude chat:
+# 'I think we can use GitHub coding environment ... I'm paying for those tools on the cloud and we're not really using them yet').
+# Each test runs as its own job (in parallel), serving the repo at /dad-page/ as GitHub Pages does. Known-flaky checks: tests/flaky.txt.
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [desk-test, keys-test, ms-test, tpl-test, bus2-test, emerge-test, form-test, voice-test, groove-test, bell-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        working-directory: tests
+        run: npm install --no-audit --no-fund && npx playwright install --with-deps chromium
+      - name: Run ${{ matrix.test }}
+        run: bash tests/run.sh ${{ matrix.test }}

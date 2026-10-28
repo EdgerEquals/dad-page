@@ -1,0 +1,65 @@
+# Ed's DJ (dad-page) — start here
+
+Read this first in every new session. Then read only what the next task needs (grep for a function, don't read whole files).
+Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page (GitHub Pages, plain JS, no build step).
+
+## Working with Danny
+- Danny (Edger Equals): engineer and electronic musician in Perth (AWST). He works by voice on an iPhone and judges by listening.
+- Ask one question at a time. Give your view; he decides. Keep replies short.
+- He relays DeepSeek's replies, often pasted as his own message. Follow Danny, not DeepSeek. Check DeepSeek's claims against the
+  code or the MIDI before acting: it has described code and files that weren't what was there.
+- When a build is live, paste the whole link: `https://edgerequals.github.io/dad-page/?fresh=<short sha>`.
+- Credit third-party code under its licence; use outside code only where the licence checks out, else build from scratch.
+
+## Rules for the code
+- No gain dials. Every dial is one of five types: **R** rung, **C** coupling, **V** threshold, **L** loss, **N** pump count. Ratios are
+  φ (`PHI`, `IPH = 1/PHI`); mark them in comments (`// phi: ...`). Exceptions Danny approved: mix templates may use real units (ms,
+  dB, 2:1) (08:02 28 Oct); the mixer level is a rung both ways, up to +21 dB of drive (09:44 28 Oct).
+- Every tunable is a knob on the desk. Meters are mapped from parameters, never measured audio (a compressor's gain reduction counts).
+- Comments cite Danny's approval with the time, e.g. `(Danny 10:05 AWST 28 Oct 'Yes')`.
+- Add comments only at the END of a line. A `//` comment inserted mid-line has swallowed code here several times.
+- Syntax-check every edited file: `node -e "new (require('vm').Script)(require('fs').readFileSync('FILE','utf8'))"`.
+- The desk: opens as a page, nothing on it is selectable, M/S on sound strips, tap a strip's background to fold it.
+
+## Ship checklist
+1. Bump the `?v=` of everything changed: `index.html` (dad-autodj-quiz.js, quiz-dj-pill.js) · `js/quiz-dj-pill.js` (dj-desk.js) ·
+   `js/dad-autodj-quiz.js` (VURL dj-voice.js, FXURL dj-fx.js, XURL dj-extras.js, BUSURL dj-bus-worklet.js) · `js/dj-desk.js` (CSS).
+2. Test what you touched: `bash tests/run.sh desk-test voice-test` (needs Playwright; the runner serves the repo at /dad-page/).
+   CI runs the core set on every push (`.github/workflows/tests.yml`); known-flaky checks are in `tests/flaky.txt`.
+3. `python3 tools/page_guard.py` (also the pre-push hook).
+4. Rollback branch first: `git push origin HEAD:refs/heads/rollback/pre-<name>-<yyyy-mm-dd>`.
+5. Commit: what changed and why, citing Danny; end with the attribution lines the session gives. Push main; send the full link.
+
+## Map
+- `js/dad-autodj-quiz.js` — the engine (~1500 lines). `GEN` styles · `makeTrack` (per-track graph: layers → level → overload →
+  four bus outputs) · `playStep` (notes per 16th) · `rplan` (rhythm plan) · Form: `FORMS`, `emerge` (emergent planner), `secAt`,
+  `fOn` · mixer `MX` · templates `TPL` (master) and `TPLB` (buses) · `busSet` / `bussesSet` (servos) · `DIAL` (every desk dial) ·
+  API `window.DadAutoDJ.desk`.
+- `js/dj-extras.js` instruments (Juno, Jupiter, DX7 worklet, 303, 808) · `js/dj-fx.js` effects and transitions between tracks ·
+  `js/dj-voice.js` voice (singer, Rother machine, choir; per-track plan) · `js/dj-bus-worklet.js` master compressor `EdBus` + four
+  buses `EdBuses` (adapted from audiojs/dynamics, MIT) · `js/dj-desk.js` + `css/dj-desk.css` the desk · `js/rhythm-continuity.js`
+  reload/resume · `tests/` · `tools/page_guard.py`.
+- Test hooks: `DadAutoDJ.desk` (`dial(k,v)`, `level`, `bus()`, `live()`, `setPick`), `DadAutoDJ._kit` (`INST`, `voiceHook`, `emerge`),
+  `DadAutoDJ.notes()` (note log: `[ms, part, note, vel, dur]`), `DadAutoDJ.voice` (`plan()`, `mode()`, `log()`).
+- Danny's MIDI exports (`dad-dj-*.mid`): parse with mido and round to the 16th grid (flooring shows false one-step shifts).
+
+## State (28 Oct 2026, 13:15 AWST)
+Live: emergent Form by default (pumps choose sections, track ends at the track pump's peak) · four mix buses + master compressor with
+servos · mixer drive · electro rolls on (level kicks, no kick duck, fills only at section changes, on the one) · bells sparser
+(`belS`) · voice per track (electro ~1 in 4; choir in breakdowns, machine/singer at peaks, middle flavour events/talker/choir bed).
+
+Next, in Danny's agreed order (12:53 28 Oct):
+1. **Melody**: the lead moves between the style's instruments by section; a solo at long peaks (notes per bar and register climbing,
+   reset at the next section); the motif evolves (almost-repeats); a melodic build across the track. Lead in his 10:23 MIDI: 18 notes
+   a minute, mostly one pitch.
+2. **Genres**: electronic → dance; then techno, house, trance… two at a time. Open question: does the quirky arp over a half-time beat
+   go into ambient, or a new Crossover style (ambient stays drumless)?
+3. **CPU**: measure on his phone first; a polyphony cap as a safety net (not DeepSeek's "voice pool" as written).
+4. **Riser**: modulation pumps (scatter, reverse loop, chop, delay) cascading faster through a build; its own dial, set per genre;
+   scaled by how big the coming drop is.
+5. Later: era dial (vintage/modern, humanise, fault engine) · the Motown team (a background group that writes soul/funk records for
+   hip-hop to sample; chords cross over with the hip-hop track; era templates; 45-on-33 speed) · sampler (SP-1200 chop + grain cloud) ·
+   vocoder · licence-checked audio samples · morph dial (after genres) · hardware (Bela/ESP32: nothing to build yet).
+Older queue: Instruments/Composition split of the Style row · per-part memory faders · tap a fader name for its description ·
+feedback strip · what the Changes strip's mute/solo should do · mix templates steps 3–6.
+Waiting on Danny: his "share my moves" paste (System strip) to set electro's default balance from his night-of-27-Oct settings.

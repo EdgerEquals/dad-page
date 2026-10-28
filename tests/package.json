@@ -1,0 +1,1 @@
+{ "name": "dad-page-tests", "private": true, "description": "Headless regression tests for Ed's DJ (Playwright + Chromium)", "dependencies": { "playwright": "1.63.0" } }
