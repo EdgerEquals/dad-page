@@ -53,8 +53,10 @@
         that glided Sun. A moved Sun (rotation, layout) bends the orbit over the next gap with no jump.
      8. rocketwobble (Danny t315u 30 Oct: extras unseen; wobble with each blast, smaller each time; in flight beside it). They burst inside
         the liftoff flash (the climb curve holds the rocket near the pad for PHI^-2 of the climb). Now they start after it (PHI^-2), gaps
-        PHI^-5, -4, -3 of the climb, S PHI^(-j/2), PHI^-1 S left or right ('rocket:sides'). Each blast kicks a damped pendulum about the
-        nose (TAU/34 x its size, period PHI^-2 s, decay PHI x that), tail pushed away from the blast; one WAAPI track, added to the shake.
+        PHI^-5, -4, -3 of the climb, S PHI^(-j/2). Each blast kicks a damped pendulum about the nose (TAU/34 x its size, period PHI^-2 s,
+        decay PHI x that); one WAAPI track, added to the shake. rocketcentre (Danny t318u: 'the explosion looks central but the dynamic
+        still moves it around'): drawn centred on the rocket again; the pumped side ('rocket:sides') is a virtual impulse point PHI^-1 S
+        to the left or right only, setting which way the kick pushes the tail.
    Skipped while hidden; nothing under reduced motion. */
 (function () {
   'use strict';
@@ -123,9 +125,9 @@
       q.e.style.transform = K.T(h ? h[1] + q.dx : q.x, (h ? h[2] : q.y) - q.S * IP * u, 0, IP + (PHI - IP) * Math.sqrt(u)); q.e.style.opacity = (1 - Math.pow(IP, 3)) * (1 - u) * Math.pow(IP, q.k * IP);   // phi: rises PHI^-1 of its size, swells PHI^-1 -> PHI, older puffs fainter
       return true; });
     if (SM.length && !doc.hidden) sraf = requestAnimationFrame(smoke); else { SM.forEach(function (q) { q.e.remove(); }); SM = []; HS = []; } }
-  function boom(j, kk, ln, side) {                                         // extra explosion j (1..3) beside the rocket, PHI^(-j/2) of its size
+  function boom(j, kk, ln, side) {                                         // extra explosion j (1..3) centred on the rocket, PHI^(-j/2) of its size; side: only the kick's virtual impulse point
     var p = tail(); if (!p.on || doc.hidden) return;
-    draw(p.x + side * p.S * IP, p.y, p.S * Math.pow(IP, j / 2), FIB[5 - j], kk, ln, j, true, side * p.S * IP); }   // phi: PHI^-1 S aside, half a phi step smaller each; 5, 3, 2 pieces
+    draw(p.x, p.y, p.S * Math.pow(IP, j / 2), FIB[5 - j], kk, ln, j, true); }   // phi: half a phi step smaller each; 5, 3, 2 pieces
   function draw(x, y, S, c, kk, ln, j, follow, dx) {                       // glow + c sparks + c puffs at x, y, size S; follow: the smoke trails the rocket, dx to its side
     var B = root.RocketBlast, K = B && B.kit; if (!K) return;
     var life = MS * kk, i, e, now = performance.now();
