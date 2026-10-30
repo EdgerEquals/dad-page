@@ -86,3 +86,32 @@ html[data-theme="light"] .q-head .dj-mix,html[data-theme="light"] .dad-dj .dj-fx
 html[data-theme="light"] .q-head .dj-pill.djb .djp-ico{color:#1F5478;animation:none}
 html[data-theme="light"] .q-head .dj-pill.djb .djp-ico2,html[data-theme="light"] .q-head .dj-pill.djb::before{display:none}
 html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-bob calc(var(--djb-beat) * 2) ease-in-out infinite}
+
+/* MUSIC BUTTON ON / OFF (Danny 11:05 AWST 30 Oct, t286u: "I can't tell clearly enough when the music button is on and when it's off ...
+   have like the background colour changed to a contrast and colour when it's on ... use the pulsing and rhythm ... bounce around a bit
+   when it's on and change the colours ... more psychedelic colours when it's playing but not full-blown psychedelic tasteful").
+   Visual only: reads the classes js/quiz-dj-pill.js already sets on #dj-pill (.is-playing = sound heard, .is-resuming = waiting for a tap)
+   and the beat it already writes to --djb-beat (the DJ track's own BPM, else PHI^-1 s). No audio code read or changed.
+   OFF: still and muted (no drift), Dad's palette (#1F5478 ring, #85A6BB note, near-black core).
+   ON: filled with the accent running into emerald / matrix green; the #9DBCCE drift layer (::before, whose djb-fade cycle js/quiz-dj-pill.js
+   uses to re-read the BPM, so it keeps that name and timing) becomes a slowly turning palette wheel that fades in and out over the fill, so
+   the colour drifts without strobing; the button swells (scale), hops (translate) every beat and sways (rotate) over two beats.
+   Transform + opacity only, so the compositor moves it and nothing re-lays out. Every amount is a phi power from css/dj-buttons.css. */
+.q-head .dj-pill.djb:not(.is-playing){border-color:var(--djb-r);color:var(--djb-i);box-shadow:0 0 0 1px var(--djb-m),inset 0 0 8px var(--djb-m)}
+.q-head .dj-pill.djb:not(.is-playing)::before,.q-head .dj-pill.djb:not(.is-playing) .djp-ico2{animation:none;opacity:0}   /* still when off */
+.q-head .dj-pill.djb.is-playing{--djb-g:var(--mx-g,#00FF41);--djb-e:#00E5A8;   /* matrix green / emerald, the terminal's (css/quiz-term-status.css) */
+  border-color:var(--djb-h);color:var(--djb-k);
+  background:radial-gradient(farthest-side at 50% 0%,color-mix(in srgb,var(--djb-h) calc(var(--djb-1) * 100%),transparent),transparent),linear-gradient(calc(1turn * var(--djb-3)),var(--djb-a),var(--djb-e));
+  box-shadow:0 0 0 1px var(--djb-a1),0 0 8px 2px var(--djb-a2),0 0 18px 5px color-mix(in srgb,var(--djb-e) calc(var(--djb-3) * 100%),transparent);
+  animation:djb-beat var(--djb-beat) ease-out infinite,djbon-hop var(--djb-beat) ease-in-out infinite,djbon-sway calc(var(--djb-beat) * 2) ease-in-out infinite}
+.q-head .dj-pill.djb.is-playing::before{inset:0;border:0;box-shadow:none;--djb-top:var(--djb-1);
+  background:conic-gradient(var(--djb-a),var(--djb-g),var(--djb-r),var(--djb-h),var(--djb-e),var(--djb-a));
+  animation:djb-fade var(--djb-drift) ease-in-out infinite,djbon-spin calc(var(--djb-drift) * var(--djb-phi)) linear infinite}
+.q-head .dj-pill.djb.is-playing .djp-ico{filter:drop-shadow(0 0 2px var(--djb-h2))}
+.q-head .dj-pill.djb.is-playing .djp-ico2{color:var(--djb-m)}
+@keyframes djbon-hop{0%,100%{translate:0 0}50%{translate:0 calc(-100% * var(--djb-4))}}   /* up PHI^-4 of its own size and back each beat */
+@keyframes djbon-sway{0%,100%{rotate:calc(-1turn * var(--djb-5) / 8)}50%{rotate:calc(1turn * var(--djb-5) / 8)}}   /* side to side over two beats; 1turn/8 = the note's lean (index.html rocket nose unit) */
+@keyframes djbon-spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.q-head .dj-pill.djb.is-playing,.q-head .dj-pill.djb.is-playing::before{animation:none!important}.q-head .dj-pill.djb.is-playing::before{opacity:0}}   /* colour only */
+html[data-theme="light"] .q-head .dj-pill.djb.is-playing::before{display:block}
+html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{color:var(--djb-k)}
