@@ -63,7 +63,7 @@
         rg.style.borderStyle = 'solid'; rg.style.borderColor = 'rgba(234,220,176,' + IP + ')';   // phi: alpha; anchor: Saturn's disc colour
         e.appendChild(rg); }
       LA.appendChild(e);
-      P.push({ id: id, b: b, el: e, ring: rg || null, moon: moon, n: 3, z: null, op: -1, sz: -1, rs: -1, vis: true });   // phi: n = 3 (planet-level)
+      P.push({ id: id, b: b, el: e, ring: rg || null, moon: moon, n: 3, z: null, op: -1, sz: -1, rs: -1, vis: true, pr: (id === 'earth' || id === 'moon') && !!PL.real });   // phi: n = 3 (planet-level)
     });
     var BY = {}; P.forEach(function (p) { BY[p.id] = p; });
     var star = doc.createElement('span'); star.className = 'sm-n sm-dizzy'; star.textContent = '\uD83D\uDCAB'; star.style.borderRadius = '0'; LB.appendChild(star);
@@ -85,12 +85,13 @@
       return g > 10 ? 0 : g > 7 ? 1 : g > 4 ? 2 : 3; }
     function lod(p, q, F) {
       var D = q.d, L = lvl(p), fs = Math.max(D, F.floor), e = p.el, k;
-      if (L < 2) { k = fs < Math.pow(PHI, 3) ? 'dot' : 'e:' + fs.toFixed(1); if (p.lk === k) return;
+      if (L < 2) { k = fs < Math.pow(PHI, 3) ? 'dot' : p.pr ? 'r' : 'e:' + fs.toFixed(1); p.mode = k === 'r' ? 'glyph' : 'dot'; if (p.lk === k) return;
+        if (k === 'r') { if (p.g) p.g.style.display = 'none'; p.lk = k; return; }
         if (k === 'dot') { if (p.g) p.g.style.display = 'none'; if (p.lk && p.lk.charAt(0) !== 'd') { paint(e, LOOK[p.id] || GREY); e.style.backgroundBlendMode = ''; } p.lk = k; return; }
         if (!p.g) { p.g = doc.createElement('b'); p.g.className = 'sm-g'; p.g.textContent = EMO[p.id] || '\uD83C\uDF11'; e.insertBefore(p.g, e.firstChild); }
         p.g.style.display = ''; p.g.style.fontSize = fs.toFixed(1) + 'px'; e.style.background = 'none'; e.style.boxShadow = 'none'; p.lk = k; return; }
       if (p.g) p.g.style.display = 'none';
-      var st = D < Math.pow(PHI, 5) ? 1 : 2;
+      var st = D < Math.pow(PHI, 5) ? 1 : 2; p.mode = 'disc';
       var sx = F.x + (0 - (F.cx || 0)) / F.kmPerPx - q.x, sy = F.y + (F.cy || 0) / F.kmPerPx - q.y, sl = Math.hypot(sx, sy) || 1;
       var hx = 50 + 50 * IP * sx / sl, hy = 50 + 50 * IP * sy / sl, key = st + ':' + Math.round(hx / 5) + ':' + Math.round(hy / 5);
       if (p.lk === key) return; p.lk = key;
@@ -103,7 +104,7 @@
     var zpSt = null;
     function zpDraw(F) {
       var Z = root.ZoomCam, v = F.zoom; if (!Z || !v) return;
-      if (!zpSt) { zpSt = doc.createElement('style'); zpSt.textContent = '.pl-layer .pl-n:not(.sm-n){filter:opacity(var(--zp-home,1))}'; doc.head.appendChild(zpSt); }
+      if (!zpSt) { zpSt = doc.createElement('style'); zpSt.textContent = '.pl-layer .pl-n:not(.sm-n):not(.pl-big):not(.pl-moon){filter:opacity(var(--zp-home,1))}'; doc.head.appendChild(zpSt); }
       doc.documentElement.style.setProperty('--zp-home', (1 - v.w).toFixed(3));
       var pr = Z.probe.r, cx = F.cx || 0, cy = F.cy || 0, x = F.x + (pr[0] - cx) / F.kmPerPx, y = F.y - (pr[1] - cy) / F.kmPerPx;
       zpFx(Z.probe, x, y);
@@ -136,19 +137,20 @@
       P.forEach(function (p) {
         var q = SS.at(p.id, t, F); pos[p.id] = q; p.x = q.x; p.y = q.y; p.front = q.front;
         var reach = q.d / 2, on = q.x + reach > 0 && q.x - reach < W && q.y + reach > 0 && q.y - reach < H;   // unit: off-screen at true distance = simply not drawn
-        show(p, on); if (!on) return;
+        show(p, on); if (!on) { if (p.pr) PL.real(p.id, { on: false, x: q.x, y: q.y, d: q.d, front: q.front, show: 'off', el: p.el }); return; }
         var parent = p.moon ? BY[p.b.parent] : null;
         var z = p.moon ? (parent.z != null ? parent.z : ZS + ZS / 2) + (q.front ? 1 : -1) : ZS + ZS / 2;   // unit: planets over the Sun glyph (nothing is behind the true Sun disc at this scale); a moon +-1 round its planet by ecliptic z
         if (p.ring) { var rd = Math.max(2 * p.b.ring[1] / F.kmPerPx, F.floor); if (p.rs !== rd) { p.rs = rd; p.ring.style.width = p.ring.style.height = rd + 'px'; p.ring.style.borderWidth = Math.max(rd * (p.b.ring[1] - p.b.ring[0]) / p.b.ring[1] / 2, F.floor / 2) + 'px'; } }   // unit: the ring's true outer diameter and C..A band, floored
         put(p, q.x, q.y, q.d, 1, OPA * amp(p.n + r - DEF), z, true);     // unit: drawn diameter = max(true, one device pixel)
         if (ZP) lod(p, q, F);
+        if (p.pr) { var gl = p.mode === 'glyph'; if (gl) show(p, false); PL.real(p.id, { on: true, x: q.x, y: q.y, d: q.d, front: q.front, show: gl ? 'glyph' : 'body', el: p.el }); }   // the ping layer's Earth / Moon glyphs are these bodies' emoji layer
       });
       if (ZP) zpDraw(F);
       var B = axisB(), ae = SS.bodies.earth.aAU * SS.AU / F.kmPerPx, d = Math.hypot(B.end.x - sun.x, B.end.y - sun.y), a = d / (1 + HALLEY), bb = a * Math.sqrt(1 - HALLEY * HALLEY);   // aphelion on the BL end of axis B
       var ux = (B.end.x - sun.x) / (d || 1), uy = (B.end.y - sun.y) / (d || 1), E2 = kep(S.M, HALLEY), cu = -(Math.cos(E2) - HALLEY), sv = Math.sin(E2);   // unit: +u toward the aphelion
       S.T = SS.period('earth') * Math.pow(a / ae, 3 / 2);                  // cite: Kepler III against the real Earth's orbit (same km / px, same time factor)
       S.x = sun.x + a * cu * ux - bb * sv * uy; S.y = sun.y + a * cu * uy + bb * sv * ux;
-      var node = (A.moon && (A.moon.s0 || A.moon.s)) || Math.min(W, H) * Math.pow(IP, 5.5);   // phi: the PingLayer node (the 💫's glyph size, display)
+      var node = Math.min(W, H) * Math.pow(IP, 5.5);                         // phi: PHI^-5.5 of the view's short side (the PingLayer node size; the 💫's glyph size, display)
       put(S, S.x, S.y, node, 1, Math.pow(IP, 2) * amp(S.n + r - DEF) * (F.zoom ? 1 - F.zoom.w : 1), null, false);   // phi: Layer B ceiling PHI^-2 (it crosses text)
     }
     var raf = 0, last = 0, tl = 0, FRAME = MS * Math.pow(IP, 7);           // phi: frame cap PHI^-7 s
@@ -163,7 +165,7 @@
     doc.addEventListener('visibilitychange', function () { tl = 0; if (!doc.hidden) { r = dial('intensity', DEF); go(); } });
     addEventListener('resize', function () { requestAnimationFrame(draw); });
     var kids = {}; P.forEach(function (p) { if (!p.moon) kids[p.id] = { layer: 'A', moons: p.b.moons }; });
-    kids.bigEarth = { anchor: 'earth', layer: 'A', display: 'ping-layer orbit', children: { moon: { anchor: 'moon', layer: 'A', with: ['satellite', 'astronaut'] } } }; kids.dizzy = { layer: 'B', axis: 'B' };
+    kids.earth.glyph = 'ping-layer big Earth'; kids.earth.children = { moon: { anchor: 'moon', layer: 'A', glyph: 'ping-layer Moon', with: ['satellite', 'astronaut'] } }; kids.dizzy = { layer: 'B', axis: 'B' };
     root.SolarModel = {
       tree: { sun: { anchor: 'sun', layer: 'A', children: kids } },
       info: function () { return { intensity: r, clock: SS.clock(), date: new Date(SS.date()).toISOString(), kmPerPx: SS.frame().kmPerPx, planets: P.filter(function (p) { return !p.moon; }).map(function (p) { return { id: p.id, e: p.b.e, T: SS.period(p.id), front: p.front, x: p.x, y: p.y, op: p.op, size: p.sz, shown: p.vis }; }),
