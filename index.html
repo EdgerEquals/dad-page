@@ -94,7 +94,7 @@ W.Assemble={info:function(){return {start:N0,speed:SP,gap:GAP,assembled:log.slic
     // questionnaire preview
     ["offer-cycle",2,0,1],["cloud-wobble",4,1],["beacon",2,1],["beacon-chk",1,1],["beacon-down",0,1],
     ["bg-fall",6,0],["bg-float",5,0],["bg-sail",7,0],["bg-twinkle",2,0],["bg-cross",6,0],["bg-spin",8,0],["bg-bob",2,0],["bg-pulse",5,0],
-    ["rain",5,0],["code-panel",9,1]
+    ["rain",7,0],["code-panel",9,1]
   ];
   var T = {}, list = [];
   E.forEach(function(e, i){
@@ -275,11 +275,11 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;ba
 }
 /* Rain layer: 4 big soft translucent streaks, transform-only, looping slowly */
 .rain{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-.rain i{position:absolute;top:0;width:10px;height:46vh;border-radius:10px;background:linear-gradient(to bottom,rgba(214,236,239,0),rgba(214,236,239,.10) 70%,rgba(214,236,239,.18));
-  transform:translate3d(0,-60vh,0) rotate(12deg);animation:rain var(--d) linear var(--del) infinite;will-change:transform}
-.rain i{--d:var(--phi-rain)}   /* every drop on PHI^5 = 11.09 s; staggered on golden-angle fractions of the period */
-.rain i:nth-child(1){left:12%;--del:calc(var(--phi-rain) * -.618)}.rain i:nth-child(2){left:38%;--del:calc(var(--phi-rain) * -.236);width:8px}
-.rain i:nth-child(3){left:66%;--del:calc(var(--phi-rain) * -.854)}.rain i:nth-child(4){left:88%;--del:calc(var(--phi-rain) * -.472);width:7px}
+.rain i{position:absolute;top:0;width:calc(1px * 1.618 * 1.618);height:calc(46vh * .618);border-radius:50%;background:linear-gradient(to bottom,rgba(214,236,239,0),rgba(214,236,239,.0557) 61.8%,rgba(214,236,239,.146));
+  transform:translate3d(0,-60vh,0) rotate(12deg);animation:rain var(--d) linear var(--del) infinite;will-change:transform}   /* raincalm (Danny 09:07 AWST 30 Oct 'all three'): thin soft trails, no wide glowing beam; phi: width PHI^2 px, length PHI^-1 of the old, alpha PHI^-6/PHI^-4 */
+.rain i{--d:var(--phi-rain)}   /* raincalm: every drop on PHI^7 = 29.03 s (was PHI^5 = 11.09 s, two rungs slower) */
+.rain i:nth-child(1){left:calc(8% + 84% * .618);--del:calc(var(--phi-rain) * -.382)}.rain i:nth-child(2){left:calc(8% + 84% * .236);--del:calc(var(--phi-rain) * -.764)}
+.rain i:nth-child(3){left:calc(8% + 84% * .854);--del:calc(var(--phi-rain) * -.146)}.rain i:nth-child(4){left:calc(8% + 84% * .472);--del:calc(var(--phi-rain) * -.528)}   /* raincalm: golden-angle steps, delays k*PHI^-2 mod 1 and columns k*PHI^-1 mod 1 across the width, so no two fall together */
 @keyframes rain{from{transform:translate3d(0,-60vh,0) rotate(12deg)}to{transform:translate3d(-14vw,130vh,0) rotate(12deg)}}
 .paused .rain i{animation-play-state:paused}
 /* Sparkle burst on tiles: nothing at rest; short burst on hover (mouse) or tap */
@@ -1107,7 +1107,7 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 <script src="js/arrivals.js?v=onewriter1" defer></script><!-- rule 14 arrivals (Danny 26 Oct) --><script>LoadTiers.script("js/foot-push.js?v=load1",2,{id:"footpush",w:3.2})</script><!-- footpush critters: wider, faster, tug-of-war with the bottom line (Danny 26 Oct) -->
 <script>addEventListener("DOMContentLoaded",function(){ if(window.FootLine) FootLine.init(document.getElementById("footLine"), {tz:"Australia/Perth", rate:2, bounce:true}); });</script>
 <script src="js/quiz-popups.js?v=edname1" defer></script>
-<script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"});LoadTiers.script("js/vortex-stars.js?v=1",2,{last:true,id:"vortex"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->
+<script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"});LoadTiers.script("js/vortex-stars.js?v=raincalm1",2,{last:true,id:"vortex"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->
 <!-- Rebella header logo reduced state: faint slow glow only, tier 3 (Danny t744u 25 Oct) --><script>/* Dad's mark, light first (Danny 11:54 AWST 26 Oct): tier 0 = the static inline mark above (no JS, emerald bars at once).
    Its heavy parts load LAST: tier 3 (after tier 2 has drained, idle) swaps in the animated header mark and loads phi-pumps + js/dad-mark-zoom.js
    (which loads logo-sound.js, logo-sound-dad.js and Tone only when the zoom opens), and prefetches the zoom art + eq-physics.

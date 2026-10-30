@@ -11,14 +11,10 @@
   if (!R || (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   var LP = Math.log(PHI);
-  var DESC = Math.pow(PHI, 5), POP = Math.pow(IP, 1), FIZ = Math.pow(PHI, 0), REST = Math.pow(IP, 2);   // phi: descent PHI^5 s (the old rain period), pop PHI^-1 s, fizzle 1 s, rest PHI^-2 of a descent
+  var DESC = Math.pow(PHI, 7), POP = Math.pow(IP, 1), FIZ = Math.pow(PHI, 0), REST = Math.pow(IP, 2);   // phi: descent PHI^7 s = the rain period (raincalm, Danny 09:07 AWST 30 Oct: two rungs slower, was PHI^5), pop PHI^-1 s, fizzle 1 s, rest PHI^-2 of a descent
   var R0 = Math.pow(IP, 3), WEND = Math.pow(IP, 5), SEND = Math.pow(IP, 3);   // phi: spiral radius PHI^-3 of a half-diagonal at the top, shrinks to PHI^-5 of that; length ends at PHI^-3
   var css = '.rain i.vx{left:0;top:0;transform-origin:50% 100%;animation:none;will-change:transform,opacity}' +   // unit: pivot at the head (bottom centre)
-    '.rain i.vx::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(to bottom,transparent 38.2%,rgba(255,255,255,.618) 50%,transparent 61.8%);' +   // phi: sheen stops 38.2 / 50 / 61.8 percent, white at PHI^-1
-      'background-size:100% 261.8%;animation:vxShim var(--vs) ease-in-out infinite alternate}' +   // phi: sheen band PHI^-1 .. PHI^-2 stops, travel PHI^2 of the bar
-    '.rain i.vx::before{content:"";position:absolute;left:50%;bottom:0;width:261.8%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,50%);' +   // phi: glow 261.8% = PHI^2 of the width; unit: 50% centring, circle
-      'background:radial-gradient(circle closest-side,rgba(255,255,255,.618),rgba(255,215,0,.236),transparent);opacity:var(--vg,.382)}' +   // phi: head glow PHI^2 x the width, Sun glow colours
-    '@keyframes vxShim{from{background-position:0 100%}to{background-position:0 0}}';   // unit: sheen from the tail to the head
+    '';   // raincalm (Danny 09:07 AWST 30 Oct): no travelling sheen and no glowing head, the torch-beam look; thin soft trails only (index.html .rain i)
   var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
   R.style.setProperty('--vs', PHI + 's');                                   // phi: one shimmer pass per PHI s
   var pump = null;
