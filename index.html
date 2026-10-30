@@ -390,6 +390,9 @@ body.paused .foot .lt i,body.paused .tin .blk,body.paused .simmie.talk{animation
 @keyframes fcr-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:460px){.fcr{width:2.6em}}
 @media(prefers-reduced-motion:reduce){.fcr .ct{animation:none}}
+/* critters last (Danny t302u, 30 Oct): the bottom-right critters (+ the credit beside them on wide screens) keep their place but stay hidden, their marquee paused, until the bottom-line box is in (see the gate after arrivals.js); the box itself is styled here, not by foot-push.js, so it is there before them */
+html.fcr-wait #fcr,html.fcr-wait .foot .note [data-copy="credit"]{visibility:hidden}html.fcr-wait #fcr .ct{animation-play-state:paused}
+#footLine.fp-box{box-sizing:border-box;padding:0 .382em;border-radius:.382em;background:rgba(0,0,0,.618);box-shadow:inset 0 0 0 1px var(--dpc-border-hi,#1F5478)}html[data-theme="light"] #footLine.fp-box{background:rgba(246,250,252,.618);box-shadow:inset 0 0 0 1px #85A6BB}
 .wxr .fs,.wxr .os{position:relative;display:inline-block;width:1.2em;height:1.2em}
 .wxr .fs>span,.wxr .os>span{position:absolute;left:0;top:0;width:100%;text-align:center;opacity:0;transition:opacity .6s ease}
 .wxr .on{opacity:1!important}
@@ -609,7 +612,7 @@ body.paused .home-code::before{animation-play-state:paused}
       </div>
     </div>
   </div>
-  <div class="note"><span class="fl" id="footLine" tabindex="0"></span><!-- cycling readout: quote / on this day / word / countdown / science (js/foot-line.js; Danny t691u/t693u 25 Oct). Was: "Preview only, nothing is sent" --><span class="dot" aria-hidden="true">&middot;</span><span data-copy="credit">Made by Ed, with help from Simmie</span><span class="fcr" id="fcr" aria-hidden="true"></span><span class="tsw" id="fts" data-ts-key="dadQuizTide" hidden></span></div>
+  <div class="note"><span class="fl fp-box" id="footLine" tabindex="0"></span><!-- cycling readout: quote / on this day / word / countdown / science (js/foot-line.js; Danny t691u/t693u 25 Oct). Was: "Preview only, nothing is sent" --><span class="dot" aria-hidden="true">&middot;</span><span data-copy="credit">Made by Ed, with help from Simmie</span><span class="fcr" id="fcr" aria-hidden="true"></span><span class="tsw" id="fts" data-ts-key="dadQuizTide" hidden></span></div>
 </div>
 <script>
 (function(){
@@ -1104,7 +1107,32 @@ addEventListener('scroll',function(){if(!r)r=requestAnimationFrame(f);},{passive
 <link rel="stylesheet" href="css/foot-line.css?v=1">
 <script src="data/foot-line-data.js?v=1" defer></script>
 <script src="js/foot-line.js?v=2" defer></script>
-<script src="js/arrivals.js?v=onewriter1" defer></script><!-- rule 14 arrivals (Danny 26 Oct) --><script>LoadTiers.script("js/foot-push.js?v=load1",2,{id:"footpush",w:3.2})</script><!-- footpush critters: wider, faster, tug-of-war with the bottom line (Danny 26 Oct) -->
+<script src="js/arrivals.js?v=onewriter1" defer></script><!-- rule 14 arrivals (Danny 26 Oct) --><script>/* CRITTERS LAST (Danny 12:0x AWST 30 Oct, t302u: the critters in the bottom right of the very bottom line come in after the text box
+   is in and fully loaded, then a ratio pause, around 10 s, on the initial load only, because they're heavy). The box = the bottom-line
+   readout #footLine (the one they push on): ready = page loaded + fonts ready + its first item drawn + its row's arrival (arrivals.js,
+   PHI^4 s sweep + PHI s bounce) finished, at most PHI^6 s after load. Then, the first time this tab shows them (sessionStorage), a PHI^5 s
+   (11.09 s) pause; later loads in the tab go straight on. Only then is js/foot-push.js fetched; the strip and the box keep their room
+   meanwhile (its own CSS width x PHI^2, what foot-push.js gives it), so nothing shifts, and they fade in over PHI s. Reduced motion: no fade. */
+(function(){'use strict';var d=document,de=d.documentElement,P=(1+Math.sqrt(5))/2,MS=1e3,K='dadFcrSeen',first=true,done=false;
+  try{first=!sessionStorage.getItem(K);}catch(e){}
+  var RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,fcr=d.getElementById('fcr'),fl=d.getElementById('footLine'),note=fcr&&fcr.parentElement;
+  if(!fcr||!fl){LoadTiers.script("js/foot-push.js?v=load1",2,{id:"footpush",w:3.2});return;}
+  de.classList.add('fcr-wait');
+  function room(){if(done)return;fcr.style.width='';var w=fcr.getBoundingClientRect().width;if(w)fcr.style.width=w*P*P+'px';}   // phi: foot-push.js's room, two rungs over its CSS width
+  room();var rq=0;addEventListener('resize',function(){if(!rq)rq=requestAnimationFrame(function(){rq=0;room();});});
+  function wait(s){return new Promise(function(r){setTimeout(r,s*MS);});}
+  function loaded(){return new Promise(function(r){if(d.readyState==='complete')r();else addEventListener('load',function(){r();});});}
+  function drawn(){return new Promise(function(r){(function c(){if(fl.textContent.trim())r();else setTimeout(c,MS/P/P);})();});}   // phi: look every PHI^-2 s
+  function arrived(){var a=[];try{a=note.getAnimations().filter(function(x){var t=x.effect&&x.effect.getTiming&&x.effect.getTiming();return !(t&&t.iterations===Infinity);});}catch(e){}
+    return Promise.all(a.map(function(x){return x.finished.catch(function(){});}));}
+  function reveal(){done=true;try{sessionStorage.setItem(K,'1');}catch(e){}de.classList.remove('fcr-wait');
+    if(RM)return;[fcr,d.querySelector('.fcb'),d.querySelector('.foot .note [data-copy="credit"]')].forEach(function(el){
+      if(el&&el.animate)try{el.animate([{opacity:0},{opacity:1}],{duration:P*MS,easing:'ease-out'});}catch(e){}});}   // phi: fade in over PHI s
+  loaded().then(function(){var ready=(d.fonts&&d.fonts.ready?d.fonts.ready:Promise.resolve()).then(drawn).then(arrived);
+    return Promise.race([ready,wait(Math.pow(P,6))]);})   // phi: never more than PHI^6 s after load
+  .then(function(){return first?wait(Math.pow(P,5)):0;})   // phi: PHI^5 = 11.09 s, the rung nearest Danny's 'around 10 seconds'
+  .then(function(){var s=d.createElement('script');s.src="js/foot-push.js?v=load1";s.async=true;s.onload=s.onerror=reveal;d.head.appendChild(s);});
+})();</script><!-- footpush critters: wider, faster, tug-of-war with the bottom line (Danny 26 Oct) -->
 <script>addEventListener("DOMContentLoaded",function(){ if(window.FootLine) FootLine.init(document.getElementById("footLine"), {tz:"Australia/Perth", rate:2, bounce:true}); });</script>
 <script src="js/quiz-popups.js?v=edname1" defer></script>
 <script>LoadTiers.script("js/matrix-rain.js?v=1",2,{last:true,id:"rain"});LoadTiers.script("js/vortex-stars.js?v=raincalm1",2,{last:true,id:"vortex"})</script><!-- matrix rain background, tier 2 idle (Danny t713u 25 Oct) -->
