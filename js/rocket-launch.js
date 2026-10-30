@@ -43,6 +43,14 @@
         drawn disc it explodes there (glow, sparks, smoke at the Sun, sized to the rocket) and relaunches from the pad after PHI^4 s
         (pumped). A hit from js/emoji-collide.js on the way (it hides the rocket: .ec-gone) ends the flight there, the engine draws the
         explosion, and the pad relaunch follows the same way. One rAF loop while it flies; paused while the tab is hidden.
+     7. sunglide (Danny 10:12 AWST 30 Oct: 'Yes, build the golden-ratio Sun checks with the glide'; t282u: 'when it's out of the screen it
+        doesn't need to know where it is just as it kinda comes closer ... check well on a ratio of Golden ratio ... not the jittery or
+        discrete steps'). The flight no longer reads the Sun (window.PhiSun + its drawn disc) every frame. It samples it on a cadence set by
+        its own distance: the gap to the next check is the local orbit time sqrt(r^3/GM) rounded to a phi rung (PHI^n s of flight time), so
+        far out (off screen) it checks rarely and on the close passes often, about a handful of checks a lap on any screen. Falling back in,
+        it checks early once the wait is already PHI x the gap for where it is now (so it knows the Sun as it nears the screen).
+        Between checks it never snaps: the Sun it pulls toward glides from where it had it to the new reading over the gap (smoothstep, so the pull's change is smooth at both ends). The Sun crash, its explosion and the orbit turn use
+        that glided Sun. A moved Sun (rotation, layout) bends the orbit over the next gap with no jump.
    Skipped while hidden; nothing under reduced motion. */
 (function () {
   'use strict';
@@ -136,6 +144,12 @@
     return Math.PI * PHI * m; }                                            // phi: up to PHI half-turns either way
   function sunAt() { var W = innerWidth, H = innerHeight, s = root.PhiSun ? PhiSun.px() : { x: W * (1 - Math.pow(IP, 5)), y: H * Math.pow(IP, 4) }, n = doc.querySelector('.pl-sun .pl-p'), r = n && n.getBoundingClientRect();
     return { x: s.x, y: s.y, R: r && r.width ? Math.min(r.width, r.height) / 2 * IP : Math.min(W, H) * Math.pow(IP, 5) / 2 }; }   // phi: the Sun's drawn disc (glyph ink PHI^-1 of its box), or PHI^-5 of the short side
+  function sunGap(q, r) { return Math.pow(PHI, Math.round(Math.log(Math.sqrt(r * r * r / q.GM)) / Math.log(PHI))); }   // phi: the local orbit time on a phi rung (s of flight time)
+  function sunGlide(q) { var u = Math.min(1, (q.t - q.s0) / q.sI), e = u * u * (3 - 2 * u), f = q.sf, g = q.sg;   // smoothstep: no snap, the pull changes smoothly at both ends
+    return { x: f.x + (g.x - f.x) * e, y: f.y + (g.y - f.y) * e, R: f.R + (g.R - f.R) * e }; }
+  function sunCheck(q, why) { var s = sunAt(), f = q.sg ? sunGlide(q) : s, r = Math.hypot(q.x - f.x, q.y - f.y);   // a check: read the live Sun, glide on from where it is now
+    q.sf = f; q.sg = s; q.s0 = q.t; q.sI = sunGap(q, r); q.checks++; q.lapC++;
+    q.clog.push({ t: +q.t.toFixed(2), r: Math.round(r), gap: +q.sI.toFixed(3), why: why, moved: Math.round(Math.hypot(s.x - f.x, s.y - f.y)) }); if (q.clog.length > 34) q.clog.shift(); }   // phi: 34 log lines (Fibonacci)
   function offscreen(x, y, m) { return x < -m || y < -m || x > innerWidth + m || y > innerHeight + m; }
   function hideRk() { el.style.setProperty('visibility', 'hidden', 'important'); }   // unit: !important beats the solo view's show rule; the collision engine skips it too
   function orbit() {                                                       // the climb is off the top: hand the rocket to gravity
@@ -143,23 +157,25 @@
     if (gl.classList.contains('ec-gone')) { stopLoop('hit'); return; }      // hit on the climb and not back yet: gone, back to the pad
     var cx = g.left + g.width / 2, cy = g.top + g.height / 2, bend = cx - (e.left + e.width / 2), L = innerHeight + (e.height || 1), T = lastD / MS;   // unit: L the climb's height (view + rocket), T the climb time (s)
     [el, gl].forEach(function (n) { n.getAnimations().forEach(function (a) { a.cancel(); }); n.style.animation = 'none'; });
-    var b = gl.getBoundingClientRect(), vy = -L / T * (1 - CB[3]) / (1 - CB[2]), vx = PHI * bend / L * Math.abs(vy);   // unit: the climb curve's end slope = its exit speed; x follows height^PHI
-    lp = { x: cx, y: cy, vx: vx, vy: vy, bx: b.left + b.width / 2, by: b.top + b.height / 2, GM: IP * (vx * vx + vy * vy) * Math.hypot(cx - sunAt().x, cy - sunAt().y), t: 0, last: 0, dr: 0, passes: 0, apo: 0, entries: 0, on: false, onT: 0, log: [], S: parseFloat(getComputedStyle(el).fontSize) || b.height, kk: kk, n: count };
-    place(); lraf = requestAnimationFrame(fly); }
+    var s0 = sunAt(), b = gl.getBoundingClientRect(), vy = -L / T * (1 - CB[3]) / (1 - CB[2]), vx = PHI * bend / L * Math.abs(vy);   // unit: the climb curve's end slope = its exit speed; x follows height^PHI
+    lp = { x: cx, y: cy, vx: vx, vy: vy, bx: b.left + b.width / 2, by: b.top + b.height / 2, GM: IP * (vx * vx + vy * vy) * Math.hypot(cx - s0.x, cy - s0.y), t: 0, checks: 0, lapC: 0, laps: [], clog: [], last: 0, dr: 0, passes: 0, apo: 0, entries: 0, on: false, onT: 0, log: [], S: parseFloat(getComputedStyle(el).fontSize) || b.height, kk: kk, n: count };
+    sunCheck(lp, 'top'); place(); lraf = requestAnimationFrame(fly); }
   function place() { el.style.transform = 'translate(' + (lp.x - lp.bx) + 'px,' + (lp.y - lp.by) + 'px)'; gl.style.transform = 'rotate(' + (NOSE + Math.atan2(lp.vx, -lp.vy)) + 'rad)'; }   // nose along the velocity
   function fly(now) {
     lraf = 0; if (!lp) return; if (doc.hidden) { lp.last = 0; return; }
-    var dt = lp.last ? Math.min((now - lp.last) / MS, Math.pow(IP, 4)) * RATE : 0, sn = sunAt(), q = lp, rx, ry, r, a, h, rv;   // phi: a frame step at most PHI^-4 s (back from a hidden tab)
+    var dt = lp.last ? Math.min((now - lp.last) / MS, Math.pow(IP, 4)) * RATE : 0, sn, q = lp, rx, ry, r, a, h, rv;   // phi: a frame step at most PHI^-4 s (back from a hidden tab)
     q.last = now;
     if (gl.classList.contains('ec-gone')) { stopLoop('hit'); return; }       // the collision engine blew it up (it drew the explosion)
     while (dt > 0) {
-      rx = q.x - sn.x; ry = q.y - sn.y; r = Math.hypot(rx, ry);
+      if (q.t >= q.s0 + q.sI) sunCheck(q, 'gap');                       // sunglide: the next check is due (flight time)
+      else if (q.rr && q.t - q.s0 >= PHI * sunGap(q, q.rr)) sunCheck(q, 'near');   // phi: it came in a lot since the last check (the wait already PHI x the gap here): check now
+      sn = sunGlide(q); rx = q.x - sn.x; ry = q.y - sn.y; r = Math.hypot(rx, ry);
       if (r < sn.R) { sunCrash(sn); return; }
       h = Math.min(dt, Math.pow(IP, 6) * Math.sqrt(r * r * r / q.GM)); dt -= h; q.t += h;   // phi: steps of PHI^-6 of the local orbit time
       a = -q.GM / (r * r * r); q.vx += a * rx * h / 2; q.vy += a * ry * h / 2; q.x += q.vx * h; q.y += q.vy * h;   // velocity Verlet: half kick, drift
       rx = q.x - sn.x; ry = q.y - sn.y; r = Math.hypot(rx, ry); a = -q.GM / (r * r * r); q.vx += a * rx * h / 2; q.vy += a * ry * h / 2;   // half kick
-      rv = rx * q.vx + ry * q.vy;
-      if (q.dr < 0 && rv >= 0) { q.passes++; q.vx *= DP; q.vy *= DP; q.log.push({ t: +q.t.toFixed(2), peri: Math.round(r), v: Math.round(Math.hypot(q.vx, q.vy)), on: !offscreen(q.x, q.y, 0) }); }   // closest pass: the loops shrink
+      rv = rx * q.vx + ry * q.vy; q.rr = r;
+      if (q.dr < 0 && rv >= 0) { q.passes++; q.vx *= DP; q.vy *= DP; q.log.push({ t: +q.t.toFixed(2), peri: Math.round(r), v: Math.round(Math.hypot(q.vx, q.vy)), on: !offscreen(q.x, q.y, 0), checks: q.lapC }); q.laps.push(q.lapC); q.lapC = 0; }   // sunglide: checks per lap (closest pass to closest pass)   // closest pass: the loops shrink
       if (q.dr > 0 && rv <= 0) { q.apo++; q.vx *= DA; q.vy *= DA; var m = q.S * PHI;   // far point: the next pass dips nearer the Sun; phi: off screen by PHI rocket sizes
         if (offscreen(q.x, q.y, m)) { var th = lturn(), c = Math.cos(th), s2 = Math.sin(th), nx = sn.x + c * rx - s2 * ry, ny = sn.y + s2 * rx + c * ry;
           if (offscreen(nx, ny, m)) { var nvx = c * q.vx - s2 * q.vy; q.vy = s2 * q.vx + c * q.vy; q.vx = nvx; q.x = nx; q.y = ny; q.turned = (q.turned || 0) + 1; } }   // turn the whole orbit round the Sun, only while it is out of sight
@@ -172,7 +188,7 @@
     var q = lp; draw(q.x, q.y, q.S, FIB[5], q.kk, q.n, 'sun', false); draw(sn.x, sn.y, q.S * IP, FIB[4], q.kk * PHI, q.n, 'sun2', false);   // phi: 8 sparks + puffs at the rocket, a PHI^-1 echo in the Sun's heart, PHI longer
     stopLoop('sun'); }
   function stopLoop(why) {
-    if (lp) { flights.push({ launch: lp.n, end: why, t: +lp.t.toFixed(2), passes: lp.passes, entries: lp.entries, onT: +lp.onT.toFixed(2), turned: lp.turned || 0, log: lp.log.slice(-21) }); if (flights.length > 8) flights.shift(); }   // phi: 21 log lines (Fibonacci)
+    if (lp) { flights.push({ launch: lp.n, end: why, t: +lp.t.toFixed(2), passes: lp.passes, entries: lp.entries, onT: +lp.onT.toFixed(2), turned: lp.turned || 0, checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(), log: lp.log.slice(-21) }); if (flights.length > 8) flights.shift(); }   // phi: 21 log lines (Fibonacci)
     else flights.push({ launch: count, end: why, t: 0, passes: 0 });
     lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; hideRk(); later(BACKP); }
   function booms(climb, kk) {                                              // from liftoff (the end of the climb's delay): n extras, gap j = PHI^(j-5) x the climb time
@@ -187,5 +203,5 @@
   var a = el.getAnimations ? el.getAnimations({ subtree: true }) : [];
   if (a.length) Promise.all(a.map(function (x) { return x.finished; })).then(orbit, later); else later();   // adopt: wait out the inline launch (climb + shake)
   a.forEach(function (x) { if (x.animationName === 'rkY') booms(x, 1); });   // launchbooms: the inline first launch's climb gets its extras too
-  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length, flights: flights.slice(), flight: lp && { t: lp.t, passes: lp.passes, apo: lp.apo, entries: lp.entries, x: lp.x, y: lp.y, onT: lp.onT, log: lp.log.slice(-5) } }; }, launch: launch, _rate: function (r) { RATE = +r || 1; } };   // _rate: tests only (an accelerated clock)
+  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length, flights: flights.slice(), flight: lp && { t: lp.t, passes: lp.passes, apo: lp.apo, entries: lp.entries, x: lp.x, y: lp.y, onT: lp.onT, log: lp.log.slice(-5), checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(-8), sun: sunGlide(lp) } }; }, launch: launch, _rate: function (r) { RATE = +r || 1; } };   // _rate: tests only (an accelerated clock)
 })();
