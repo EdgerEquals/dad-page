@@ -34,14 +34,15 @@
   function dial(id, def) { try { var d = JSON.parse(localStorage.getItem('dadSceneDials.v1') || '{}'); return d[id] != null ? +d[id] : def; } catch (e) { return def; } }
   function amp(n) { return n > 0 ? 1 - Math.pow(IP, n) : 0; }            // phi: the axes audit's amp(n)
   function kep(M, e) { var E = M, i; for (i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); return E; }   // unit: Newton steps (8 covers Halley's e)
-  var tries = 0;
+  var tries = 0, ZP = !RM, zpLoad = 0;                                  // zoomcam1: the camera body (js/zoom-camera.js), loaded after the first home draw; reduced motion keeps the still home frame
   function start() {
     var PL = root.PingLayer, SS = root.SolarSystem, LA = doc.querySelector('.pl-layer');
     if (!PL || !PL.anchors || !PL.anchors.sun || !PL.anchors.earth || !LA || !SS) { tries++; return setTimeout(start, MS * Math.pow(PHI, Math.min(tries, 5)) * IP); }   // phi: free-wheel wait for the ping layer + the model, growing gaps
     var A = PL.anchors;
     var css = '.sm-b{position:fixed;inset:0;pointer-events:none;overflow:hidden;overflow:clip;contain:strict}' +
       '.sm-n{position:absolute;left:0;top:0;line-height:1;will-change:transform,opacity;border-radius:50%}' +
-      '.sm-m{will-change:auto}' +                                         // unit: moons are small and many: no layer of their own
+      '.sm-m{will-change:auto}' +
+      '.sm-g{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);line-height:1;font-weight:400;white-space:nowrap}' +   // unit: the far-body emoji, centred on the true point                                         // unit: moons are small and many: no layer of their own
       '.sm-ring{position:absolute;left:50%;top:50%;border-radius:50%;pointer-events:none;box-sizing:border-box;transform:translate(-50%,-50%)}';   // unit: centred on the disc
     var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
     // Layer B: one above the header / footer (measured), like the top sweep
@@ -77,6 +78,63 @@
       o.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) scale(' + sc + ')';   // unit: centre on the point
     }
     function show(o, v) { if (o.vis !== v) { o.vis = v; o.el.style.visibility = v ? '' : 'hidden'; } }
+    // DISTANCE-DRIVEN LAYERS (rule 17): the layer is set by apparent size alone, alpha = real radius / real distance from the capsule
+    // (never by the screen): alpha < PHI^-10 emoji (L0), PHI^-10 .. PHI^-7 light animation (L1, stage 3: the emoji until then),
+    // PHI^-7 .. PHI^-4 the lit disc with bands / rings (L2), above PHI^-4 real NASA imagery (L3, stage 4: L2 until then). phi: the rungs.
+    // An emoji drawn smaller than PHI^3 px is no glyph at all, so there the far body stays the home dot (its colour, one device pixel).
+    // The lit side faces the TRUE Sun (the body's real direction to it on screen), so the phase you see is real geometry.
+    var EMO = { sun: '\u2600\uFE0F', earth: '\uD83C\uDF0D', moon: '\uD83C\uDF15', mars: '\uD83D\uDD34', jupiter: '\uD83D\uDFE0', saturn: '\uD83E\uDE90', venus: '\uD83D\uDFE1',
+      uranus: '\uD83D\uDD35', neptune: '\uD83D\uDD35', mercury: '\uD83C\uDF11', pluto: '\u26AA' };   // display choice; any other moon: the new-moon disc
+    function lvl(p) { var Z = root.ZoomCam; if (!Z || !Z.on) return 0; var bp = SS.helio(p.id, SS.date()), r = Z.probe.r, al = p.b.R / Math.hypot(bp[0] - r[0], bp[1] - r[1], bp[2] - r[2]), g = Math.log(1 / al) / Math.log(PHI);
+      p.alpha = al; return g > 10 ? 0 : g > 7 ? 1 : g > 4 ? 2 : 3; }
+    function lod(p, q, F) {
+      var D = q.d, L = lvl(p), fs = Math.max(D, F.floor), e = p.el, k;
+      if (L < 2) { k = fs < Math.pow(PHI, 3) ? 'dot' : 'e:' + fs.toFixed(1); if (p.lk === k) return; p.lod = L;   // phi: the glyph floor PHI^3 px
+        if (k === 'dot') { if (p.g) p.g.style.display = 'none'; if (p.lk && p.lk.charAt(0) !== 'd') { paint(e, LOOK[p.id] || GREY); e.style.backgroundBlendMode = ''; } p.lk = k; return; }
+        if (!p.g) { p.g = doc.createElement('b'); p.g.className = 'sm-g'; p.g.textContent = EMO[p.id] || '\uD83C\uDF11'; e.insertBefore(p.g, e.firstChild); }
+        p.g.style.display = ''; p.g.style.fontSize = fs.toFixed(1) + 'px'; e.style.background = 'none'; e.style.boxShadow = 'none'; p.lk = k; return; }
+      if (p.g) p.g.style.display = 'none';
+      var st = D < Math.pow(PHI, 5) ? 1 : 2;
+      var sx = F.x + (0 - (F.cx || 0)) / F.kmPerPx - q.x, sy = F.y + (F.cy || 0) / F.kmPerPx - q.y, sl = Math.hypot(sx, sy) || 1;   // unit: toward the true Sun on screen
+      var hx = 50 + 50 * IP * sx / sl, hy = 50 + 50 * IP * sy / sl, key = st + ':' + Math.round(hx / 5) + ':' + Math.round(hy / 5);   // phi: the lit cap PHI^-1 of the radius toward the Sun
+      if (p.lk === key) return; p.lk = key; p.lod = L;
+      var c = (LOOK[p.id] || GREY).split(',');
+      var lit = 'radial-gradient(circle at ' + hx + '% ' + hy + '%,' + c[0] + ',' + c[1] + ' ' + IP * 100 + '%,rgba(0,0,0,' + (1 - Math.pow(IP, 3)) + ') 100%)';
+      e.style.background = st === 2 && c[2] ? lit + ',repeating-linear-gradient(0deg,' + c[0] + ' 0 ' + Math.pow(IP, 3) * 100 + '%,' + c[1] + ' ' + Math.pow(IP, 3) * 100 + '% ' + Math.pow(IP, 2) * 100 + '%)' : lit;
+      e.style.backgroundBlendMode = st === 2 && c[2] ? 'multiply' : '';
+      e.style.boxShadow = 'none';
+    }
+    var zpSt = null;
+    function zpDraw(F) {
+      var Z = root.ZoomCam, v = F.zoom; if (!Z || !v) return;
+      if (!zpSt) { zpSt = doc.createElement('style'); zpSt.textContent = '.pl-layer .pl-n:not(.sm-n){filter:opacity(var(--zp-home,1))}'; doc.head.appendChild(zpSt); }
+      doc.documentElement.style.setProperty('--zp-home', (1 - v.w).toFixed(3));   // the PingLayer's display group (Sun glyph, big Earth, Moon) belongs to the home view (stage 2 makes them the real ones)
+      var pr = Z.probe.r, cx = F.cx || 0, cy = F.cy || 0, x = F.x + (pr[0] - cx) / F.kmPerPx, y = F.y - (pr[1] - cy) / F.kmPerPx;
+      zpFx(Z.probe, x, y);                                               // no marker for the capsule itself: it is the viewer
+    }
+    // the capsule's end: debris in the dashboard's explosion style (emoji-collide burst / vaporise: a flash growing PHI^-2 -> PHI
+    // over PHI^0 s, 13 fragments on golden angles, decelerating, fading), timed by the camera's own viewer clock (Z.probe.debris.t) so it is
+    // the same in a stepped capture; nothing is reborn from it. Stranded or reduced motion: a plain fade. A bounce: 3 scrape sparks, PHI^-1 s.
+    var zpBits = null;
+    function zpFx(Pr, x, y) {
+      var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, DEAD = PHI * PHI, S = Math.pow(PHI, 4), i, e;   // phi: debris scale PHI^4 px 
+      if (!zpBits) { zpBits = []; for (i = 0; i < 14; i++) { e = doc.createElement('span'); e.className = 'sm-n zp-bit';
+        e.style.cssText = i ? 'width:3px;height:3px;background:#7ff;box-shadow:0 0 4px #7ff;z-index:' + (ZS * 3) : 'font-size:' + S + 'px;line-height:1;z-index:' + (ZS * 3);
+        if (!i) e.textContent = '\uD83D\uDCA5'; e.style.visibility = 'hidden'; LA.appendChild(e); zpBits.push(e); } }
+      var W = Pr.dead > 0 && Pr.debris, h = Pr.hits[Pr.hits.length - 1], vt = Pr.home + Pr.pass, bt = h && h.kind === 'bounce' ? vt - h.vt : 1e9;
+      for (i = 0; i < 14; i++) zpBits[i].style.visibility = 'hidden';
+      if (W) { var u = Math.min(W.t / DEAD, 1), op = 1 - u;
+        if (W.kind === 'strand') return;                                  // stranded: the ride just ends (no marker to fade)
+        var fu = Math.min(W.t, 1), fs = Math.pow(PHI, -2 + 3 * fu);         // phi: the flash PHI^-2 -> PHI over PHI^0 s, fading
+        zpBits[0].style.visibility = ''; zpBits[0].style.opacity = (1 - fu).toFixed(3); zpBits[0].style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%,-50%) scale(' + fs.toFixed(3) + ')';
+        var ease = 1 - Math.pow(1 - u, 3);                                   // the fragments decelerate (cubic ease-out)
+        for (i = 1; i < 14; i++) { var a = i * 2 * Math.PI * IP * IP, d = S * (IP + (i * IP % 1)) * PHI * PHI * ease;   // phi: golden angle, golden-sequence distances
+          zpBits[i].style.visibility = ''; zpBits[i].style.opacity = op.toFixed(3);
+          zpBits[i].style.transform = 'translate3d(' + (x + Math.cos(a) * d).toFixed(1) + 'px,' + (y + Math.sin(a) * d).toFixed(1) + 'px,0) translate(-50%,-50%) scale(' + (1 - u * IP).toFixed(3) + ')'; }
+        return; }
+      if (bt < IP) for (i = 1; i < 4; i++) { var ua = bt / IP, aa = i * 2 * Math.PI / 3, dd = S * ua;   // a bounce: 3 sparks thrown off
+        zpBits[i].style.visibility = ''; zpBits[i].style.opacity = (1 - ua).toFixed(3); zpBits[i].style.transform = 'translate3d(' + (x + Math.cos(aa) * dd).toFixed(1) + 'px,' + (y + Math.sin(aa) * dd).toFixed(1) + 'px,0) translate(-50%,-50%)'; }
+    }
     var OPA = 1;                                                          // phi: base opacity PHI^0 (was PHI^-1): the one-device-pixel dots need all of it to be found at all
     var pos = {};
     function draw() {
@@ -90,19 +148,23 @@
         var z = p.moon ? (parent.z != null ? parent.z : ZS + ZS / 2) + (q.front ? 1 : -1) : ZS + ZS / 2;   // unit: planets over the Sun glyph (nothing is behind the true Sun disc at this scale); a moon +-1 round its planet by ecliptic z
         if (p.ring) { var rd = Math.max(2 * p.b.ring[1] / F.kmPerPx, F.floor); if (p.rs !== rd) { p.rs = rd; p.ring.style.width = p.ring.style.height = rd + 'px'; p.ring.style.borderWidth = Math.max(rd * (p.b.ring[1] - p.b.ring[0]) / p.b.ring[1] / 2, F.floor / 2) + 'px'; } }   // unit: the ring's true outer diameter and C..A band, floored
         put(p, q.x, q.y, q.d, 1, OPA * amp(p.n + r - DEF), z, true);     // unit: drawn diameter = max(true, one device pixel)
+        if (ZP) lod(p, q, F);
       });
+      if (ZP) zpDraw(F);
       var B = axisB(), ae = SS.bodies.earth.aAU * SS.AU / F.kmPerPx, d = Math.hypot(B.end.x - sun.x, B.end.y - sun.y), a = d / (1 + HALLEY), bb = a * Math.sqrt(1 - HALLEY * HALLEY);   // aphelion on the BL end of axis B
       var ux = (B.end.x - sun.x) / (d || 1), uy = (B.end.y - sun.y) / (d || 1), E2 = kep(S.M, HALLEY), cu = -(Math.cos(E2) - HALLEY), sv = Math.sin(E2);   // unit: +u toward the aphelion
       S.T = SS.period('earth') * Math.pow(a / ae, 3 / 2);                  // cite: Kepler III against the real Earth's orbit (same km / px, same time factor)
       S.x = sun.x + a * cu * ux - bb * sv * uy; S.y = sun.y + a * cu * uy + bb * sv * ux;
       var node = (A.moon && (A.moon.s0 || A.moon.s)) || Math.min(W, H) * Math.pow(IP, 5.5);   // phi: the PingLayer node (the 💫's glyph size, display)
-      put(S, S.x, S.y, node, 1, Math.pow(IP, 2) * amp(S.n + r - DEF), null, false);   // phi: Layer B ceiling PHI^-2 (it crosses text)
+      put(S, S.x, S.y, node, 1, Math.pow(IP, 2) * amp(S.n + r - DEF) * (F.zoom ? 1 - F.zoom.w : 1), null, false);   // zoomcam1: the display comet belongs to the home view   // phi: Layer B ceiling PHI^-2 (it crosses text)
     }
     var raf = 0, last = 0, tl = 0, FRAME = MS * Math.pow(IP, 7);           // phi: frame cap PHI^-7 s
     function tick(t) { raf = 0; if (doc.hidden) return; if (t - last >= FRAME) { var dt = tl ? Math.min(t - tl, MS) / MS : 0; tl = t; last = t;   // unit: dt capped at a second
         SS.advance(dt); S.M -= TAU * dt / S.T; draw(); }                 // one global time factor (no pump); minus: clockwise, retrograde like the real Halley (cite: JPL SBDB i = 162.2 deg)
       raf = requestAnimationFrame(tick); }
     function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
+    function zpGo() { if (root.ZoomCam && !ZoomCam.on) { ZoomCam.start('saturn', 24); draw(); } }   // the Saturn lane, its pass 24 home-seconds ahead
+    if (ZP) { if (root.ZoomCam) zpGo(); else if (!zpLoad) { zpLoad = 1; var zs = doc.createElement('script'); zs.src = 'js/zoom-camera.js?v=zoomcam1'; zs.async = true; zs.onload = zpGo; doc.head.appendChild(zs); } }   // tier: after the home draw
     draw(); go();
     if (root.Arrivals) P.forEach(function (p) { if (!p.moon) Arrivals.land(p.el, 'pop', 1); });   // rule 14: each planet arrives (after its first draw, so it sweeps up to its own opacity), then a pop
     doc.addEventListener('visibilitychange', function () { tl = 0; if (!doc.hidden) { r = dial('intensity', DEF); go(); } });
