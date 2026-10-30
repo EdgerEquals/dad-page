@@ -172,13 +172,13 @@
   // breakdowns and builds the CHOIR, peaks the LEAD VOICE (the machine for electro, the singer for the rest), the intro and outro rest.
   // With Form off the energy stands in (under PHI^-2 the choir, over 1 - PHI^-3 the peak). DIAL.voM forces one voice on every track
   // (-1 off, 1 singer, 2 machine, 3 choir); DIAL.voF forces the flavour.
-  var VCH = { electro: IPH, electronic: IPH * IPH, ambient: IPH * IPH, cinematic: IPH * IPH, piano: IPH * IPH }, FLV = [null, 'events', 'talker', 'choir bed'];
+  var VCH = { electro: IPH, detroit: IPH, electronic: IPH * IPH, ambient: IPH * IPH, cinematic: IPH * IPH, piano: IPH * IPH }, FLV = [null, 'events', 'talker', 'choir bed'];
   function dl(k) { try { return D.desk && D.desk.dial ? +D.desk.dial(k) || 0 : 0; } catch (e) { return 0; } }
   function plan(tk) {
     var m = dl('voM') | 0, sd = ((tk && tk.seed) | 0) >>> 0, base = tk && VCH[tk.genre] != null ? VCH[tk.genre] : IPH, vp = dl('voP'), ch = vp <= -9 ? 0 : vp >= 9 ? 1 : clamp(base * Math.pow(PHI, vp), 0, 1);
     var on = m === -1 ? false : m !== 0 ? true : frac(sd * IPH * IPH + Math.pow(IPH, 5)) < ch, f = dl('voF') | 0, fl = f > 0 && f < 4 ? f : 1 + Math.floor(frac(sd * Math.pow(IPH, 3) + IPH) * 3);
     var force = m === 1 ? 'singer' : m === 2 ? 'machine' : m === 3 ? 'choir' : null;
-    return { on: on, flav: fl, force: force, chance: ch, ch: force === 'singer' || force === 'machine' ? force : tk && tk.genre === 'electro' ? 'machine' : 'singer' };
+    return { on: on, flav: fl, force: force, chance: ch, ch: force === 'singer' || force === 'machine' ? force : tk && (tk.genre === 'electro' || tk.genre === 'detroit') ? 'machine' : 'singer' };
   }
   function kind(tk) {                                                   // the section now: 'low' (breakdown, build), 'high' (peak), 'mid', 'tease' (a middle's last 2 bars before a change), 'rest' (intro, outro)
     var fx = tk && tk.fx; if (!fx) { var e = tk && tk.e != null ? tk.e : 1 / 2; return e < IPH * IPH ? 'low' : e > 1 - Math.pow(IPH, 3) ? 'high' : 'mid'; }

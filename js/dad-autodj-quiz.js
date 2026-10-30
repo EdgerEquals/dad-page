@@ -177,6 +177,11 @@
                    own: 1, bank: 1, fold: 1, home: [120, 130], solo: Math.pow(PHI, 3), bdLean: Math.pow(IPH, 3), alt: { kick: 'x.....x...x..x..', snare: '....x.......x..o', hat: 'oooooooooooooox.' } },
     piano:       { scale: 'minor', root: 48, progs: [[0, 5, 3, 4], [0, 3, 4, 0]], bars: 1, chords: 'arp', bass: 'hold', bwave: 'piano', mel: 0.25, lead: 'piano', resp: 'piano', ro: -12, rev: 0.4 }
   };
+  // DETROIT (Danny 11:12 AWST 30 Oct: a new style, 'Detroit', starting from electro's melodies and pads with the contour fix; the beat isn't
+  // right for Detroit yet): for now a copy of electro (same progressions, Jupiter stabs, Juno arp and pad, DX7 lead, 303 bass, 808 kit, tempo
+  // home 120-130, form, lead palette, mix template, voice). Its own beat, tempo home and anything else Detroit-specific are waiting on Danny;
+  // give them as fields here (they override the copy) rather than editing electro.
+  GEN.detroit = Object.assign({}, GEN.electro, {});
   // NEUTRAL USES EVERY STYLE (MIDI Bot scales + harmony plan P0, Danny 17:49 AWST 26 Oct): with the mood on neutral (its live value) the
   // genre draw takes all nine genres, each weighted by how near its own home sits to the live dimensions, w = PHI^(-PHI^2 k / D) with
   // D = PHI^(PHI^2 tension) (travel()'s form): k = |drive - its drum share| + |brightness - its mode's place on the line of fifths|.
@@ -322,7 +327,7 @@
   var FXURL = 'js/dj-fx.js?v=vibe1', fxReq = false, fxDry = null, fxC = null;
   function loadFX() { if (fxReq || !ctx || !X) return; fxReq = true; var sc = document.createElement('script'); sc.src = FXURL; sc.async = true; document.head.appendChild(sc); }
   // ---------- wordless voice (MIDI Bot dynamics spec V1/V2, Danny 19:23 AWST 26 Oct): js/dj-voice.js loads at idle once the effects are in ----------
-  var VURL = 'js/dj-voice.js?v=vibe1', vReq = false, VH = null;
+  var VURL = 'js/dj-voice.js?v=detroit1', vReq = false, VH = null;
   function loadV() { if (vReq || !ctx) return; vReq = true; var sc = document.createElement('script'); sc.src = VURL; sc.async = true; document.head.appendChild(sc); }
   function idleV() { var ric = window.requestIdleCallback || function (f) { return setTimeout(f, Math.pow(PHI, 2) * MS); }; ric(loadV, { timeout: Math.pow(PHI, 5) * MS }); }   // phi: idle, at the latest PHI^5 s later
   function fxIn(f) {                                                      // called by js/dj-fx.js: {inp, out}; the chain is transparent at rest
@@ -588,7 +593,7 @@
     tide: [['still', 2, 0, 0, 'p'], ['voice', 2, 1, 1, 'pl'], ['swell', 2, 2, 2, 'plb', 'B'], ['ebb', 2, 1, 1, 'pb', 'B', 'bd'], ['still', 1, 0, 0, 'p', 'A', 'out']]
   };
   var FKEYS = ['electro', 'club', 'song', 'ternary', 'arch', 'tide'];
-  var FAUTO = { electro: 'electro', electronic: 'club', 'indie-pop': 'song', 'upbeat-pop': 'song', soul: 'song', folk: 'song', acoustic: 'song', piano: 'ternary', cinematic: 'arch', ambient: 'tide' };
+  var FAUTO = { electro: 'electro', detroit: 'electro', electronic: 'club', 'indie-pop': 'song', 'upbeat-pop': 'song', soul: 'song', folk: 'song', acoustic: 'song', piano: 'ternary', cinematic: 'arch', ambient: 'tide' };
   var FTOK = { bass: 'b', chords: 'C', arp: 'a', pad: 'p', lead: 'l', answer: 'l' }, FDRUM = { kick: 'k', snare: 's', clap: 's', hat: 'h', shaker: 'h', tom: 'c', cow: 'c' };
   function formName(tr) { var m = DIAL.fmM | 0; if (m === -1) return null; if (m > 0) return FKEYS[m - 1] || null;
     if (m === -2) { if (!tr.fRand) tr.fRand = FKEYS[Math.floor(gold(tr, 5, 71) * FKEYS.length)]; return tr.fRand; } return FAUTO[tr.genre] || 'song'; }
@@ -943,7 +948,7 @@
   // of them (e = its energy), never fewer than three, and from the lead's first entry that share also fills in over DIAL.mBp phrases, so the
   // lead arrives as a hook and fills in. DIAL.mBl 0 = the whole motif always (as before).
   // Every draw is a golden draw on the seed (gold), never the track's random stream, so the rest of the track is exactly as before.
-  var LROS = { electro: ['dx', 'jup', 'juno', 'square', 'saw', 'pluck'], electronic: ['square', 'saw', 'bell', 'pluck'], ambient: ['bell', 'reed', 'ep'], acoustic: ['pluck', 'piano', 'reed'],
+  var LROS = { electro: ['dx', 'jup', 'juno', 'square', 'saw', 'pluck'], detroit: ['dx', 'jup', 'juno', 'square', 'saw', 'pluck'], electronic: ['square', 'saw', 'bell', 'pluck'], ambient: ['bell', 'reed', 'ep'], acoustic: ['pluck', 'piano', 'reed'],
     soul: ['ep', 'horn', 'reed'], folk: ['pluck', 'reed', 'piano'], cinematic: ['horn', 'bell', 'reed'], 'indie-pop': ['square', 'pluck', 'saw'], 'upbeat-pop': ['saw', 'pluck', 'square'], piano: ['piano'] };   // each style's lead palette, from its own sounds (electro: the DX7, Ed's Jupiter and Juno, square, saw, pluck)
   var LSOFT = { bell: 0, ep: 0, pluck: 1, piano: 1, reed: 1, juno: 1, horn: 2, dx: 2, jup: 2, square: 3, saw: 3 };   // unit: softness rank, 0 softest (a breakdown takes the lowest)
   var LNAME = { dx: 'DX7', jup: 'Jupiter', juno: 'Juno', square: 'square', saw: 'saw', pluck: 'pluck', bell: 'bell', ep: 'e-piano', piano: 'piano', reed: 'reed', horn: 'horn' };
@@ -1531,7 +1536,7 @@
     orchestral: { m: 4, a: 30, r: 600, q: 1.3, k: 18, gr: 0.5, sat: 'none', over: 0 },
     ambient:    { m: 3, a: 20, r: 600, q: 1.5, k: 12, gr: 1, sat: 'none', over: 0 }
   };
-  var TPAL = { electro: 'electro', electronic: 'club', 'indie-pop': 'pop', 'upbeat-pop': 'pop', soul: 'soul', acoustic: 'acoustic', folk: 'acoustic', piano: 'piano', cinematic: 'orchestral', ambient: 'ambient' };
+  var TPAL = { electro: 'electro', detroit: 'electro', electronic: 'club', 'indie-pop': 'pop', 'upbeat-pop': 'pop', soul: 'soul', acoustic: 'acoustic', folk: 'acoustic', piano: 'piano', cinematic: 'orchestral', ambient: 'ambient' };
   // FOUR BUSES (step 2 of the draft): per palette d drums, p the drums' parallel copy (mix = its blend), b bass, mu music (stabs, arp,
   // pad), f front (lead, answer, voice); m the model (1 VCA, 2 FET, 3 opto, 4 vari-mu), a / r ms, q ratio, k knee dB, gr the reduction it
   // aims at on the loud moments (dB), sat a type BEFORE the compressor bending over dB above the bus's level. Electro as the draft's table
