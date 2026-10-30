@@ -352,7 +352,7 @@
   // touch pointerdown as a gesture), a mouse on pointerdown, keys on keydown (click stays as the fallback). Everything that needs no tap is
   // primed before it at idle: the graph and a SUSPENDED AudioContext, the media bridge, audioSession 'playback'; nothing starts.
   function primeP(e) { if (e.type === 'pointerdown' ? e.pointerType === 'mouse' : e.pointerType !== 'mouse') prime(); }
-  PRIME.forEach(function (n) { document.addEventListener(n, prime, true); }); document.addEventListener('pointerdown', primeP, true); document.addEventListener('pointerup', primeP, true);
+  PRIME.forEach(function (n) { document.addEventListener(n, prime, { capture: true, passive: true }); }); document.addEventListener('pointerdown', primeP, { capture: true, passive: true }); document.addEventListener('pointerup', primeP, { capture: true, passive: true });   // micresume1: passive
   function prebuild() { if (ctx || !AC) return; if (ensure()) { try { if (ctx.state === 'running' && !playing) ctx.suspend(); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }   // start nothing
   if (window.LoadTiers && LoadTiers.add) LoadTiers.add(2, prebuild, 'dj prime', { id: 'dj' });
   function ensure() {
@@ -1286,7 +1286,7 @@
     if (el) { try { el.pause(); el.srcObject = null; } catch (e) {} } el = null; direct = true; fxC = null; ctx = null; playing = false; stalled = false; pend = null; disarm();
     X = null; XL = 0; xReq = false; busNode = null; bsNode = null; BIN = null; if (chips) chips.textContent = '';    // js/dj-extras.js holds the old context: it reloads onto the new one after the first sound
     try { if (old && old.state !== 'closed') old.close(); } catch (e) {}
-    if (was) start(sp); return ctx;
+    if (was) { start(sp); if (!playing) { pend = sp || {}; arm(); paint(compute()); } } return ctx;   // micresume1: a fresh engine that could not start stays pending ('tap to resume'), so the next tap tries again, no reload
   }
   function glide(ox, dk, keep) {                                         // a change glides in over a PHI^3 s crossfade (rule 6), never a cut (or the transition's own fade); dk: from the desk
     if (!ox && playing && ctx && (pendX || routed(function (o) { glide(o || { fade: dk && dkFadeS() > 0 ? dkFadeS() : Math.pow(PHI, 3) }); }, null, dk, keep))) { paint(compute()); save(); return; }   // dial changes wait for the bar grid too (a change already planned picks them up)
@@ -1359,7 +1359,7 @@
   // Random, export) are never a 'tap anywhere' resume, so each tap does only its own job; anywhere else on the page still brings the sound back.
   var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp,#dj-desk';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
   function onGesture(e) { var t = e.target; if (t && t.closest && t.closest(OWN)) return; if (pend || stalled) resumeTap(); else disarm(); }
-  function arm() { if (armed) return; armed = true; GEST.forEach(function (n) { document.addEventListener(n, onGesture, true); }); }
+  function arm() { if (armed) return; armed = true; GEST.forEach(function (n) { document.addEventListener(n, onGesture, { capture: true, passive: true }); }); }
   function disarm() { if (!armed) return; armed = false; GEST.forEach(function (n) { document.removeEventListener(n, onGesture, true); }); }
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
   var RC = null;
