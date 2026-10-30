@@ -182,6 +182,15 @@
   // home 120-130, form, lead palette, mix template, voice). Its own beat, tempo home and anything else Detroit-specific are waiting on Danny;
   // give them as fields here (they override the copy) rather than editing electro.
   GEN.detroit = Object.assign({}, GEN.electro, {});
+  // STYLE FOLDS (electrofold1, Danny 13:42 AWST 30 Oct: 'we really need a fold down now that we've got electronic and then all the other
+  // genres are under there ... Funk even though they crossover ... They should be in their original ... for all the electronic some genres
+  // under electronic'): display only. A fold is a parent in the style picker (#dj-gen here; the VU desk can draw it from desk.folds) that opens to show its
+  // styles; every other style stays where it was. Style ids, GEN, the draw order and saved picks are untouched. Members are the existing
+  // electronic styles only; trance / house are not styles yet, and ambient's place is Danny's call (open questions, not decided here).
+  // names: on-screen labels only, the id stays (saved picks keep working). DANCE (Danny 13:54 AWST 30 Oct: 'Dance is a sub genre of electronic
+  // music; electronic music and EDM are the same thing and dance is a sub genre'): the style with id 'electronic' shows as 'dance'.
+  var FOLDS = [{ id: 'electronic-fold', lab: 'Electronic', kids: ['electro', 'detroit', 'electronic'], names: { electronic: 'dance' } }];
+  function foldOf(k) { for (var i = 0; i < FOLDS.length; i++) if (FOLDS[i].kids.indexOf(k) >= 0) return FOLDS[i]; return null; }
   // NEUTRAL USES EVERY STYLE (MIDI Bot scales + harmony plan P0, Danny 17:49 AWST 26 Oct): with the mood on neutral (its live value) the
   // genre draw takes all nine genres, each weighted by how near its own home sits to the live dimensions, w = PHI^(-PHI^2 k / D) with
   // D = PHI^(PHI^2 tension) (travel()'s form): k = |drive - its drum share| + |brightness - its mode's place on the line of fifths|.
@@ -1468,13 +1477,27 @@
   function syncChips() { if (X && X.sync) X.sync(); }
   // STYLE ROW (Danny 15:3x AWST 27 Oct, Claude chat: 'if I've got that panel, I'll just select all electro and I can hear it'): auto = the
   // mood picks the style (as before); a style = only that style, mixed in on the bar grid like a dial change
-  var genEl = null;
-  function genRow() { genEl = $('dj-gen'); if (!genEl || genEl.childNodes.length > 1) return;
-    ['auto'].concat(Object.keys(GEN)).forEach(function (k) { var l = document.createElement('label'), i = document.createElement('input'), sp = document.createElement('span');
-      i.type = 'radio'; i.name = 'dj-gen'; i.value = k; sp.textContent = k; l.appendChild(i); l.appendChild(sp); genEl.appendChild(l); });
-    genEl.addEventListener('change', function (e) { var v = e.target && e.target.value; if (!v) return; GPICK = v === 'auto' || !GEN[v] ? null : v; glide(); });
+  // STYLE FOLDS (electrofold1): a fold's styles sit in a row under its parent button, closed until tapped (opened at build if the saved
+  // pick is inside it); the parent reads bold, and names the pick when closed, while one of its styles is the pick. Same radios, same ids, same change handler.
+  var genEl = null, genF = [];
+  function genName(k) { var f = foldOf(k); return f && f.names && f.names[k] || k; }   // a style's on-screen label (its id unless a fold renames it)
+  function genChip(k, host) { var l = document.createElement('label'), i = document.createElement('input'), sp = document.createElement('span');
+    i.type = 'radio'; i.name = 'dj-gen'; i.value = k; sp.textContent = genName(k); l.appendChild(i); l.appendChild(sp); host.appendChild(l); }
+  function genRow() { genEl = $('dj-gen'); if (!genEl || genEl.childNodes.length > 1) return; var done = {};
+    ['auto'].concat(Object.keys(GEN)).forEach(function (k) { if (!foldOf(k)) genChip(k, genEl); });   // the other styles keep their order; folds go after them so a fold opens under the whole row
+    ['auto'].concat(Object.keys(GEN)).forEach(function (k) { var f = foldOf(k); if (!f || done[f.id]) return; done[f.id] = 1;
+      var b = document.createElement('button'), sp = document.createElement('span'), box = document.createElement('div'), op = f.kids.indexOf(GPICK) >= 0;
+      b.type = 'button'; b.className = 'dj-fold-h'; b.setAttribute('aria-controls', 'dj-gen-' + f.id); b.appendChild(sp);
+      box.className = 'dj-fold-k'; box.id = 'dj-gen-' + f.id; box.setAttribute('role', 'group'); box.setAttribute('aria-label', f.lab);
+      f.kids.forEach(function (c) { if (GEN[c]) genChip(c, box); });
+      var set = function (o) { box.hidden = !o; b.setAttribute('aria-expanded', o ? 'true' : 'false'); b._lab(); };
+      b._lab = function () { var o = !box.hidden, k = f.kids.indexOf(GPICK) >= 0; sp.textContent = f.lab + (!o && k ? ' \u00B7 ' + genName(GPICK) : '') + (o ? ' \u25BE' : ' \u25B8'); };   // closed with its pick inside: the pick shows on the parent
+      b.addEventListener('click', function () { set(box.hidden); }); set(op);
+      genEl.appendChild(b); genEl.appendChild(box); genF.push({ f: f, b: b }); });
+    genEl.addEventListener('change', function (e) { var v = e.target && e.target.value; if (!v) return; GPICK = v === 'auto' || !GEN[v] ? null : v; glide(); syncGen(); });
     syncGen(); }
-  function syncGen() { if (!genEl) return; var w = GPICK || 'auto', i = genEl.querySelector('input[value="' + w + '"]'); if (i && !i.checked) i.checked = true; syncC8(); }
+  function syncGen() { if (!genEl) return; var w = GPICK || 'auto', i = genEl.querySelector('input[value="' + w + '"]'); if (i && !i.checked) i.checked = true;
+    genF.forEach(function (o) { o.b.classList.toggle('is-in', o.f.kids.indexOf(GPICK) >= 0); o.b._lab(); }); syncC8(); }
   // 808 CHARACTER ROW (Danny 17:36 AWST 27 Oct: 'its own character each with a character dial that lessens or exaggerates'): five rungs
   // of how far each track's 808 rack departs from stock; heard on the next hit, saved with the dials
   var C8 = [['off', 0], ['less', IPH], ['normal', 1], ['more', PHI], ['max', PHI * PHI]], c8El = null;
@@ -1675,7 +1698,8 @@
     level: function (ch, k) { if (CHS.indexOf(ch) < 0) return null; if (k != null && isFinite(k)) { MX.g[ch] = clamp(Math.round(k), -LVMAX, DRMAX); delete MX.l[ch]; applyLevels(); save(); } return rungOf(ch); },   // DRIVE: a rung, -6 off .. +5
     send: function (ch, k, i) { if (CHS.indexOf(ch) < 0 || (k !== 'e' && k !== 'w')) return; (k === 'e' ? MX.e : MX.w)[ch] = clamp(i | 0, 0, SENDL.length - 1); resend(); save(); },
     boxSet: function (rack, u, k, v) { var b = MX.b[rack] || (MX.b[rack] = { m: [], s: [] }); (k === 's' ? b.s : b.m)[u] = !!v; save(); },
-    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); }, get forms() { return FKEYS.slice(); },
+    get pick() { return GPICK; }, setPick: function (g) { GPICK = g && (GEN[g] || g === 'random') ? g : null; glide(null, true); save(); syncGen(); }, get genres() { return Object.keys(GEN); }, get folds() { return JSON.parse(JSON.stringify(FOLDS)); },   // electrofold1: the style folds (display only)
+    get forms() { return FKEYS.slice(); },
     bus: function () { return { on: !!busNode, gr: busGR, av: busAv, mk: busMK, hit: busHit, p: busP, buses: bsNode ? { p: bsP, r: BSR } : null }; }, get templates() { return TPLK.slice(); },
     dial: function (k, v) { if (!DIAL.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { DIAL[k] = +v; save(); syncGen(); if (k.indexOf('mb') === 0 || k.indexOf('bs') === 0 || k === 'tpM') busSet(); if (k === 'tpo' || k === 'tLk') retempo(); if (/^vb/.test(k)) vbApply(); if (DIAL.dkNow && REBUILD.indexOf(k) >= 0) { clearTimeout(rbT); rbT = setTimeout(function () { glide(null, true, true); }, IPH * MS); } } return DIAL[k]; },   // harmony / melody faders: heard now (one rebuild PHI^-1 s after the last tap)
     rd: function (k, v) { if (!RD.hasOwnProperty(k)) return null; if (v != null && isFinite(v)) { RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); save(); } return RD[k]; },

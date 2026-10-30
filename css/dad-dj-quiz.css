@@ -53,3 +53,7 @@
 .dad-dj .dj-kr.is-mixing{animation:djfxr .618s ease}
 .dad-dj .dj-needle{position:absolute;left:-4px;top:0;width:10px;height:3px;border-radius:2px;background:#F2A541;box-shadow:0 0 6px rgba(242,165,65,.8);pointer-events:none;transition:transform .618s cubic-bezier(.38,0,.38,1)}
 @media (prefers-reduced-motion:reduce){.dad-dj .dj-needle{transition:none}.dad-dj .dj-kr.is-mixing{animation:none}}
+/* style folds (electrofold1, MIDI Bot draft, Danny 13:42 AWST 30 Oct): the parent is a plain button around a chip span; its styles fold down in their own row */
+.dad-dj .dj-fold-h{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer}.dad-dj .dj-fold-h.is-in span{font-weight:700}
+.dad-dj .dj-fold-h:focus-visible span{outline:3px solid #F2A541;outline-offset:2px}
+.dad-dj .dj-fold-k{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%;margin-left:.6rem;padding-left:.4rem;border-left:1px solid rgba(214,236,239,.3)}.dad-dj .dj-fold-k[hidden]{display:none}
