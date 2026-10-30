@@ -756,6 +756,15 @@
   function ghostStep(tr, t) { if (GRD.g >= 2) return; var p = tr.rp, s16 = tr.step % 16; if (!p || !p.smask || !X || !X.hit || p.rest['drum:snare'] || !(p.ghost > 0)) return; if (p.stop && s16 >= 16 - p.L16) return;
     if (GHOST.indexOf(s16 + 1) >= 0 && GHOST_AC.indexOf(s16 + 1) < 0 && !((p.smask >> s16) & 1) && gold(tr, tr.step, 31) < p.ghost) X.hit(tr.L.drums, 'snare', t, Math.pow(PHI, -3)); }
 
+  // MELODY CONTOUR (Danny 11:12 AWST 30 Oct: he likes the range, the scale and how it builds, but it only ever builds, then stops and
+  // restarts at the bottom; it should cascade back down, more quickly than it builds, the way the energy already frames the song). The
+  // motif's lift used to be floor(phrase in section / SPB) % SPB: up a degree each phrase, then a jump to the bottom (and back to the
+  // bottom at every section line). Now it is a cycle over the track's bars (no reset at a section line): the climb is as before, a degree
+  // every SPB bars up to SPB - 1; then it falls back down over PHI^-2 of the climb's length, a degree at a time. PHI^-2 is the energy arc's
+  // own fall-to-rise ratio (arc(): up over PHI^-1 of the track, down over PHI^-3, so the fall is PHI^2 quicker). The cycle is therefore
+  // SPB^2 (1 + PHI^-2) bars, not a whole number of phrases, so the turn drifts against the phrase lines.
+  function mRise(bar) { var H = SPB - 1, Lu = SPB * SPB, Ld = Lu * IPH * IPH, y = ((bar % (Lu + Ld)) + Lu + Ld) % (Lu + Ld);   // phi: the fall is PHI^-2 of the climb (the arc's ratio)
+    return y < Lu ? Math.min(H, Math.floor(y / SPB)) : Math.max(0, 1 + Math.floor((H - 1) * (Lu + Ld - y - 1) / Ld)); }   // climb: a degree a phrase; fall: SPB - 2 .. 1 spread evenly over the fall, landing on the climb's bottom
   function playStep(tr, t) { tr.fx = secAt(tr, Math.floor(tr.step / 16)); rplan(tr, t);
     var g = tr.g, st = tr.step, s16 = st % 16, bar = Math.floor(st / 16), dur16 = 60 / tr.bpm / 4, v, fx = tr.fx;
     var a0 = ageOf(tr, t), secB = fx ? fx.s.h === 'B' : a0 >= IPH * IPH && a0 < IPH + Math.pow(PHI, -3), pr = secB && tr.progB ? tr.progB : tr.prog;
@@ -763,7 +772,7 @@
     var slot = Math.max(SPB * SPB / 2, Math.round(SPB * SPB * (tr.hb || g.bars))), ci = Math.floor(st / slot);   // unit: sixteenths per chord (half a bar at the fastest)
     var deg = pr[ci % pr.length], barLen = dur16 * slot, first = st % slot === 0;
     if (s16 === 0 || tr.e == null) shape(tr, t, barLen);
-    var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = g.own ? phrEnd(tr, phr) : (phr % SPB) === SPB - 1, rise = Math.floor(phr / SPB) % SPB;   // unit: phrase = SPB bars, rise cycles through SPB degrees
+    var peak = tr.e > 1 - Math.pow(PHI, -3), phr = bar - (tr.secBar || 0), fill = g.own ? phrEnd(tr, phr) : (phr % SPB) === SPB - 1, rise = mRise(bar);   // unit: phrase = SPB bars; MELODY CONTOUR (Danny 11:12 AWST 30 Oct): climbs a degree a phrase, then cascades back down PHI^2 faster (mRise)
     if (first) tr.ax = peak && !tr.bridge && !tr.leaving && ci % 2 && tr.r() < clamp(IPH * Math.pow(PHI, 2 * (tr.dm ? tr.dm.tension : 1 / 2) - 1), 0, 1) ? AXIS[Math.floor(tr.r() * AXIS.length)] : 0;
     var dyn = 1; if (tr.node) try { dyn = tr.node.out(pumpAt(t)); } catch (e) {}      // mix: routed pump-tree dynamics (around 1)
     // CALL AND RESPONSE BETWEEN PARTS (Danny 17:43 AWST 27 Oct, 'Go'): the lead's 64-step motif is a 2-bar call and its 2-bar answer
