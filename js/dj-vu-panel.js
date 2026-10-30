@@ -20,7 +20,7 @@
   var HOLD = PHI;                     // phi rules 8: the peak holds PHI^1 s, then drops
   var REPAINT = PHI;                  // phi: values, playing and greyed states re-read every PHI^1 s while open
   var WAITP = Math.pow(PHI, -1);      // phi: while the DJ engine is still loading, look again every PHI^-1 s
-  var CSS = 'css/dj-vu-panel.css?v=basstidy1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
+  var CSS = 'css/dj-vu-panel.css?v=basstidy2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
   var de = doc.documentElement;
   function api() { var d = root.DadAutoDJ; return d && typeof d.params === 'function' && typeof d.mixer === 'function' ? d : null; }
   function DK() { var d = api(); return d && d.desk; }
@@ -167,7 +167,7 @@
     if (vm) body.classList.add('vp-has-ms');
     if (D && CHOICE[P.id]) { CHOICE[P.id](D); sc = '\u0000'; }
     P.list.forEach(function (p) {
-      var sx = p.section || (sc === '\u0000' ? P.label.toLowerCase() : '');
+      var sx = p.section || (sc === '\u0000' ? P.label.toLowerCase() : ''); if (D && CHOICE[P.id] && /pick any set/.test(sx)) sx = P.label.toLowerCase();   // the registry tags faders with the switches' heading above them
       if (!vm && sx && sx !== sc) { sc = sx; sec(sx); }
       var k = vm && p.id.indexOf('vspeed.') === 0 ? p.id.slice(7) : null;
       body.appendChild(row({ label: p.label, steps: p.steps && p.steps.length ? p.steps : [p.min, p.max], labels: p.labels || (p.steps || [p.min, p.max]).map(String), def: p.def,
