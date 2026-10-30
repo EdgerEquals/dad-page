@@ -33,7 +33,10 @@
    effects are a few short WAAPI transform/opacity animations in one fixed layer. Reduced motion: whatever still moves just fades.
    DJ COLLISION PUMP (Danny 10:18 AWST 27 Oct): each hit's impulse q = violence x K_t / (K_t + session mean K, weight PHI^-3) x chain E
    feeds PhiPumps (not RatioPump): 'collisions' = 1 - e^(-A PHI^-2), A = sum q e^(-age / PHI^5 s), decayed on read; 'collisions:boom' =
-   the largest dispersion q (flames, vaporise, burst, rocket) since the last read, cleared by that read. */
+   the largest dispersion q (flames, vaporise, burst, rocket) since the last read, cleared by that read.
+   EMOJI ALIVE (Danny 09:06 AWST 30 Oct: 'build the animated emoji trial with the four emojis first, stickers later'): a hit on the rocket,
+   butterfly, dolphin or Earth (and its knocked-off copy) passes that body's energy share Ka / (Ka + Kc) on; so do a tap on one of them
+   and the 'emoji:promote' event. The first one fetches js/emoji-alive.js, which plays the burst; until then nothing extra loads. */
 (function () {
   'use strict';
   var doc = document, root = window;
@@ -154,6 +157,7 @@
     var gen = Math.max(a.gen || 0, c.gen || 0) + 1, pair = ++pairs; gens[gen] = (gens[gen] || 0) + 1;
     var Ech = a.virt ? a.E : c.virt ? c.E : 1, km = KM || Kt, q = Kt > 0 ? w * Kt / (Kt + km) * (Ech || 1) : 0; KM = km + (Kt - km) * Math.pow(IP, 3);   // phi: running mean weight PHI^-3
     feed(q, kindFx === 'flames' || kindFx === 'vaporise' || kindFx === 'burst' || !!(a.rk || c.rk)); preg();
+    a.as = Kt > 0 ? Ka / Kt : 1 / 2; c.as = 1 - a.as; alive(a.el, a.as, 'hit'); alive(c.el, c.as, 'hit');   // emoji alive: each body's energy share (unit: even when neither moves)
     lastInfo = { who: [label(a), label(c)], scen: a.scen || c.scen || '', t: now, fx: kindFx, violence: w, glance: glance, closing: rv, at: [a.x, a.y, c.x, c.y], gen: gen, E: [a.E || 1, c.E || 1], rocket: !!(a.rk || c.rk), K: [Ka, Kc], q: q };
     [a, c].forEach(function (b, i) {
       var sx = i ? 1 : -1, vn = b.vx * nx + b.vy * ny;                     // reflect the body's own velocity off the contact line
@@ -240,7 +244,7 @@
   function knock(b, dx, dy, w, E, gen, pair, spin, live) {
     var S = Math.max(b.fs, 1), S0 = b.rk ? S / E : S, ms = MS * PHI * PHI * k(), P = (spin ? spinPath : slidePath)(b.x, b.y, dx, dy, S, w), sp = (dx >= 0 ? 1 : -1) * TAU * (spin ? PHI * PHI * (1 + w) : IP), e = bit('', glyphOf(b), 0, 0, S0), f = [], i;   // rocketboom: the rocket's copy starts at its drawn size and shrinks on its energy   // phi: spin-out PHI^2 turns, a deflection PHI^-1 turn
     for (i = 0, NR = keys(ms); i <= NR; i++) { var v = i / NR, p = P(v), a = ring(E, v, RC); f.push({ offset: v, transform: T(p[0], p[1], 0, sp * v * v, a), opacity: Math.min(1, a) }); }
-    var an = fly(e, f, ms, 'linear');
+    var an = fly(e, f, ms, 'linear'); alive(e, b.as, 'hit');              // emoji alive: the knocked-off copy bursts too
     if (live && E * IP >= IP * IP) DB.push({ virt: true, el: e, hide: e, an: an, E: E * IP, gen: gen, pair: pair, rk: b.rk, kd: '', x: 0, y: 0, r: 0, t: 0, px: 0, py: 0, vx: 0, vy: 0, until: performance.now() + MS * Math.pow(IP, 3) });   // phi: live after PHI^-3 s, while E PHI^-1 >= PHI^-2
     return P;
   }
@@ -291,7 +295,37 @@
         e = bit('ec-dot', '', 0, 0, S * Math.pow(IP, 3)); fly(e, [{ transform: T(x, y), opacity: 1 }, { transform: T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, 0, IP), opacity: 0 }], MS * IP * kk, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }
     }
   }
+  // ---------- emoji alive: the on-demand hook (the burst itself is js/emoji-alive.js) ----------
+  var ALV = /^(?:\uD83D\uDE80|\uD83E\uDD8B|\uD83D\uDC2C|\uD83C\uDF0D)\uFE0F?$/, AQ = null;   // rocket, butterfly, dolphin, Earth (Danny's four, Kids Club 21:43 AWST 26 Oct)
+  function alive(el, share, why) {
+    if (RM || !el || !ALV.test((el.textContent || '').trim())) return;
+    if (root.EmojiAlive) { EmojiAlive.lift(el, share, why); return; }
+    if (!AQ) { AQ = []; var s = doc.createElement('script'); s.src = 'js/emoji-alive.js?v=alive1'; s.async = true;
+      s.onload = function () { var q = AQ.splice(0); q.forEach(function (x) { if (root.EmojiAlive) EmojiAlive.lift(x[0], x[1], x[2]); }); };
+      s.onerror = function () { AQ = null; }; doc.head.appendChild(s); }
+    AQ.push([el, share, why]);
+  }
+  var TP = null, TN = [], TT = -FIND;                                     // the tap: where it went down; the glyph list, re-read at most every PHI^2 s
+  function glyphs() { var now = performance.now(); if (now - TT < FIND) return TN; TT = now; TN = [];
+    var w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), n; while ((n = w.nextNode())) { var v = n.nodeValue; if (v.length < 5 && ALV.test(v.trim()) && n.parentElement) { var o = n.parentElement.classList.contains('ea-g') ? n.parentElement.parentElement : n.parentElement; if (o && TN.indexOf(o) < 0) TN.push(o); } }   // a playing emoji's glyph sits in its .ea-g span   // unit: an emoji is at most 4 UTF-16 units here
+    return TN; }
+  function inR(r, x, y) { return r.width > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
+  function front(el) { for (var p = el, z = 0; p && p !== doc.body; p = p.parentElement) { var cs = getComputedStyle(p); if (cs.visibility === 'hidden' || +cs.opacity === 0 || cs.display === 'none') return null; if (cs.position !== 'static' && cs.zIndex !== 'auto') z = parseInt(cs.zIndex, 10) || 0; } return z; }
+  function tapAt(x0, y0, x, y) {
+    var best = null, bz = 0, ba = 0;
+    glyphs().forEach(function (el) { if (!el.isConnected) return; var r = el.getBoundingClientRect(); if (!inR(r, x0, y0) || !inR(r, x, y)) return;
+      var z = front(el), ar = r.width * r.height; if (z == null) return;
+      if (!best || z > bz || (z === bz && ar < ba)) { best = el; bz = z; ba = ar; } });   // the front-most, then the smallest, takes the tap
+    if (best) alive(best, 1 / 2, 'tap');                                  // unit: a tap counts as an even share
+  }
+  if (!RM) {
+    doc.addEventListener('pointerdown', function (e) { TP = e.isPrimary ? [e.clientX, e.clientY, performance.now()] : null; }, { passive: true, capture: true });
+    doc.addEventListener('pointercancel', function () { TP = null; }, { passive: true, capture: true });
+    doc.addEventListener('pointerup', function (e) { var p = TP; TP = null; if (p && performance.now() - p[2] < PHI * MS) tapAt(p[0], p[1], e.clientX, e.clientY); }, { passive: true, capture: true });   // phi: a tap is shorter than PHI s (no holds)
+    doc.addEventListener('emoji:promote', function (e) { var d = e.detail || {}; alive(d.el, d.share == null ? 1 / 2 : d.share, 'promote'); });
+  }
   root.EmojiCollide = { info: function () { return { bodies: B.length, hits: count, made: made, last: lastInfo, live: live, debris: DB.length, gens: gens, booms: booms, pump: { c: swell(), A: swellA(performance.now()), boom: BM, impulses: NQ, Kmean: KM, tau: tauC(), registered: PREG } }; },
+    alive: function (el, share, why) { alive(el, share, why || 'hit'); },   // test: the same hook a hit uses
     pulse: function (q, boom) { feed(q == null ? IP : +q, !!boom); preg(); return swell(); },   // test: a forced impulse
     chains: function () { return DB.map(function (q) { return { E: q.E, gen: q.gen, x: Math.round(q.x), y: Math.round(q.y) }; }); },   // debug: knocked-off emojis still live
     test: function (fx, x, y, s) { play(fx || 'burst', { x: x || innerWidth / 2, y: y || innerHeight / 2, fs: s || 32, el: { textContent: '\uD83D\uDEF8' } }, 1, 0, 1 - IP); } };   // unit: debug only, centre of the screen
