@@ -1097,6 +1097,7 @@ body.paused .home-code::before{animation-play-state:paused}
   reset();if(!document.getElementById('home-main'))theme('teen');SIM_LIGHTS();readout();   // home: the middle layer is js/emoji-scene.js now (no rainbows; Danny 12:06 / 12:17 AWST 26 Oct)
 })();
 </script>
+<script>(function(w,d){if(w.DjDesk)return;var q=0,f=[];function L(c){f.push(c);if(q)return;q=1;var s=d.createElement("script");s.src="js/dj-vu-panel.js?v=vupanels1";s.async=true;s.onload=function(){var D=w.DjDesk;f.splice(0).forEach(function(g){if(D&&D.vp)g(D)})};s.onerror=function(){q=0;f.length=0};d.head.appendChild(s)}w.DjDesk={vumock:true,isOpen:false,open:function(){L(function(D){D.open()})},close:function(){},toggle:function(){this.open()},paint:function(){}}})(window,document)</script><!-- vupanels (Danny t328u 30 Oct): the faders button opens the VU panel desk (js/dj-vu-panel.js, fetched on the first tap); this face owns window.DjDesk first, so js/dj-desk.js serves only its registry and never builds the dial face -->
 <script src="js/quiz-dj-pill.js?v=deskapi1" defer></script>
 <script>/* pinned header: compacts once the page scrolls (dashboard sticky-head.js thresholds 72 / 8 px) */
 (function(){var h=document.getElementById('q-head');if(!h)return;var c=false,r=0;
