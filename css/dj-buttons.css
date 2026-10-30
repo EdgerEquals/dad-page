@@ -110,9 +110,21 @@ html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-
   animation:djb-fade var(--djb-drift) ease-in-out infinite,djbon-spin calc(var(--djb-drift) * var(--djb-phi)) linear infinite}
 .q-head .dj-pill.djb.is-playing .djp-ico{filter:drop-shadow(0 0 2px var(--djb-h2))}
 .q-head .dj-pill.djb.is-playing .djp-ico2{color:var(--djb-m)}
-@keyframes djbon-hop{0%,100%{translate:0 0}50%{translate:0 calc(-100% * var(--djb-4))}}   /* up PHI^-4 of its own size and back each beat */
-@keyframes djbon-sway{0%,100%{rotate:calc(-1turn * var(--djb-5) / 8)}50%{rotate:calc(1turn * var(--djb-5) / 8)}}   /* side to side over two beats; 1turn/8 = the note's lean (index.html rocket nose unit) */
+@keyframes djbon-hop{0%,100%{translate:0 0}50%{translate:0 calc(-100% * var(--djb-4) * (1 + var(--dd-e,0) * var(--djb-phi)))}}   /* up PHI^-4 of its own size and back each beat */
+@keyframes djbon-sway{0%,100%{rotate:calc(-1turn * var(--djb-5) / 8 * (1 + var(--dd-e,0) * var(--djb-phi)))}50%{rotate:calc(1turn * var(--djb-5) / 8 * (1 + var(--dd-e,0) * var(--djb-phi)))}}   /* side to side over two beats; 1turn/8 = the note's lean (index.html rocket nose unit) */
 @keyframes djbon-spin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.q-head .dj-pill.djb.is-playing,.q-head .dj-pill.djb.is-playing::before{animation:none!important}.q-head .dj-pill.djb.is-playing::before{opacity:0}}   /* colour only */
 html[data-theme="light"] .q-head .dj-pill.djb.is-playing::before{display:block}
 html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{color:var(--djb-k)}
+
+/* PILL DANCE stage 1 (Danny 11:23 AWST 30 Oct: 'use a combination of the speaker and the music note but we should look at the faces like the
+   expressions ... he can spin as well and rotate like doing cartwheels'): js/dj-pill-dance.js (loaded the first time the music is on) adds
+   the face (.djp-emo) and stacks WAAPI turns, flips, drift and bumps over this perspective (composite 'add'); the beat hop and sway above
+   grow with --dd-e, the music's energy 0..1 (PHI x at the peak). OFF and the light theme's off look are untouched. */
+.q-head .dj-pill.djb.is-playing{transform:perspective(calc(28px * var(--djb-phi) * var(--djb-phi) * var(--djb-phi)))}   /* phi: PHI^3 x the button (28 px, above) */
+.q-head .dj-pill.djb.is-playing:active{transform:perspective(calc(28px * var(--djb-phi) * var(--djb-phi) * var(--djb-phi))) scale(calc(1 - var(--djb-4)))}
+.q-head .dj-pill.djb .djp-emo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:calc(28px * var(--djb-1));line-height:1;pointer-events:none;opacity:0}   /* phi: the face PHI^-1 of the button */
+.q-head .dj-pill.djb.is-playing .djp-emo{display:flex}
+.q-head .dj-pill.djb.is-playing.dd-face .djp-emo{opacity:1}
+.q-head .dj-pill.djb.is-playing.dd-face .djp-ico{opacity:0;visibility:hidden}   /* hidden, so the second note's own fade cannot show through */
+@media(prefers-reduced-motion:reduce){.q-head .dj-pill.djb .djp-emo,.q-head .dj-pill.djb .djp-ico{transition:opacity calc(var(--djb-1) * 1s) ease-in-out}.q-head .dj-pill.djb.is-playing.dd-face .djp-ico{visibility:visible}}   /* faces cross-fade, nothing moves */
