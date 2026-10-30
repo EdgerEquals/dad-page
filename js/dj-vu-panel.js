@@ -20,7 +20,7 @@
   var HOLD = PHI;                     // phi rules 8: the peak holds PHI^1 s, then drops
   var REPAINT = PHI;                  // phi: values, playing and greyed states re-read every PHI^1 s while open
   var WAITP = Math.pow(PHI, -1);      // phi: while the DJ engine is still loading, look again every PHI^-1 s
-  var CSS = 'css/dj-vu-panel.css?v=vupanels1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
+  var CSS = 'css/dj-vu-panel.css?v=basstidy1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
   var de = doc.documentElement;
   function api() { var d = root.DadAutoDJ; return d && typeof d.params === 'function' && typeof d.mixer === 'function' ? d : null; }
   function DK() { var d = api(); return d && d.desk; }
@@ -57,7 +57,7 @@
     if (o.def != null && n > 1) vuHome(R, Math.max(0, Math.round(near(o.steps, o.def) / (n - 1) * SEG) - 1));
     function dis() { var g = ''; try { g = o.disabled ? o.disabled() : ''; } catch (e) {} return g || ''; }
     function paint() { var v = null; try { v = o.get(); } catch (e) {} var i = v == null ? -1 : near(o.steps, v), g = dis();
-      val.textContent = i < 0 ? '–' : o.labels[i]; vuLit(R, n > 1 && i >= 0 ? Math.round(i / (n - 1) * SEG) : 0, null);
+      var vo = o.val ? o.val() : null; val.textContent = vo != null ? vo : i < 0 ? '–' : o.labels[i]; vuLit(R, n > 1 && i >= 0 ? Math.round(i / (n - 1) * SEG) : 0, null);
       up.disabled = !!g || i < 0 || i >= n - 1; dn.disabled = !!g || i <= 0; r.classList.toggle('is-off', !!g); r.setAttribute('data-i', i);
       var out = false; try { out = !!(o.out && o.out()); } catch (e) {} r.classList.toggle('is-out', out);
       if (ms) ms.querySelectorAll('button').forEach(function (b) { b._sync(); }); }
@@ -88,9 +88,13 @@
         function () { return dial('fmM'); }, function (v) { dial('fmM', v); }, trackE, 'emergent = the pumps choose the sections; written = the style’s own; off = one arc per track')); },
     changes: function () { sec('harmony + melody faders'); body.appendChild(one('faders land', [['next track', 0], ['now', 1]], function () { return dial('dkNow'); }, function (v) { dial('dkNow', v); }, trackE,
       'now: the music rebuilds as you move them · next track: they wait for it')); },
-    bass: function () { var en = chE('bass'); sec('shape · pick any set');
-      body.appendChild(any('all shapes', function () { return !(dial('bShp') > 0); }, function () { dial('bShp', 0); }, en, 'every shape in the pool'));
-      BSN.forEach(function (nm, j) { body.appendChild(any(nm, function () { var m = dial('bShp'); return m > 0 && !!(m & (1 << j)); }, function () { var m = dial('bShp'); dial('bShp', (m > 0 ? m : 0) ^ (1 << j)); }, en)); }); },
+    bass: function () { var en = chE('bass'); sec('shape');   // basstidy1 (Danny t332u 'Tidy'): the 14 shape switches fold into one row that drills to them
+      body.appendChild(row({ label: 'shape', steps: [0].concat(BSN.map(function (_, j) { return j + 1; })), labels: ['all'].concat(BSN), def: 0, energy: en,
+        get: function () { var m = dial('bShp'); return !(m > 0) ? 0 : (m & (m - 1)) ? null : Math.round(Math.log(m) / Math.LN2) + 1; },
+        val: function () { var m = dial('bShp'), c = 0; if (m > 0 && (m & (m - 1))) { for (var j = 0; j < BSN.length; j++) if (m & (1 << j)) c++; return c + ' of ' + BSN.length; } return null; },
+        set: function (i) { dial('bShp', i > 0 ? 1 << (i - 1) : 0); }, drill: function () { go({ t: 'bshape' }); },
+        info: function () { return ['shape', ['the 303 line’s shapes, pick any set: tap the name to open them all', '▲ ▼ step through all, then each shape alone; while a set of several is picked they rest (open it to change the set)', BSN.length + ' shapes: ' + BSN.join(' · ')]]; } }));
+      },
     pad: function () { var en = chE('pad'); sec('shape · pick any set');
       PMS.forEach(function (x) { var b = x[1]; body.appendChild(any(x[0], function () { var m = dial('padM'); return b <= 0 ? m === b : m > 0 && !!(m & b); },
         function () { var m = dial('padM'); dial('padM', b <= 0 ? b : m > 0 ? m ^ b : b); }, en, b <= 0 ? 'stands alone' : null)); }); },
@@ -106,6 +110,21 @@
       body.appendChild(one('the middle', [['auto', 0], ['events', 1], ['talker', 2], ['choir bed', 3]], function () { return dial('voF'); }, function (v) { dial('voF', v); }, en, 'events: rest, a tease before each change · talker · choir bed')); }
   };
 
+  // the bass shapes page: 'all' + the 13 in phi-split groups (13 -> 8 | 5, 8 -> 5 | 3: no group over F5 = 5), one open at a time, by tap
+  function phiSplit(a) { if (a.length <= 5) return [a]; var k = Math.round(a.length * IPH); return phiSplit(a.slice(0, k)).concat(phiSplit(a.slice(k))); }
+  var bOpen = -1;
+  function bshape() { var en = chE('bass'), on = function (j) { var m = dial('bShp'); return m > 0 && !!(m & (1 << j)); }; ttl.textContent = 'Bass · shape';
+    body.appendChild(any('all shapes', function () { return !(dial('bShp') > 0); }, function () { dial('bShp', 0); }, en, 'every shape in the pool'));
+    var G = phiSplit(BSN.map(function (_, j) { return j; })), hs = [];
+    if (bOpen < 0) G.forEach(function (g, i) { if (bOpen < 0 && g.some(on)) bOpen = i; });
+    G.forEach(function (g, i) { var h = B('vp-nav vp-grp'), c = E('span', 'vp-val'), rs = [];
+      h.appendChild(E('span', null, BSN[g[0]] + ' – ' + BSN[g[g.length - 1]])); h.appendChild(c); h.appendChild(E('span', 'vp-chev', '›'));
+      h._c = function () { var n = g.filter(on).length; c.textContent = n ? n + ' on' : ''; };
+      h._s = function () { var o = bOpen === i; h.setAttribute('aria-expanded', o ? 'true' : 'false'); rs.forEach(function (r) { r.hidden = !o; }); h._c(); };
+      h.addEventListener('click', function () { bOpen = bOpen === i ? -2 : i; hs.forEach(function (x) { x._s(); }); });
+      body.appendChild(h); hs.push(h);
+      g.forEach(function (j) { var r = any(BSN[j], function () { return on(j); }, function () { var m = dial('bShp'); dial('bShp', (m > 0 ? m : 0) ^ (1 << j)); }, en); r.addEventListener('click', function () { hs.forEach(function (x) { x._c(); }); }); rs.push(r); body.appendChild(r); }); });
+    hs.forEach(function (x) { x._s(); }); }
   // ---------- the box, its pages, the info window ----------
   var el = null, head = null, body = null, back = null, ttl = null, win = null, stack = [], waitT = 0;
   function css() { if (doc.querySelector('link[data-vp]')) return; var l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = CSS; l.setAttribute('data-vp', '1'); doc.head.appendChild(l); }
@@ -128,7 +147,7 @@
   function render() { clear(); var top = stack[stack.length - 1], A = api(); back.hidden = stack.length < 2; shut();
     if (!A) { ttl.textContent = 'Ed’s desk'; waiting('the DJ is still loading'); }
     else if (!(A.params() || []).length) { ttl.textContent = 'Ed’s desk'; waiting('loading the desk'); A.paramsReady(function () { if (isOpen() && body.getAttribute('data-wait')) render(); }); }
-    else if (top.t === 'menu') menu(); else if (top.t === 'panel') panel(top.id); else mixer(top.node);
+    else if (top.t === 'menu') menu(); else if (top.t === 'panel') panel(top.id); else if (top.t === 'bshape') bshape(); else mixer(top.node);
     body.scrollTop = 0; var m = doc.getElementById('home-main'); if (m) m.scrollTop = 0; if (!io) ROWS.forEach(function (r) { r.on = true; }); loop(); }
   function go(o) { stack.push(o); render(); }
   function panels() { var out = [], by = {}; (api().params() || []).forEach(function (p) { var k = p.panel || 'all'; if (!by[k]) { by[k] = { id: k, label: p.panelLabel || k, list: [] }; out.push(by[k]); } by[k].list.push(p); }); return out; }

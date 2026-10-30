@@ -70,3 +70,10 @@ html[data-desk][data-vp]:not([data-desk-full]) #home-main{width:fit-content!impo
 .vp-win p:last-child{font:400 .618rem/1.382 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--g)}
 @keyframes vp-in{from{opacity:0;transform:translateY(.382rem)}}
 @media (prefers-reduced-motion:reduce){.vp-win{animation:none}}
+/* basstidy1: the bass shapes page, its phi-split groups open by tap, one at a time; a closed group's rows are out of the flow */
+.vp-row[hidden]{display:none}
+#dj-desk .vp-grp{gap:var(--gap)}
+.vp-grp .vp-val{margin:0;font-size:.854rem}
+.vp-grp .vp-chev{transition:transform .236s}
+.vp-grp[aria-expanded=true] .vp-chev{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.vp-grp .vp-chev{transition:none}}
