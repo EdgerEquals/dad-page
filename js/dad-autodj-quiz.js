@@ -164,7 +164,7 @@
                    kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.o.x.o.x.o.x.o.', rev: 0.2 },
     'upbeat-pop':{ scale: 'major', root: 53, progs: [[0, 4, 5, 3], [3, 4, 0, 5]], bars: 1, chords: 'stab', steps: [2, 6, 10, 14], wave: 'sawtooth', cut: 2600, bass: 'octave', bwave: 'sawtooth', mel: 0.32, lead: 'saw', resp: 'pluck', ro: 0,
                    kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.', rev: 0.2 },
-    electronic:  { scale: 'minor', root: 45, progs: [[0, 5, 3, 4], [0, 6, 5, 4]], bars: 1, chords: 'pad', wave: 'sawtooth', cut: 1200, arp: 1, bass: 'eighths', bwave: 'square', mel: 0.12, lead: 'square', resp: 'bell', ro: 12,
+    electronic:  { floor: 1, carry: 1, scale: 'minor', root: 45, progs: [[0, 5, 3, 4], [0, 6, 5, 4]], bars: 1, chords: 'pad', wave: 'sawtooth', cut: 1200, arp: 1, bass: 'eighths', bwave: 'square', mel: 0.12, lead: 'square', resp: 'bell', ro: 12,
                    kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'oxoxoxoxoxoxoxox', rev: 0.25 },
     // ELECTRO (Danny 15:2x-15:42 AWST 27 Oct, Claude chat: 'I'm gonna start with electro ... build an 808 straight away ... the two
     // versions'): the 808 bank plays the drums (bank: 1, js/dj-extras.js + js/vendor/driftbox-808.js), the genre keeps its own drums
@@ -190,6 +190,7 @@
   function home(k) { var g = GEN[k], S16 = SPB * SPB, n = 0;                // a genre's own place: drum steps hit per bar, mode brightness
     for (var i = 0; i < S16; i++) if (['kick', 'snare', 'hat', 'shaker', 'tom'].some(function (d) { return g[d] && g[d][i % g[d].length] !== '.'; })) n++;
     return { drive: n / S16, brightness: 1 - FIFTHS.indexOf(g.scale) / (FIFTHS.length - 1) }; }
+  var HDV = {}; function hDrive(k) { if (HDV[k] == null) HDV[k] = GEN[k] ? home(k).drive : 0; return HDV[k]; }   // a style's own drum share, read once (CARRY)
   // RANDOM STYLE (Danny 18:53 AWST 27 Oct, Claude chat: 'Keep auto and add random'): auto = the pumps choose (as before); random = each new
   // track draws any style but the one playing, by chance (Math.random, not the golden sequence), so it is truly unpredictable
   function rndG(c) { var lv = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], gs = c.genres.filter(function (g) { return !lv || g !== lv.genre; }); return gs.length ? gs[Math.floor(Math.random() * gs.length)] : c.genres[0]; }
@@ -717,6 +718,7 @@
       for (var i = 0; i < opt.length; i++) { x -= w[i]; if (x <= 0) { an = opt[i]; break; } }
       p.an = an; p.pat = an.A;
     } else { p.an = prev.an; p.pat = prev.an.B; p.ps = prev.ps; }
+    p.fl = gold(tr, bar, 44) < clamp(+tr.g.floor || 0, 0, 1); if (p.fl && tr.g.kick) p.pat = Object.assign({}, p.pat, { kick: tr.g.kick });   // FOUR ON THE FLOOR (Danny 11:12 AWST 30 Oct: dance 'more driving, four-to-the-floor'): on g.floor of bars (a coupling, golden draw per bar) the kick is the style's own, whatever the donor, the anchor or the peak's 3+3+2 would give, and unshifted
     p.kmask = maskOf(p.pat.kick); p.smask = maskOf(p.pat.snare);
     // density target for running (off-anchor) notes: rises through the phrase (PHI^-1 per bar left), from density against space
     p.x = clamp(Math.pow(PHI, -bl * IPH) * (IPH + (dm.density - spc) * IPH), 0, 1);
@@ -728,18 +730,27 @@
     var fx = tr.fx; if (fx && fx.next && fx.next.f === 'drop' && fx.bi === fx.s.b - 1) { p.stop = DIAL.fmS > 0; p.L16 = clamp(Math.round(DIAL.fmS), 1, 16); }   // FORM: the stop before the drop
     if (fx && fx.bi === 0 && (fx.s.f === 'drop' || fx.s.f === 'lift') && bar > 0) p.slam = true;   // ... and the drop (or a lift) slams its first downbeat
     p.slam = !!(p.slam || (prev && prev.stop && prev.bar === bar - 1));   // FORM fix (emergent form, 09:2x 28 Oct): this line used to overwrite the lift's slam just above, so a lift never slammed
+    // CARRY THROUGH THE STOPS (Danny 11:08 / 11:12 AWST 30 Oct: the bass, the melody and the pads all stop together too often; dance needs its
+    // parts to carry through the breaks; the shared stops suit quirky / ambient). A phrase-end stop used to silence every part at once (RQ) and
+    // duck the bass and pad buses under it. Now, in a style with a carry coupling (g.carry, C 0..1), each part draws whether it plays through:
+    // cH = carry x the style's own drum share (home().drive, the place the genre already sits on the drive axis) x the section's energy, so it
+    // grows with the energy and vanishes in a drumless style. Bass and lead share one draw from opposite ends (bass under cH, lead over 1 - cH):
+    // past cH = 1/2 at least one of them always carries; the arp carries on cH^PHI, chords, pad and answer each on their own draw at cH^(PHI^2).
+    // The drums always stop. The stop before a drop stays whole. Styles without g.carry are unchanged.
+    p.cy = {}; var cH = p.stop && !(fx && fx.next && fx.next.f === 'drop' && fx.bi === fx.s.b - 1) ? clamp(+tr.g.carry || 0, 0, 1) * hDrive(tr.genre) * (fx ? fx.e : e) : 0;
+    if (cH > 0) { var u0 = gold(tr, bar, 41); p.cy.bass = u0 < cH; p.cy.lead = u0 > 1 - cH; p.cy.arp = gold(tr, bar, 42) < Math.pow(cH, PHI); ['chords', 'pad', 'answer'].forEach(function (k, i) { p.cy[k] = gold(tr, bar, 43 + i) < Math.pow(cH, PHI * PHI); }); }   // phi: the ringing parts carry a rung less than the arp, the arp a rung less than bass / lead
     p.c = Math.pow(PHI, (2 * drv - 1) * 2 * clamp(RD.contrast + vbV() * clamp(DIAL.vbY, 0, 1) / 2, 0, 1)) * Math.pow(PHI, o);   // VIBE: accent contrast +-1/2                           // accent contrast exponent PHI^-1 .. PHI; djcollide x PHI^o
     p.roll = p.an.half && gold(tr, bar, 12) < dm.tension * 2 * RD.roll * (1 + o * PHI) && bar % 2 === 1; p.rollN = gold(tr, bar, 13) < 1 / 2 ? 2 : 3;   // trap hat rolls: 32nds or 16th-note triplets on the last beat
     p.lb = (SPM / tr.bpm) * Math.pow(PHI, -5) * clamp(spc * (1 - drv) * 2 * RD.laid * 2, 0, 1);       // laid-back snare/comp: up to a beat x PHI^-5 (Danielsen: 8-12% of a quarter)
     p.ghost = (1 - drv) * dm.density * 2 * RD.ghost; p.ghost += o * Math.max(0, 1 - p.ghost); p.o = o;  // ghost-note layer level share (djcollide: + o)
     p.dk = Math.pow(PHI, -2 * drv * kdOf(tr));                                                         // duck depth on each kick (ELECTRO ROLLS ON: times the template's coupling; electro's is 0)
     var d16 = SPM / tr.bpm / SPB;
-    if (tr.dk && p.stop) { var ts = t + (16 - p.L16) * d16, td = t + 16 * d16; [tr.dk, tr.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(Math.pow(PHI, -4), ts, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, td - Math.pow(PHI, -8), Math.pow(PHI, -8)); }); }
+    if (tr.dk && p.stop) { var ts = t + (16 - p.L16) * d16, td = t + 16 * d16; [p.cy.pad ? null : tr.dk, p.cy.bass ? null : tr.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(Math.pow(PHI, -4), ts, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, td - Math.pow(PHI, -8), Math.pow(PHI, -8)); }); }
     tr.rp = p; RPN = p;
   }
-  function RQ(part, tk, t, v, m, d) {
+  function RQ(part, tk, t, v, m, d, ch) {
     var p = tk && tk.rp; if (!p) return v; var s16 = tk.step % 16, d16 = SPM / tk.bpm / SPB;
-    if (p.stop && s16 >= 16 - p.L16) return 0;
+    if (p.stop && s16 >= 16 - p.L16 && !(p.cy && p.cy[typeof ch === 'string' ? ch : part])) return 0;   // CARRY: a part that carries plays through the stop
     if (p.rest[part]) return 0;
     if ((part === 'chords' || part === 'bass') && d < d16 * SPB) {
       var on = part === 'bass' ? p.kmask : p.kmask | p.smask;
@@ -825,9 +836,9 @@
     // drums
     if (fx && fx.s.f === 'roll' && DIAL.fmR > 0 && X && X.hit && fx.s.b - fx.bi <= DIAL.fmR) { var rp0 = (DIAL.fmR - (fx.s.b - fx.bi) + s16 / 16) / DIAL.fmR, rdv = rp0 < IPH * IPH ? SPB : rp0 < IPH ? 2 : 1;   // FORM: the build's snare roll, quarters -> eighths -> sixteenths, rising a rung at a time
       if (s16 % rdv === 0) { var rv = Math.pow(PHI, -2 * (1 - rp0)) * (dyn || 1); X.hit(tr.L.drums, 'snare', t, rv); rec('drums', GM.snare, t, dur16, rv * gAt(tr, t)); } }
-    if (X && X.hit && peak && !g.own && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
+    if (X && X.hit && peak && !g.own && !(tr.rp && tr.rp.fl) && (tr.dr || g).kick && K332.indexOf(s16) >= 0) { var kv = vl(s16, dyn); X.hit(tr.L.drums, 'kick', t, kv); kD(tr, t); rec('drums', GM.kick, t, dur16, kv * gAt(tr, t)); }   // 3+3+2 kick at the peak
     if (X && X.hit && fill && ((tr.dr || g).snare || (tr.dr || g).tom) && s16 >= 16 - SPB) { var fv = Math.pow(PHI, -(16 - s16)) * PHI * (dyn || 1), fk = s16 % 2 ? 'snare' : 'tom'; X.hit(tr.L.drums, fk, t, fv); rec('drums', GM[fk], t, dur16, fv * gAt(tr, t)); }   // phi: fill rising a rung per sixteenth on the last beat
-    if (X && X.hit) ['kick', 'snare', 'clap', 'hat', 'shaker', 'tom', 'cow'].forEach(function (k) { if (k === 'kick' && peak && !g.own) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = RPAT(tr, k, (tr.dr || g)[k]); if (pat && (v = pat[(s16 + (tr.shift || 0)) % pat.length]) !== '.') { var hv = (g.own ? Math.pow(PHI, -depth(s16) * (RPN.c || 1) * Math.pow(IPH, 3)) * (dyn || 1) : vl(s16, dyn)) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv, v); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down   // a style with its own kit (electro) keeps its kick at the peak
+    if (X && X.hit) ['kick', 'snare', 'clap', 'hat', 'shaker', 'tom', 'cow'].forEach(function (k) { if (k === 'kick' && peak && !g.own && !(tr.rp && tr.rp.fl)) return; if (fill && s16 >= 16 - SPB && (k === 'snare' || k === 'tom')) return; var pat = RPAT(tr, k, (tr.dr || g)[k]); if (pat && (v = pat[(s16 + (k === 'kick' && tr.rp && tr.rp.fl ? 0 : tr.shift || 0)) % pat.length]) !== '.') { var hv = (g.own ? Math.pow(PHI, -depth(s16) * (RPN.c || 1) * Math.pow(IPH, 3)) * (dyn || 1) : vl(s16, dyn)) * (v === 'x' ? 1 : IPH); X.hit(tr.L.drums, k, t, hv, v); if (k === 'kick') kD(tr, t); rec('drums', GM[k], t, dur16, hv * gAt(tr, t)); } });   // drums fade with the crossfade too (MIDI Bot review);   // phi: soft hits a rung down   // a style with its own kit (electro) keeps its kick at the peak
     ghostStep(tr, t); if (s16 % 4 === 0) beat(t, s16 === 0);
     if (s16 === 0 && !tr.leaving) recBar(tr, t, st);                     // the live track's downbeat, for the .mid's bar lines
   }
@@ -1059,7 +1070,7 @@
   function acidStep(tr, t, s16, bn, dur16, dyn) {
     var P = acidPat(tr), pat = Math.floor(tr.step / 16) % 2 ? P.B : P.A, st = pat[s16], p = tr.rp, e = tr.e == null ? 1 : tr.e;
     var dn = IPH * IPH + (1 - IPH * IPH - Math.pow(IPH, 3)) * e, nx = pat[(s16 + 1) % 16];
-    if (st.rank >= dn || st.iv == null || !chOn('bass') || !fOn(tr, 'bass') || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16)))) { tr.acFrom = null; return; }
+    if (st.rank >= dn || st.iv == null || !chOn('bass') || !fOn(tr, 'bass') || (p && (p.rest.bass || (p.stop && s16 >= 16 - p.L16 && !(p.cy && p.cy.bass))))) { tr.acFrom = null; return; }
     var m = bn + st.iv, v = vl(s16, dyn) * (st.acc ? 1 : IPH), slide = st.slide && nx.rank < dn && nx.iv != null, hd = st.hold > 0 ? dur16 * (st.hold + IPH) : 0, d = hd || dur16 * (slide ? 1 + Math.pow(IPH, 6) : IPH);   // a held note: its steps plus PHI^-1 of one   // phi: a held slide just outlasts its step, a plain note is PHI^-1 of it
     act('bass', t, v, tr); if (X && X.acid) X.acid(tr.L.bass, { m: m, t: t, step: dur16, hold: hd, acc: st.acc, slide: slide, from: tr.acFrom, v: v, e: e, wave: P.wave });
     else INST.bass(tr.L.bass, mtof(m), t, d, v);
@@ -1067,7 +1078,7 @@
     if (VH) try { VH('bass', tr.L.bass, m, t, d, v); } catch (er) {}
     rec('bass', m, t, d, v * gAt(tr, t));
   }
-  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch) || !fOn(tr.tk || tr, ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d); if (!(q > 0)) return; v = q; act(ch, t, v, tr.tk || tr); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
+  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch) || !fOn(tr.tk || tr, ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d, ch); if (!(q > 0)) return; v = q; act(ch, t, v, tr.tk || tr); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u * Math.pow(PHI, -2 * Math.max(0, vbV()) * clamp(DIAL.vbY, 0, 1)); return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
 
