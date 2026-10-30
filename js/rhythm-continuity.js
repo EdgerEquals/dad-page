@@ -197,7 +197,7 @@
   // Tap-rung beat: quick feedback = B x PHI^-10 (shared.md timing table), with the dashboard's breath slot B = PHI^5 (rule 3 loop slot)
   // -> PHI^-5 s, the first phi rung inside the 0.1 s tap rail.
   var TAP = Math.pow(PHI, 5) * Math.pow(PHI, -10), TOP = 5, LOGK = 'dadRhythm.audiolog.v1', LOGN = 89;   // phi: B x PHI^-10, B = PHI^5; ladder to PHI^5 beats; Fibonacci log
-  var AU = { bgInt: false, ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
+  var AU = { ck: null, bgInt: false, ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
   try { AU.log = JSON.parse(root.localStorage.getItem(LOGK) || '[]') || []; } catch (e) { AU.log = []; }
   function kit() { var D = root.DadAutoDJ; return D && D._kit ? D : null; }
   function wanted() { var D = kit(); return !!(D && D.playing); }
@@ -257,13 +257,19 @@
   // djbtnfix (Danny 21:0x AWST 26 Oct, 'erratic'): a press on the DJ's own controls is theirs alone. Before, a stalled DJ was resumed
   // here on the touch press and then the switch's own click saw 'playing' and stopped it again (one tap, two flips, net silence).
   var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp,#dj-desk';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
+  function mark() { var c = AU.ctx, k = AU.ck; if (c && (!k || k[0] !== c || k[1] !== c.currentTime)) AU.ck = [c, c.currentTime, Date.now()]; }   // the clock sample a frozen-clock tap compares with (an unchanged clock keeps its first sample)
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
     var tg = e && e.target; if (tg && tg.closest && tg.closest(OWN)) return;
     hook(); if (!wanted() || !AU.ctx) return;
-    var ok = done() && !AU.down; if (ok && elOn()) return;                        // all well: the tap is not a resume
+    var c = AU.ctx, tn = Date.now(), ck = AU.ck, fz = c.state === 'running' && ck && ck[0] === c && c.currentTime === ck[1] && tn - ck[2] > IP * MS; mark();   // frozen clock: running, but currentTime has not moved since the return to the page or a tap more than PHI^-1 s ago
+    var ok = done() && !AU.down && !fz; if (ok && elOn()) return;                 // all well: the tap is not a resume
     var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift   // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
     if (ok) { note('gesture ' + e.type + ': re-arm bridge'); try { kit()._kit.wake(); } catch (er) {} return; }   // sound is there on the direct path: the tap only re-arms the bridge, inside the gesture (no timer retries it)
-    note('gesture ' + e.type + ': ' + st()); if (st() === 'closed') rebuild('gesture, closed');
+    note('gesture ' + e.type + ': ' + st()); var as = navigator.audioSession, lift2 = e.type !== 'pointerdown' || e.pointerType === 'mouse';
+    // taprebuild1 (Danny 13:51 AWST 30 Oct: 'when I come out of this chat it won't resume playing'): a real tap (finger lift, click, key; never a timer,
+    // never while hidden) on a DJ that should play but whose context is not running, is frozen, or sits in an interrupted session: rebuild the engine
+    // here, inside the tap (WebKit's user-gesture rule), at the track's wall-clock position (the DJ's own rebuild -> start(spec())).
+    if (st() === 'closed' || (lift2 && (st() !== 'running' || fz || (as && as.state === 'interrupted')))) { rebuild('tap, ' + (fz ? 'frozen clock' : st()) + (as && as.state ? ', session ' + as.state : '')); finish(); return; }
     var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (er) {} playEl();
     var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck) rebuild('gesture, still stuck after the ladder'); }   // a plain resume first; rebuild only if that fails too
     if (p && p.then) p.then(chk, chk);
@@ -305,7 +311,7 @@
   try { var ASn = navigator.audioSession; if (ASn && 'state' in ASn && ASn.addEventListener) ASn.addEventListener('statechange', function () { note('session: ' + ASn.state);
     if (ASn.state === 'interrupted') { if (doc.hidden) AU.bgInt = true; } else if (AU.bgInt) { AU.bgInt = false; endInt('session ' + ASn.state); } }); } catch (e) {}
   function poke(why) { return function () { hook(); if (!wanted()) { drop(); return; } if (AU.down || !done()) later(why); }; }
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden) poke('visible')(); });
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden) { hook(); mark(); poke('visible')(); } });
   root.addEventListener('pageshow', poke('pageshow'));
   root.addEventListener('focus', poke('focus'));
   doc.addEventListener('resume', poke('resume'));
