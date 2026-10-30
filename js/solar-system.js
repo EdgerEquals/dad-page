@@ -123,7 +123,7 @@
   }
   // the screen frame: the fixed Sun (PingLayer 'sun' anchor = PhiSun) and the one scale, recomputed per call (cheap; follows resizes)
   function frame() {
-    if (root.ZoomCam && ZoomCam.on) return ZoomCam.frame(baseFrame());   // zoomcam1: the camera body's view (js/zoom-camera.js), else the home frame
+    if (root.ZoomCam && ZoomCam.on) return ZoomCam.frame(baseFrame());
     return baseFrame();
   }
   function baseFrame() {
@@ -145,7 +145,7 @@
   function period(id) { var b = B[id]; return (b.kind === 'planet' ? b.Pyr * YRMS : b.Ps * MS) / MS / TIME; }   // unit: model seconds per real orbit
   function screenGM(id, F) { F = F || frame(); var g = id === 'sun' ? GMS : B[id].gm, k = F.kmPerPx; return g / (k * k * k) * TIME * TIME; }   // unit: px^3 per model s^2 (same km/px, same TIME)
   root.SolarSystem = {
-    helio: function (id, D) { return helio(id, D); }, baseFrame: function () { return baseFrame(); }, GMS: GMS, G: G,   // zoomcam1: raw km positions at a date, the home frame
+    helio: function (id, D) { return helio(id, D); }, baseFrame: function () { return baseFrame(); }, GMS: GMS, G: G,
     PHI_TIME: 34, TIME: TIME, REACH: REACH, bodies: B, order: ORDER, frame: frame, at: at, lon: lon, period: period, date: dateOf,
     gm: function (id) { return id === 'sun' ? GMS : B[id].gm; },          // real GM (km^3/s^2)
     mass: function (id) { return (id === 'sun' ? GMS : B[id].gm) / G; },  // real mass (kg)
