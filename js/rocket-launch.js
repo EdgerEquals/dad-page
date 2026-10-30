@@ -71,13 +71,32 @@
   var count = 1, pump = null;
   function k() { var P = root.PhiPumps; if (P && !pump) pump = P.node('rocket', 3, 6, Math.pow(IP, 4), P.page, 21); try { return pump ? pump.out() : 1; } catch (e) { return 1; } }   // phi: 3 pumps, rungs 6.., depth PHI^-4
   function fr(x) { return x - Math.floor(x); }
-  function shake(amp, span) {                                              // pad shake + wobble, then shrink to zero with the climb; span = pad + PHI^-1 climb (ms)
+  // rocketpumps (Danny t319u 30 Oct: 'all the parameters ... coming from our pumps and how we stack the pumps. We stack more if we want
+  // higher frequency ... nothing fixed, just within boundaries, but boundaries are still ratios'). Every explosion / wobble parameter is
+  // PHI^(lo..hi) x an existing quantity, the exponent freewheeling on its own stack of PhiPumps modes (child of the page node), read at
+  // the moment it applies. Stack = pumps, first rung: more pumps on faster rungs = faster, busier variation.
+  //   per kick (5 pumps, PHI^1.. s):  swing period WP x PHI^(-1/2..1/2); damping (decay time) period x PHI^(1/2..3/2)
+  //   per extra (3 pumps, PHI^2.. s): kick shrink PHI^(-1..-1/2) of the last kick; blast size shrink PHI^(-3/4..-1/4) of the last;
+  //                                   gaps PHI^(-6+j) x the climb x PHI^(-1/2..0); virtual offset S PHI^-1 x PHI^(-1/4..1/4) (its torque
+  //                                   leans the kick step, held inside PHI^(-1..-1/2), so every kick is smaller than the last);
+  //                                   side (sign, 'rocket:sides', as before)
+  //   per launch (3 pumps, PHI^4.. s): liftoff kick TAU/34 x PHI^(-1/2..1/2); first extra PHI^-2 x the climb x PHI^(0..1/2) (after the
+  //                                   flash); pad shake size x PHI^(-1/2..1/2); pad wobble period WP x PHI^(-1/2..1/2)
+  // Before the pumps load: the golden sequence of the launch number (salted per parameter). Never reads 'collisions:boom'.
+  var BN = {};
+  function band(name, n, k0, seed, lo, hi, dt, salt) { var P = root.PhiPumps, m = null, q = BN[name];
+    if (P && !q) q = BN[name] = P.node('rocket:' + name, n, k0, 1, P.page, seed);
+    try { m = q ? q.modes(P.now() + (dt || 0) / MS) : null; } catch (e) {}
+    if (m == null) m = 2 * fr(count * PHI + (seed + (salt || 0)) * IP) - 1;
+    m = Math.max(-1, Math.min(1, m * PHI));                               // phi: the modes' mean stretched by PHI (as the booms count) so the bounds are reached
+    return Math.pow(PHI, lo + (hi - lo) * (m + 1) / 2); }
+  function shake(amp, span, wp) {                                              // pad shake + wobble, then shrink to zero with the climb; span = pad + PHI^-1 climb (ms)
     var f = [], L = PAD / (PAD + IP);                                       // phi: liftoff at the pad's share of the span (= PHI^-2 of it)
     for (var i = 0; i <= KEYS; i++) {
       var p = i / KEYS, e = p < L ? Math.min(1, Math.pow(p / (L * IP * IP), PHI)) : Math.pow(1 - (p - L) / (1 - L), PHI * PHI);   // phi: up over PHI^-2 of the pad (^PHI), hold, shrink (1-u)^PHI^2
       if (i === 0 || i === KEYS) e = 0;
       var sx = (i % 2 ? 1 : -1) * (IP + fr((i + count) * PHI) * IP * IP);  // phi: side to side, golden-irregular, alternating each key
-      var sr = Math.sin(TAU * p * span / MS / WP) * (1 - fr((i + count) * IP * IP) * Math.pow(IP, 3));   // phi: slower wobble, PHI^-2 s period, golden-irregular size
+      var sr = Math.sin(TAU * p * span / MS / wp) * (1 - fr((i + count) * IP * IP) * Math.pow(IP, 3));   // phi: slower wobble, PHI^-2 s period, golden-irregular size
       f.push({ offset: p, translate: (e * sx * JX * amp) + 'em 0', rotate: (e * sr * WOB * amp) + 'rad' });
     }
     return f;
@@ -109,7 +128,7 @@
     gl.animate(path(bend, H + h), { duration: D, delay: S, easing: 'linear', fill: 'both' });   // the Sun's pull, sampled from the climb
     if (root.RocketBlast) RocketBlast.sync(up, el, kk);                    // liftoff blast at the pad
     booms(up, kk, bend);                                                   // launchbooms: 0..3 more on the climb
-    gl.animate(shake(kk, S + D * IP), { duration: S + D * IP, easing: 'linear' });   // phi: shake spans the pad + PHI^-1 of the climb (= D), liftoff at S
+    gl.animate(shake(kk * band('shake', 3, 4, 144, -1 / 2, 1 / 2), S + D * IP, WP * band('padswing', 3, 4, 233, -1 / 2, 1 / 2)), { duration: S + D * IP, easing: 'linear' });   // phi: shake spans the pad + PHI^-1 of the climb (= D), liftoff at S
   }
   // ---------- launchbooms: 0..3 extra explosions on the climb ----------
   var FIB = [1, 1, 2, 3, 5, 8], NX = 3, bp = null, plans = [], SM = [], sraf = 0, HS = [];   // spec: Danny t278u 'between no extra ones and three extra ones' (NX = 3); Fibonacci piece counts
@@ -125,9 +144,9 @@
       q.e.style.transform = K.T(h ? h[1] + q.dx : q.x, (h ? h[2] : q.y) - q.S * IP * u, 0, IP + (PHI - IP) * Math.sqrt(u)); q.e.style.opacity = (1 - Math.pow(IP, 3)) * (1 - u) * Math.pow(IP, q.k * IP);   // phi: rises PHI^-1 of its size, swells PHI^-1 -> PHI, older puffs fainter
       return true; });
     if (SM.length && !doc.hidden) sraf = requestAnimationFrame(smoke); else { SM.forEach(function (q) { q.e.remove(); }); SM = []; HS = []; } }
-  function boom(j, kk, ln, side) {                                         // extra explosion j (1..3) centred on the rocket, PHI^(-j/2) of its size; side: only the kick's virtual impulse point
+  function boom(j, kk, ln, side, sz) {                                         // extra explosion j (1..3) centred on the rocket, sz of its size (pumped); side: only the kick's virtual impulse point
     var p = tail(); if (!p.on || doc.hidden) return;
-    draw(p.x, p.y, p.S * Math.pow(IP, j / 2), FIB[5 - j], kk, ln, j, true); }   // phi: half a phi step smaller each; 5, 3, 2 pieces
+    draw(p.x, p.y, p.S * sz, FIB[5 - j], kk, ln, j, true); }   // 5, 3, 2 pieces
   function draw(x, y, S, c, kk, ln, j, follow, dx) {                       // glow + c sparks + c puffs at x, y, size S; follow: the smoke trails the rocket, dx to its side
     var B = root.RocketBlast, K = B && B.kit; if (!K) return;
     var life = MS * kk, i, e, now = performance.now();
@@ -202,12 +221,12 @@
     try { m = sp ? sp.modes(P.now() + dt / MS) : null; } catch (e) {}
     if (m == null) m = fr((count + j) * PHI) - 1 / 2;   // phi: no pumps: golden sequence
     return m < 0 ? -1 : 1; }
-  var KICK = TAU / 34, KT = WP * MS, KD = WP * PHI * MS, KS = WP * Math.pow(PHI, 4) * MS, KN = 233;   // phi: kick TAU/34; period PHI^-2 s, decay PHI x it, rings PHI^4 periods; 233 keys
+  var KICK = TAU / 34, KS = WP * Math.pow(PHI, 4) * MS, KN = 377;   // phi: base kick TAU/34 (pumped per launch); KS: a liftoff missed by more than PHI^4 base periods gets no kick; 377 keys (Fibonacci)
   function kicks(K, wait, D, bend, S) {                                    // one damped-pendulum track for the launch: K = [[t from liftoff ms, size ratio, side]]; D climb ms, bend px, S rocket px
     if (!K.length || (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return null;
-    var t0 = K[0][0], span = K[K.length - 1][0] - t0 + KS, f = [], i, j, tt, th, u, x, r = S / 2, c, sn;   // unit: nose to centre, half the box
+    var t0 = K[0][0], span = K[K.length - 1][0] - t0 + K[K.length - 1][4] * Math.pow(PHI, 3), f = [], i, j, tt, th, u, x, r = S / 2, c, sn;   // unit: nose to centre, half the box
     for (i = 0; i <= KN; i++) { tt = t0 + span * i / KN; th = 0;
-      for (j = 0; j < K.length; j++) if (tt >= K[j][0]) { u = tt - K[j][0]; th += K[j][2] * KICK * K[j][1] * Math.sin(TAU * u / KT) * Math.exp(-u / KD); }
+      for (j = 0; j < K.length; j++) if (tt >= K[j][0]) { u = tt - K[j][0]; th += K[j][2] * KICK * K[j][1] * Math.sin(TAU * u / K[j][3]) * Math.exp(-u / K[j][4]); }
       if (i === KN) th = 0;
       x = bend * Math.pow(climbY(Math.max(0, Math.min(1, tt / D))), PHI); c = Math.cos(th); sn = Math.sin(th);   // the path's offset ('rotate' turns about the box centre)
       f.push({ offset: i / KN, rotate: th + 'rad', translate: (x * (1 - c) - r * sn) + 'px ' + (r * (c - 1) - x * sn) + 'px' }); }   // pivot on the nose
@@ -215,12 +234,15 @@
   function booms(climb, kk, bend) {   // from liftoff: n extras after the flash
     if (!climb || !climb.effect) return;
     (climb.ready || Promise.resolve()).then(function () {
-      var tm = climb.effect.getTiming(), D = +tm.duration || RISE * MS * kk, wait = (tm.delay || 0) - (climb.currentTime || 0), nx = extras(), ln = count, t = D * IP * IP, ts = [], sd = [], K = [], j;   // phi: the climb (PHI^3 s pumped) if unknown; first after PHI^-2 of it
-      if (wait > -KS) K.push([0, 1, sideAt(0, wait)]);   // the liftoff kick, the biggest
-      for (j = 1; j <= nx; j++) { t += D * Math.pow(IP, 6 - j); ts.push(Math.round(t)); var s = sideAt(j, wait + t); sd.push(s);   // phi: gaps PHI^-5, -4, -3 of the climb
-        if (wait + t > 0) { K.push([t, Math.pow(IP, j / 2), s]); (function (j, s) { setTimeout(function () { if (climb.playState !== 'idle') boom(j, kk, ln, s); }, wait + t); })(j, s); } }   // blast right: rotate + (tail left); past (late load): skipped
+      var tm = climb.effect.getTiming(), D = +tm.duration || RISE * MS * kk, wait = (tm.delay || 0) - (climb.currentTime || 0), nx = extras(), ln = count, t = D * IP * IP * band('start', 3, 4, 377, 0, 1 / 2, wait), ts = [], sd = [], K = [], j, ka = band('kick', 3, 4, 610, -1 / 2, 1 / 2, wait), sz = 1;
+      function kick(at, a, s) { var T = WP * MS * band('swing', 5, 1, 987, -1 / 2, 1 / 2, at); return [at - wait, a, s, T, T * band('damp', 5, 1, 1597, 1 / 2, 3 / 2, at)]; }   // per kick: its period and decay time   // phi: the climb (PHI^3 s pumped) if unknown; first after PHI^-2 of it
+      if (wait > -KS) K.push(kick(wait, ka, sideAt(0, wait)));   // the liftoff kick, the biggest
+      for (j = 1; j <= nx; j++) { t += D * Math.pow(IP, 6 - j) * band('gap', 3, 2, 2584, -1 / 2, 0, wait + t, j); ts.push(Math.round(t)); var s = sideAt(j, wait + t); sd.push(s);
+        var off = band('offset', 3, 2, 10946, -1 / 4, 1 / 4, wait + t, j); ka *= Math.max(IP, Math.min(Math.sqrt(IP), band('kickstep', 3, 2, 4181, -1, -1 / 2, wait + t, j) * off));   // rule 24: each kick a pumped PHI^(-1..-1/2) of the last, its virtual offset (S PHI^-1 x off) leaning it within those bounds
+        sz *= band('size', 3, 2, 6765, -3 / 4, -1 / 4, wait + t, j);         // rule 24: each blast a pumped PHI^(-3/4..-1/4) of the last
+        if (wait + t > 0) { K.push(kick(wait + t, ka, s)); (function (j, s, z) { setTimeout(function () { if (climb.playState !== 'idle') boom(j, kk, ln, s, z); }, wait + t); })(j, s, sz); } }   // blast right: rotate + (tail left); past (late load): skipped
       var w = kicks(K, wait, D, bend || 0, parseFloat(getComputedStyle(el).fontSize) || 0);
-      plans.push({ launch: ln, extras: nx, at: ts, sides: sd, kicks: K.map(function (q) { return [Math.round(q[0]), +q[1].toFixed(3), q[2]]; }), wobble: !!w, climb: Math.round(D) }); if (plans.length > 13) plans.shift();
+      plans.push({ launch: ln, extras: nx, at: ts, sides: sd, kicks: K.map(function (q) { return [Math.round(q[0]), +q[1].toFixed(3), q[2], Math.round(q[3]), Math.round(q[4])]; }), wobble: !!w, climb: Math.round(D) }); if (plans.length > 13) plans.shift();
     }, function () {}); }
   var t = 0; function later(g) { clearTimeout(t); t = setTimeout(launch, (typeof g === 'number' ? g : GAP) * MS * k()); }   // g: the wait in s (default PHI^6; PHI^4 after a flight)
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden && !t) later(); });
