@@ -4,9 +4,12 @@
                 obliquity (cite: Astronomical Almanac, 23.4397 deg).
      MOON GROUP the real Moon (see REAL EARTH + MOON below) with tonight's real phase from the synodic month (cite: 29.530588861 d,
                 new moon 2000-01-06 18:14 UTC; the model date while the model runs), drawn as seen from Perth (southern sky, so mirrored).
-                A satellite (ISS period, cite 5577.6 s) and an astronaut (Himawari period, cite 86163.7 s), each scaled onto its own
-                phi rung, orbit it and pass behind (smaller, dimmer, under the Moon) and in front. They ping only in front and near
-                their largest. Sub-lunar longitude = Moon RA - GMST (cite: USNO GMST; Astronomical Almanac low-precision Moon), exposed
+                (astronaut1, Danny t331u) The satellite is the real ISS on its real orbit round the real Earth (js/solar-system.js,
+                cited elements), its 🛰 glyph shown only once its true size is legible (PHI^3 px, rule 17). Tethered to it, a drawn
+                astronaut (an inline SVG figure, not the emoji) circles it close, PHI^-1 of its size from its centre, PHI^-5 of its size (Danny: "about 10
+                times"), tumbling freely about three axes on three freewheeling PhiPumps (rule 19), its cord from the waist always to
+                the craft, the perspective (scale, in front / behind) swinging round the craft. It pings only in front, near its
+                largest. Sub-lunar longitude = Moon RA - GMST (cite: USNO GMST; Astronomical Almanac low-precision Moon), exposed
                 raw as PingLayer.info().subLunarLon.
      SCOPE/DISH telescope bottom left and dish bottom right (phi positions above the footer), the telescope aims at the orbiting Earth, the dish at the Moon.
      PING CHAIN telescope -> Earth -> dish -> Moon group (-> satellite / astronaut if in front at peak), pulses on the emoji themselves
@@ -36,7 +39,6 @@
   var SID = 23.9345 * HOUR;                         // cite: NASA Earth fact sheet, sidereal rotation period 23.9345 h
   var SYN = 29.530588861 * DAY;                     // cite: synodic month 29.530588861 d (orbit-ref-data)
   var NEWMOON = Date.UTC(2000, 0, 6, 18, 14);       // cite: reference new moon 2000-01-06 18:14 UTC (same epoch as ratio-pump)
-  var ISS = 5577.6, HIMA = 86163.7;                 // cite: orbit-ref-data, ISS period 5577.6 s, Himawari geostationary 86163.7 s
   var LIGHT = 384400 / 299792.458;                  // cite: NASA mean Earth-Moon distance 384,400 km / SI c 299,792.458 km/s
   var OBL = 23.4397 * DEG;                          // cite: Astronomical Almanac, obliquity of the ecliptic 23.4397 deg
   var J2000 = Date.UTC(2000, 0, 1, 12);             // cite: J2000.0 epoch, 2000-01-01 12:00 TT (UTC within a minute)
@@ -77,8 +79,14 @@
   var sunN = node('\u2600\uFE0F', 'pl-sun'), big = faces('pl-big');
   sunN.o.style.setProperty('--sp', (SUN.loop || Math.pow(PHI, 4)) * IP + 's'); sunN.o.style.setProperty('--s0', 1 - Math.pow(IP, 3));   // phi: pulse one rung below the loop, floor 1-PHI^-3
   var PH = ['\uD83C\uDF11', '\uD83C\uDF12', '\uD83C\uDF13', '\uD83C\uDF14', '\uD83C\uDF15', '\uD83C\uDF16', '\uD83C\uDF17', '\uD83C\uDF18'];
-  var moon = node(PH[0], 'pl-moon'), sat = node('\uD83D\uDEF0\uFE0F', 'pl-sat'), ast = node('\uD83E\uDDD1\u200D\uD83D\uDE80', 'pl-ast');
-  sat.p.dataset.ec = ast.p.dataset.ec = 'moongroup';                        // emoji-collide: the Moon group is a designed pair (never a crash between its orbiters)
+  var moon = node(PH[0], 'pl-moon'), sat = node('\uD83D\uDEF0\uFE0F', 'pl-sat'), ast = node('', 'pl-ast');
+  ast.p.innerHTML = '<svg viewBox="-10 -13 20 26" width="1em" height="1.3em" style="display:block;overflow:visible"><g stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="-4.6" y="-5" width="9.2" height="9" rx="2" fill="#b9c2ca"/><path d="M-3.4-2.2l-4.4 3.6M3.4-2.2l4.2-3.4M-1.8 4.6l-1.6 6.4M1.8 4.6l2.8 5.8" stroke="#eef1f4" stroke-width="2.8" fill="none"/>' +
+    '<rect x="-3.6" y="-4.4" width="7.2" height="9.6" rx="2.4" fill="#f4f6f8" stroke="#8d99a4" stroke-width=".5"/><circle cy="-8.2" r="3.7" fill="#f4f6f8" stroke="#8d99a4" stroke-width=".5"/>' +
+    '<ellipse cx=".7" cy="-8.3" rx="2.5" ry="1.9" fill="#2b5f97"/><rect x="-1.8" y="-1.6" width="3.6" height="2.2" rx=".6" fill="#d23"/></g></svg>';   // anchor: a white suit, gold-blue visor, red chest panel; the whole body, about 0.6 KB
+  sat.p.dataset.ec = ast.p.dataset.ec = 'issgroup';                         // emoji-collide: the ISS and its astronaut are a designed pair (never a crash between them)
+  var cord = doc.createElementNS('http://www.w3.org/2000/svg', 'svg'); cord.setAttribute('class', 'pl-cord'); cord.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none';
+  cord.innerHTML = '<path fill="none" stroke="#dfe5ea" stroke-linecap="round"/>'; Lr.appendChild(cord);   // the tether: astronaut waist -> the craft
   var scope = node('\uD83D\uDD2D', 'pl-scope'), dish = node('\uD83D\uDCE1', 'pl-dish');
   scope.p.dataset.scen = 'scope'; dish.p.dataset.scen = 'dish';               // emoji-collide: scenery that joins the collisions while present
 
@@ -100,6 +108,7 @@
     ['sun',   { of: 'view',    at: [SUN.x, SUN.y], s: Math.pow(IP, 2), sOf: 'content' }],          // rule 13: the shared Sun, the size the big Earth had (PHI^-2)
     ['earth', { real: 'earth' }],                                         // zoomcam2: the real Earth (rule 16), placed by js/solar-model.js
     ['moon',  { real: 'moon', of: 'earth' }],                             // zoomcam2: the real Moon
+    ['iss',   { real: 'iss', of: 'earth' }],                              // astronaut1: the real ISS
     ['scope', { of: 'content', at: [Math.pow(IP, 4), 1], off: [0, -PHI], s: Math.pow(IP, 11 / 2), sOf: 'view' }],     // phi: bottom-left, PHI x its size above the footer
     ['dish',  { of: 'content', at: [1 - Math.pow(IP, 5), 1], off: [0, -PHI], s: Math.pow(IP, 11 / 2), sOf: 'view' }]  // phi: bottom-right, mirrored
   ];
@@ -110,10 +119,10 @@
     { n: big, a: 'earth', rot: -OBL, base: function () { return OPE; }, real: 1 },
     { n: moon, a: 'moon', flip: SOUTH, real: 1 },
     { n: scope, a: 'scope', aim: 'earth', native: -TAU * 3 / 8, full: true, sc: 'scope' },   // anchor: Apple + Google artwork, telescope tube up-left; follows the orbiting Earth
-    { n: dish, a: 'dish', aim: 'moon', native: -TAU / 8, full: true, sc: 'dish' }];          // anchor: Apple + Google artwork, dish feed up-right; aims at the Moon (Danny 15:19)
-  var ORB = [                                                                // orbiters bind to the Moon anchor: radius and size in its size
-    { n: sat, a: 'moon', T: rung(ISS, 3), ph: fr(IP), s: IP },              // phi: satellite on rung 3 (4.2..6.9 s)
-    { n: ast, a: 'moon', T: rung(HIMA, 4), ph: fr(2 * IP), s: Math.pow(IP, 1 / 2) }];   // phi: astronaut on rung 4 (6.9..11.1 s)
+    { n: dish, a: 'dish', aim: 'moon', native: -TAU / 8, full: true, sc: 'dish' },
+    { n: sat, a: 'iss', real: 1 }];                                         // astronaut1: the real ISS          // anchor: Apple + Google artwork, dish feed up-right; aims at the Moon (Danny 15:19)
+  var ORB = [                                                                // the astronaut binds to the ISS anchor: radius and size in the craft's size
+    { n: ast, a: 'iss', T: Math.pow(PHI, 4), ph: fr(2 * IP), s: Math.pow(IP, 5) }];   // phi: one circuit per PHI^4 s (6.9 s, pumped by the orbit node below), PHI^-5 of the craft (about 1/11)
   var ORX = PHI, ORY = Math.pow(IP, 2);                                     // phi: orbit radius PHI x the Moon's size, depth PHI^-2
   function frame() {
     var W = innerWidth, H = innerHeight, hd = doc.getElementById('q-head'), ft = doc.querySelector('.foot');
@@ -180,21 +189,37 @@
 
   if (root.RhythmContinuity) RhythmContinuity.phase('scene:ping', function () { return (performance.now() - t0) / MS; }, function (t) { t0 = performance.now() - t * MS; });   // continuity: phase kept across reloads + time away
   // orbiters: rAF, capped
+  var TUM = [0, 0, 0], tLast = 0, tp = null, TR = [5, 6, 7];             // phi: tumble about x, y, z, one turn per PHI^5 / PHI^6 / PHI^7 s, each rate pumped
+  function tumble(now) {
+    var P = root.PhiPumps; if (P && !tp) tp = TR.map(function (r, j) { return P.node('astro' + j, 3, r - 2, IP, P.page, [21, 34, 55][j]); });   // phi: 3 pumps per axis, depth PHI^-1, Fibonacci seeds (rule 19)
+    var dts = tLast ? Math.min(now - tLast, MS) / MS : 0; tLast = now;
+    TR.forEach(function (r, j) { var k = 1; try { k = tp ? tp[j].out() : 1; } catch (e) {} TUM[j] += TAU * dts / Math.pow(PHI, r) * k; });   // unit: integrate the rate, never a jump
+  }
   function orbit(now) {
-    var t = (now - t0) / MS;
+    var t = (now - t0) / MS, R = REAL.iss, vis = R && R.show === 'glyph', cp = cord.firstChild;
     ORB.forEach(function (q) {
+      var o = q.n.o.style;
+      if (!vis) { if (q.vis !== false) { q.vis = false; o.opacity = 0; cp.setAttribute('d', ''); } q.front = q.peak = false; return; } q.vis = true;
+      if (!RM) tumble(now);
       var th = TAU * (t / q.T + q.ph), sn = Math.sin(th), sc = Math.pow(PHI, (sn - 1) * IP);   // phi: perspective, largest in front
       q.front = sn > 0; q.peak = sn > PEAK;
-      var M = A[q.a], rx = M.s * ORX, o = q.n.o.style; o.fontSize = (M.s * q.s) + 'px'; var mz = M.z != null ? M.z : ZS; o.zIndex = mz + (q.front ? 1 : -1);
-      o.transform = 'translate3d(' + (M.x + rx * Math.cos(th)) + 'px,' + (M.y + rx * ORY * sn) + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) scale(' + sc + ')';   // unit: centre on the point
+      var M = A[q.a], rx = M.s * IP, fs = M.s * q.s, mz = M.z != null ? M.z : ZS, x = M.x + rx * Math.cos(th), y = M.y + rx * ORY * sn;
+      o.fontSize = fs + 'px'; o.zIndex = mz + (q.front ? 1 : -1); cord.style.zIndex = o.zIndex;
+      o.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(calc(-100% / 2),calc(-100% / 2)) scale(' + sc + ')';   // unit: centre on the point
+      q.n.p.style.transform = 'perspective(' + PHI * PHI + 'em) rotateX(' + TUM[0] + 'rad) rotateY(' + TUM[1] + 'rad) rotateZ(' + TUM[2] + 'rad)';   // free three-axis tumble
       o.opacity = IP + ((q.op || OPA) - IP) * (1 + sn) / 2;                  // phi: floor PHI^-1 (far side), peak 1-PHI^-3 pumped (near side)
+      var a = TUM[0], b = TUM[1], c = TUM[2], wd = fs * sc * 1.3 * 4.6 / 26;   // unit: the waist, 4.6 of the figure's 26 units below its centre (1.3 em tall), in px
+      var X = x - Math.sin(c) * Math.cos(b) * wd, Y = y + (Math.cos(c) * Math.cos(a) - Math.sin(c) * Math.sin(b) * Math.sin(a)) * wd, dx = M.x - X, dy = M.y - Y, L = Math.hypot(dx, dy) || 1, sg = L * Math.pow(IP, 3) * Math.sin(a + b);   // phi: slack PHI^-3 of the span, swinging with the tumble
+      cp.setAttribute('d', 'M' + X.toFixed(1) + ' ' + Y.toFixed(1) + 'Q' + (X + dx / 2 - dy / L * sg).toFixed(1) + ' ' + (Y + dy / 2 + dx / L * sg).toFixed(1) + ' ' + M.x.toFixed(1) + ' ' + M.y.toFixed(1));
+      cp.setAttribute('stroke-width', Math.max(fs * Math.pow(IP, 4), 0.5).toFixed(2));   // phi: cord PHI^-4 of the astronaut, at least half a px
+      cp.setAttribute('stroke-opacity', o.opacity);
     });
   }
   function follow() {                                                         // zoomcam2: re-place the real bodies and everything aimed at or hung off them
     MOVING.forEach(place);
     MEM.forEach(function (m) { if (MOVING.indexOf(m.a) >= 0 || MOVING.indexOf(m.aim) >= 0) putMem(m, m.real ? opOf(m) : m.n.op); });
   }
-  function real(k, st) { REAL[k] = st; if (RM || !raf) follow(); }          // js/solar-model.js, per draw: { on, x, y, d, front, show: 'glyph' | 'body' | 'off', el }
+  function real(k, st) { REAL[k] = st; if (RM || !raf) { follow(); if (k === 'iss') orbit(t0); } }          // js/solar-model.js, per draw: { on, x, y, d, front, show: 'glyph' | 'body' | 'off', el }
   // ---------- come and go (dishscope, Danny 19:02 AWST 26 Oct) ----------
   var SCN = { scope: { k: 'scope', n: scope, seed: 3 }, dish: { k: 'dish', n: dish, seed: 5 } };   // phi: Fibonacci seeds 3 / 5, so their phases are a golden step apart (measured: both out together 26% of the time, as if independent)
   var THR = -dial('scenery', 0) * Math.pow(IP, 3), HYS = Math.pow(IP, 5);   // phi: threshold PHI^-3 a dial rung (0 = present half the time), PHI^-5 hysteresis
@@ -233,6 +258,7 @@
     var r = n.o.getBoundingClientRect(); return r.width > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight && +getComputedStyle(n.o).opacity > 0; }
   function pulse(n) {
     var rk = realOf(n), R = rk && REAL[rk];
+    if (n === ast) { if (n.p.animate) n.p.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(' + PHI * PHI + ')' }, { filter: 'brightness(1)' }], { duration: MS * pumpOut(), easing: 'ease-out' }); return; }   // the tumble owns its transform: a brightness pulse
     if (R && R.show !== 'glyph') { if (R.el && R.el.animate) R.el.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(' + PHI * PHI + ')' }, { filter: 'brightness(1)' }],
       { duration: MS * pumpOut(), easing: 'ease-out' }); return; }        // phi: a dot or disc answers with a PHI^2 brightness pulse, one second, pumped
     if (!n.p.animate) return;
@@ -247,7 +273,7 @@
     if (doc.hidden) return later();
     count++; var at = 0;
     hops.forEach(function (h) { if (!onScreen(h[0])) return; at += h[1] * pumpOut(); setTimeout(function () { pulse(h[0]); if (h[2] === 'earth' && NM && REAL.earth && REAL.earth.show === 'glyph') NM.ping(h[3]); }, at * MS); });
-    setTimeout(function () { ORB.forEach(function (q) { if (q.front && q.peak && onScreen(q.n)) pulse(q.n); }); }, (at + Math.pow(IP, 2)) * MS);   // phi: orbiters answer only in front at peak
+    setTimeout(function () { if (onScreen(sat)) pulse(sat); ORB.forEach(function (q) { if (q.front && q.peak && onScreen(q.n)) pulse(q.n); }); }, (at + Math.pow(IP, 2)) * MS);   // phi: the ISS answers when shown, the astronaut only in front at peak
     later();
   }
   var cT = 0; function later() { clearTimeout(cT); cT = setTimeout(chain, Math.pow(PHI, RUNG) * pumpOut() * MS); }
@@ -299,15 +325,15 @@
     return { ping: ping, frame: frame, mix: function () { return m; }, glyph: function () { return 1 - m * (1 - Math.pow(IP, 2)); }, fit: function () {} };   // phi: glyph glides down to PHI^-2
   })();
   doc.body.appendChild(Lr); resolve(); sky(); spinBig(performance.now());
-  if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); orbit(t0); presence(performance.now()); setInterval(function () { if (!doc.hidden) presence(performance.now()); }, MS); }      // unit: still, both in front (quarter turn); come and go checked once a second
+  if (RM) { ORB.forEach(function (q) { q.ph = 1 / 4; }); TUM = [IP, Math.pow(IP, 2), -IP]; orbit(t0); presence(performance.now()); setInterval(function () { if (!doc.hidden) presence(performance.now()); }, MS); }      // unit: still, both in front (quarter turn); come and go checked once a second
   else { orbit(t0); go(); setInterval(function () { if (!doc.hidden) { sky(); spinBig(performance.now()); MEM.forEach(function (m) { var v = opOf(m); if (m.n.op !== v) { m.n.op = v; m.n.o.style.opacity = v; } }); ORB.forEach(function (q) { q.op = opAim(); }); } }, Math.pow(PHI, 3) * MS); setTimeout(chain, Math.pow(PHI, 3) * MS); }   // phi: refresh + first ping after PHI^3 s
   var rq = 0; function soon() { if (!rq) rq = requestAnimationFrame(function () { rq = 0; resolve(); }); }
   addEventListener('resize', soon); addEventListener('orientationchange', soon);
   if (root.visualViewport) visualViewport.addEventListener('resize', soon);
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(soon);
   if (root.ResizeObserver) { var ro = new ResizeObserver(soon), hh = doc.getElementById('q-head'), ff = doc.querySelector('.foot'); if (hh) ro.observe(hh); if (ff) ro.observe(ff); }                  // emoji font box settles after load
-  doc.addEventListener('visibilitychange', function () { Lr.classList.toggle('pl-hid', doc.hidden); oLast = 0; if (!doc.hidden) go(); });
-  root.PingLayer = { info: function () { return { subLunarLon: G.lon, moonAgeDays: G.age, phase: moon.p.textContent, bigEarthPeriod: TB, satT: ORB[0].T, astT: ORB[1].T,
+  doc.addEventListener('visibilitychange', function () { Lr.classList.toggle('pl-hid', doc.hidden); tLast = 0; if (!doc.hidden) go(); });
+  root.PingLayer = { info: function () { return { subLunarLon: G.lon, moonAgeDays: G.age, phase: moon.p.textContent, bigEarthPeriod: TB, iss: REAL.iss ? REAL.iss.show : null, astT: ORB[0].T, tumble: TUM.slice(),
     lightTime: LIGHT, pings: count, chainEvery: Math.pow(PHI, RUNG), front: ORB.map(function (q) { return !!q.front; }), nodeMap: NM ? NM.mix() : null, real: { earth: REAL.earth ? REAL.earth.show : null, moon: REAL.moon ? REAL.moon.show : null, front: A.earth ? A.earth.front : null },
     scenery: Object.keys(SCN).map(function (k) { var q = SCN[k], now = performance.now(); return { k: k, on: q.on, v: q.v, arrivals: q.arr, hits: q.hits, awayLeft: Math.max(0, (q.block - now) / MS), shownS: (q.shown + (q.on ? now - q.since : 0)) / MS, modes: q.pn ? q.pn.modes() : null, thr: THR }; }) }; }, ping: chain, away: away, real: real, anchors: A, spec: SPEC, move: move, resolve: resolve };
 })();

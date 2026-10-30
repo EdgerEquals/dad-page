@@ -104,7 +104,7 @@
     var zpSt = null;
     function zpDraw(F) {
       var Z = root.ZoomCam, v = F.zoom; if (!Z || !v) return;
-      if (!zpSt) { zpSt = doc.createElement('style'); zpSt.textContent = '.pl-layer .pl-n:not(.sm-n):not(.pl-big):not(.pl-moon){filter:opacity(var(--zp-home,1))}'; doc.head.appendChild(zpSt); }
+      if (!zpSt) { zpSt = doc.createElement('style'); zpSt.textContent = '.pl-layer .pl-n:not(.sm-n):not(.pl-big):not(.pl-moon):not(.pl-sat):not(.pl-ast){filter:opacity(var(--zp-home,1))}'; doc.head.appendChild(zpSt); }
       doc.documentElement.style.setProperty('--zp-home', (1 - v.w).toFixed(3));
       var pr = Z.probe.r, cx = F.cx || 0, cy = F.cy || 0, x = F.x + (pr[0] - cx) / F.kmPerPx, y = F.y - (pr[1] - cy) / F.kmPerPx;
       zpFx(Z.probe, x, y);
@@ -145,6 +145,8 @@
         if (ZP) lod(p, q, F);
         if (p.pr) { var gl = p.mode === 'glyph'; if (gl) show(p, false); PL.real(p.id, { on: true, x: q.x, y: q.y, d: q.d, front: q.front, show: gl ? 'glyph' : 'body', el: p.el }); }   // the ping layer's Earth / Moon glyphs are these bodies' emoji layer
       });
+      if (PL.real && SS.iss) { var iv = SS.iss(SS.date(t)), ix = F.x + (iv[0] - (F.cx || 0)) / F.kmPerPx, iy = F.y - (iv[1] - (F.cy || 0)) / F.kmPerPx, idd = Math.max(SS.issSize / F.kmPerPx, F.floor), ion = ix > 0 && ix < W && iy > 0 && iy < H;
+        PL.real('iss', { on: ion, x: ix, y: iy, d: idd, front: iv[2] >= SS.helio('earth', SS.date(t))[2], show: ion && idd >= Math.pow(PHI, 3) ? 'glyph' : 'off' }); }   // the real ISS: its glyph (+ the tethered astronaut) only once legible, PHI^3 px (rule 17)
       if (ZP) zpDraw(F);
       var B = axisB(), ae = SS.bodies.earth.aAU * SS.AU / F.kmPerPx, d = Math.hypot(B.end.x - sun.x, B.end.y - sun.y), a = d / (1 + HALLEY), bb = a * Math.sqrt(1 - HALLEY * HALLEY);   // aphelion on the BL end of axis B
       var ux = (B.end.x - sun.x) / (d || 1), uy = (B.end.y - sun.y) / (d || 1), E2 = kep(S.M, HALLEY), cu = -(Math.cos(E2) - HALLEY), sv = Math.sin(E2);   // unit: +u toward the aphelion

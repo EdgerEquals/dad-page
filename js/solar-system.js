@@ -121,6 +121,14 @@
   function rel(id, D) {                                                  // a moon's planetocentric ecliptic J2000 position (km): its osculating ellipse
     var b = B[id]; return orbit(b.a, b.e, b.inc, b.O, b.w, b.M0 + b.n * (D - EPOCH));
   }
+  // the ISS (rule 16; astronaut1): a craft, not a gravity body (the camera neither feels nor hits it). Heliocentric ecliptic km at date D.
+  var ISS = [Date.UTC(2026, 9, 29, 13, 31, 42, 192), 15.49100842, 0.00070497, 51.6333, 355.1294, 324.3141, 35.7375];   // cite: CelesTrak GP, NORAD 25544, epoch 2026-10-29 13:31:42 UTC: rev/day, e, i, node, w, M (deg; TEME, taken as the equator + equinox of date)
+  var J2 = 1.08263e-3, RE = 6378.137, OBL = 23.4392911 * DEG, ISSL = 0.109;   // cite: EGM96 J2; WGS84 equatorial radius (km); IAU obliquity J2000; NASA ISS facts, 109 m end to end (km)
+  function iss(D) {
+    var q = ISS, n = q[1] * TAU / 86400, t = (D - q[0]) / MS, a = Math.cbrt(GME / (n * n)), e = q[2], i = q[3] * DEG, p = a * (1 - e * e), k = 1.5 * n * J2 * RE * RE / (p * p), c = Math.cos(i);
+    var r = orbit(a, e, i, q[4] * DEG - k * c * t, q[5] * DEG + k / 2 * (5 * c * c - 1) * t, q[6] * DEG + n * t), co = Math.cos(OBL), so = Math.sin(OBL), E = helio('earth', D);   // cite: J2 secular node and perigee rates (Vallado, Fundamentals of Astrodynamics); no drag
+    return [E[0] + r[0], E[1] + r[1] * co + r[2] * so, E[2] - r[1] * so + r[2] * co];   // unit: equator -> ecliptic (precession since J2000 ignored, 0.37 deg)
+  }
   // the screen frame: the fixed Sun (PingLayer 'sun' anchor = PhiSun) and the one scale, recomputed per call (cheap; follows resizes)
   function frame() {
     if (root.ZoomCam && ZoomCam.on) return ZoomCam.frame(baseFrame());
@@ -145,7 +153,7 @@
   function period(id) { var b = B[id]; return (b.kind === 'planet' ? b.Pyr * YRMS : b.Ps * MS) / MS / TIME; }   // unit: model seconds per real orbit
   function screenGM(id, F) { F = F || frame(); var g = id === 'sun' ? GMS : B[id].gm, k = F.kmPerPx; return g / (k * k * k) * TIME * TIME; }   // unit: px^3 per model s^2 (same km/px, same TIME)
   root.SolarSystem = {
-    helio: function (id, D) { return helio(id, D); }, baseFrame: function () { return baseFrame(); }, GMS: GMS, G: G,
+    helio: function (id, D) { return helio(id, D); }, iss: iss, issSize: ISSL, baseFrame: function () { return baseFrame(); }, GMS: GMS, G: G,
     PHI_TIME: 34, TIME: TIME, REACH: REACH, bodies: B, order: ORDER, frame: frame, at: at, lon: lon, period: period, date: dateOf,
     gm: function (id) { return id === 'sun' ? GMS : B[id].gm; },          // real GM (km^3/s^2)
     mass: function (id) { return (id === 'sun' ? GMS : B[id].gm) / G; },  // real mass (kg)
