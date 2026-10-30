@@ -1,5 +1,5 @@
-/* anim-solo.js: shows ONE background animation on its own, full screen (Danny 10:08 AWST 27 Oct, t270u). Fetched by js/anim-tiles.js on
-   the first tile tap or a #anim=<key> link, never at page load.
+/* anim-solo.js: shows ONE background animation on its own (Danny 10:08 AWST 27 Oct, t270u), framed by the content box (Danny 10:37 AWST 30 Oct,
+   t283u: inset, quite transparent). Fetched by js/anim-tiles.js on the first tap on an animation or a #anim=<key> link, never at page load.
    HOW: <html data-solo="<key>"> hides every top-level layer of the page (visibility, so nothing reflows and every animation keeps its own
    clock and physics) and shows back only the pieces of that animation, over plain black. The real modules keep running; nothing is
    copied or re-drawn. Hidden things also drop out of the collision engine (js/emoji-collide.js skips anything not visible), so only the
@@ -23,9 +23,9 @@
     '.at-solo{position:fixed;inset:0;z-index:2147483647;display:none;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:none;' +
       'font:inherit;color:#9DBCCE}' +
     'html[data-solo] .at-solo{display:block}' +
-    '.at-bar{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:' + u(-6) + ';' +
-      'padding:max(env(safe-area-inset-top,0px),' + u(-6) + ') max(env(safe-area-inset-right,0px),' + u(-6) + ') 0 max(env(safe-area-inset-left,0px),' + u(-6) + ');' +
-      'animation:at-in ' + T + ' ease both}' +
+    '.at-bar{position:absolute;left:var(--cb-l,0px);right:var(--cb-r,0px);top:var(--cb-t,0px);height:var(--cb-h,auto);box-sizing:border-box;display:flex;align-items:flex-start;' +
+      'justify-content:space-between;gap:' + u(-6) + ';padding:' + u(-6) + ';background:rgba(0,0,0,' + r(-4) + ');border:1px solid rgba(31,84,120,' + r(-1) + ');' +
+      'border-radius:' + u(-6) + ';box-shadow:0 0 ' + u(-6) + ' rgba(10,242,255,' + r(-4) + ');animation:at-in ' + T + ' ease both}' +   // the content box (js/home-windows.js, Danny t283u 30 Oct): inset, PHI^-4 black so the animation reads through it
     '.at-n{min-width:0;font-size:1rem;letter-spacing:calc(1em * ' + r(-6) + ');color:#9DBCCE;text-shadow:0 0 ' + u(-8) + ' rgba(10,242,255,' + r(-2) + ')}' +
     '.at-n small{display:block;font-size:calc(1rem * ' + r(-1 / 2) + ');letter-spacing:calc(1em * ' + r(-4) + ');text-transform:uppercase;color:#85A6BB}' +
     '.at-x{flex:none;-webkit-appearance:none;appearance:none;width:' + u(-4) + ';height:' + u(-4) + ';min-width:2.75rem;min-height:2.75rem;margin:0;padding:0;' +

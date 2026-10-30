@@ -1,18 +1,14 @@
-/* anim-tiles.js: one tile per background animation, beside Ed's logo card (Danny 10:08 AWST 27 Oct, t270u: "put on my dashboard a button
-   for each one of the animations in the main content page ... just like how you've got my logo ... scroll down and see it large and press
-   it ... move [the logo] over to the left ... another one can go next to it on the right").
-   LAYOUT: the content section (.fc, js/first-content.js) becomes a grid; the logo card sits top left over 2 x 2 cells and the tiles flow
-   to its right, then wrap in rows. Columns are auto-fill at PHI^-3 of the measured content unit (--fc-u / --hw-u, js/home-windows.js), gaps
-   PHI^-6 of it, so an iPhone SE / 13 in portrait gets three columns and nothing spills. Same look as the logo card: transparent over black,
-   palette hairline, cyan glow on hover / focus, press inside the PHI^-5 s tap rail.
-   TILES ARE LABELS ONLY: an emoji glyph and a name, no images, no animation, about 3 KB. ONE TAP opens that animation alone, full screen,
-   through js/anim-solo.js, which is fetched on the first tap only (or when the page opens with #anim=<key>). One tap closes it.
+/* anim-tiles.js: the background animations' views, opened by tapping the animation itself (Danny 10:37 AWST 30 Oct 2026, t283u: "remove anything
+   that's on the main content page ... I should be able to get to all of that by pressing on the actual thing on the screen"). Was one label
+   tile per animation beside the logo card (Danny 10:08 AWST 27 Oct, t270u); the tiles are gone, the views and the desk side stay.
+   ONE TAP on a piece of an animation (a falling-star streak, the comet, the rocket, the Sun or its planets, Earth / Moon / satellite / astronaut,
+   the telescope or dish, a spinning star, the ring's planet / satellite / moon) opens that animation alone through js/anim-solo.js, fetched on
+   the first such tap only, in the content box (js/home-windows.js). One tap closes it.
    DIRECT LINK: index.html#anim=<key> (e.g. #anim=rain for the falling stars) opens that animation as soon as the page has it. */
 (function (root, doc) {
   'use strict';
-  var PHI = (1 + Math.sqrt(5)) / 2;
-  function r(n) { return +Math.pow(PHI, n).toFixed(4); }                              // phi rung n as a CSS number
-  var V = 'anim1';                                                                    // cache key for js/anim-solo.js
+  var PHI = (1 + Math.sqrt(5)) / 2, de = doc.documentElement;
+  var V = 'cbox1';                                                                    // cache key for js/anim-solo.js
   var A = [                                                                           // key, glyph, name (keys = the #anim= link)
     ['rain', '\uD83C\uDF20', 'Falling stars'], ['comet', '\u2604\uFE0F', 'Comet'], ['rocket', '\uD83D\uDE80', 'Rocket'],
     ['critters', '\uD83D\uDC1E', 'Critters'], ['sun', '\u2600\uFE0F', 'Sun & planets'], ['earth', '\uD83C\uDF0D', 'Earth & Moon'],
@@ -37,29 +33,8 @@
     var RP = root.RatioPump, inf = RP && RP.info && RP.info(), slow = inf && inf.slow;
     if (slow) { Object.keys(PIECES).forEach(function (k) { var f = Math.pow(PHI, +sp[k] || 0), e = vSp[k]; if (!e) { if (f === 1) return; e = vSp[k] = [PIECES[k].join(','), f]; slow.push(e); } e[1] = f; }); try { RP.refresh(); } catch (e2) {} }
   }
-  root.AnimTiles = { list: A.map(function (a) { return a[0]; }), open: open, pieces: PIECES, desk: function (st) { try { localStorage.setItem(KV, JSON.stringify(st)); } catch (e) {} deskApply(st); }, deskState: vload };
+  root.AnimTiles = { list: A.map(function (a) { return a[0]; }), open: open, hit: function (x, y) { var m = hit(x, y); return m && m[0]; }, pieces: PIECES, desk: function (st) { try { localStorage.setItem(KV, JSON.stringify(st)); } catch (e) {} deskApply(st); }, deskState: vload };
   (function () { var st = vload(); if (st && (st.m || st.s || st.sp)) { if (root.RatioPump) deskApply(st); else setTimeout(function () { deskApply(st); }, 0); } })();
-  var U = 'var(--fc-u,var(--hw-u,min(100vw,100svh * ' + r(-1) + ')))';
-  function u(n) { return 'calc(' + U + ' * ' + r(n) + ')'; }
-  var T = r(-2) + 's';
-  var css =
-    '.fc{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,' + u(-3) + '),1fr));grid-auto-rows:1fr;gap:' + u(-6) + ';justify-content:start;' +
-      'align-items:stretch;width:100%;max-width:min(100%,' + u(2) + ');margin-left:auto;margin-right:auto;box-sizing:border-box}' +
-    '.fc>.fc-card{grid-column:span 2;grid-row:span 2;justify-content:center;width:100%;min-width:0}' +
-    '.at-t{pointer-events:auto;-webkit-appearance:none;appearance:none;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;' +
-      'justify-content:center;gap:' + u(-9) + ';min-width:0;max-width:100%;margin:0;padding:' + u(-7) + ';background:transparent;' +
-      'border:1px solid rgba(31,84,120,' + r(-1) + ');border-radius:' + u(-6) + ';color:#9DBCCE;font:inherit;text-align:center;cursor:pointer;' +
-      '-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:border-color ' + T + ' ease,box-shadow ' + T + ' ease,transform ' + r(-5) + 's ease}' +
-    '.at-g{display:block;font-size:' + u(-5) + ';line-height:1;filter:drop-shadow(0 0 ' + u(-8) + ' rgba(10,242,255,' + r(-3) + '))}' +
-    '.at-l{display:block;max-width:100%;font-size:calc(1rem * ' + r(-1 / 2) + ');line-height:' + r(-1 / 2) + ';letter-spacing:calc(1em * ' + r(-7) + ');' +
-      'color:#85A6BB;overflow-wrap:normal;word-break:normal;-webkit-hyphens:manual;hyphens:manual}' +
-    '@media (hover:hover){.at-t:hover{border-color:#0AF2FF;box-shadow:0 0 ' + u(-6) + ' rgba(10,242,255,' + r(-2) + ')}}' +
-    '.at-t:active{transform:scale(' + (1 - r(-6)).toFixed(4) + ')}.at-t:focus{outline:none}' +
-    '.at-t:focus-visible{border-color:#0AF2FF;box-shadow:0 0 0 1px #0AF2FF}' +
-    'html[data-theme="light"] .at-t{border-color:rgba(31,84,120,' + r(-2) + ');color:#1F5478}html[data-theme="light"] .at-l{color:#143A57}' +
-    '@media (prefers-reduced-motion:reduce){.at-t{transition:none}.at-t:active{transform:none}}';
-  var st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
-
   var wait = [], loading = 0;
   function solo(cb) {                                                                 // fetch js/anim-solo.js once, on demand
     if (root.AnimSolo) { cb(); return; }
@@ -72,28 +47,51 @@
   function find(k) { for (var i = 0; i < A.length; i++) if (A[i][0] === k) return A[i]; return null; }
   function open(k, from) { var a = find(k); if (!a) return; solo(function () { root.AnimSolo.open(a[0], a[2], from); }); }
 
-  function build(sec) {
-    if (sec.querySelector('.at-t')) return;
-    A.forEach(function (a) {
-      var b = doc.createElement('button'); b.type = 'button'; b.className = 'at-t'; b.setAttribute('data-anim', a[0]);
-      b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-label', 'Open the ' + a[2].toLowerCase() + ' animation');
-      var g = doc.createElement('span'); g.className = 'at-g'; g.setAttribute('aria-hidden', 'true'); g.textContent = a[1];
-      var l = doc.createElement('span'); l.className = 'at-l'; l.textContent = a[2];
-      b.appendChild(g); b.appendChild(l); sec.appendChild(b);
-      b.addEventListener('click', function (e) {
-        e.preventDefault(); e.stopPropagation();
-        try { root.PhiAdapt && PhiAdapt.signal('anim-tiles', 't'); } catch (x) {}
-        open(a[0], b);
+  // ON-SCREEN TAPS (Danny 10:37 AWST 30 Oct 2026, t283u: 'I should be able to get to all of that by pressing on the actual thing on the screen'):
+  // the tiles are gone; a tap on the background that lands on (or near) one of an animation's own pieces opens that animation's view. The
+  // pieces are pointer-events none, so they are found by their boxes: every leaf element of a piece (a glyph, a streak) that is showing; each
+  // box is grown to at least T = PHI^-4 of the viewport's short side (a fingertip: Apple's 44 pt minimum target sits between PHI^-4 x 320 and
+  // x 390), and the one whose centre is nearest the tap, measured in its own size, wins. Taps on buttons, links, fields, the ticker / tty /
+  // footer items (QuizPopups) or an open box never get here. The full-screen textures (space loop, code drift, matrix rain) have no piece to
+  // tap; they stay on Ed's desk (Visual) and their #anim= links.
+  var TAPS = { rain: ['.rain>i'], comet: ['.es-comet'], rocket: ['#rk1>i'], sun: ['.pl-sun', '.pl-small', '.tsl-layer>*'],
+    earth: ['.pl-big', '.pl-moon', '.pl-sat', '.pl-ast'], ping: ['.pl-scope', '.pl-dish'], sky: ['.es-layer>*:not(.es-comet)'], ring: ['.qs-layer>*'] };
+  var ROOTS = /^(HTML|BODY|MAIN)$/;
+  function showing(el) { if (el.classList && el.classList.contains('ec-gone')) return false; if (el.checkVisibility) return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+    for (var p = el; p && p !== doc.body; p = p.parentElement) { var cs = getComputedStyle(p); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; } return true; }
+  function leaves(el, out) { var c = el.children; if (!c.length) { out.push(el); return; } for (var i = 0; i < c.length; i++) leaves(c[i], out); }
+  function hit(x, y) {
+    var T = Math.min(innerWidth, innerHeight) * Math.pow(PHI, -4), best = null, bs = Infinity;                       // phi: the fingertip
+    Object.keys(TAPS).forEach(function (k) {
+      TAPS[k].forEach(function (sel) {
+        var els = doc.querySelectorAll(sel), all = [];
+        for (var i = 0; i < els.length; i++) leaves(els[i], all);
+        all.forEach(function (el) {
+          var b = el.getBoundingClientRect(); if (!b.width && !b.height) return;
+          var w = Math.max(b.width, T), h = Math.max(b.height, T), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+          var dx = Math.abs(x - cx) / (w / 2), dy = Math.abs(y - cy) / (h / 2); if (dx > 1 || dy > 1) return;
+          var sc = Math.max(dx, dy); if (sc < bs && showing(el)) { bs = sc; best = [k, el]; }
+        });
       });
     });
+    return best;
   }
+  function boxOpen() { var q = doc.getElementById('qp-pop'), z = root.LogoZoom;
+    return (q && !q.hidden) || (z && z.isOpen && z.isOpen()) || de.hasAttribute('data-desk') || de.hasAttribute('data-solo'); }
+  var DN = null;                                                                       // where the tap went down, and whether a box was open then
+  root.addEventListener('pointerdown', function (e) { DN = e.isPrimary ? [e.clientX, e.clientY, boxOpen()] : null; }, { passive: true, capture: true });   // window capture: before any box closes itself on this tap
+  ['home-main', 'q-head', 'foot'].forEach(function (id) { var el = doc.getElementById(id); if (el) el.addEventListener('click', function () {}); });   // iOS sends a click from a plain element only when something on its path listens
+  doc.addEventListener('click', function (e) {
+    var t = e.target, d = DN; DN = null;
+    if (e.defaultPrevented || !t || (d && d[2]) || boxOpen()) return;                   // that tap was closing a box
+    if (!ROOTS.test(t.tagName) && t.closest && t.closest('button,a,input,label,select,textarea,[role],[tabindex],.qp-trig,#q-head .tick,#foot .tty')) return;
+    if (t.closest && !ROOTS.test(t.tagName) && !t.closest('#q-head,#foot,#home-main')) return;
+    var m = hit(e.clientX, e.clientY); if (!m) return;
+    try { root.PhiAdapt && PhiAdapt.signal('anim-tap', 't'); } catch (x) {}
+    open(m[0], null);
+  });
   function hash() { var m = /^#anim=([a-z]+)/.exec(location.hash || ''); return m ? m[1] : ''; }
-  function fromHash() { var k = hash(); if (k && find(k) && !(root.AnimSolo && AnimSolo.current() === k)) open(k, doc.querySelector('.at-t[data-anim="' + k + '"]')); }
+  function fromHash() { var k = hash(); if (k && find(k) && !(root.AnimSolo && AnimSolo.current() === k)) open(k, null); }
   root.addEventListener('hashchange', fromHash);
-  var main = doc.getElementById('home-main');
-  function attach() { var sec = doc.querySelector('.fc'); if (!sec) return false; build(sec); return true; }
-  if (!attach() && main && root.MutationObserver) {                                   // the logo card's script may land after this one
-    var mo = new MutationObserver(function () { if (attach()) mo.disconnect(); }); mo.observe(main, { childList: true });
-  }
   fromHash();
 })(window, document);
