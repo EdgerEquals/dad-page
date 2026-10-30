@@ -316,7 +316,7 @@
     if ((w = wt(S, 'wa')) && wConv.buffer) { wSend.gain.setValueAtTime(wSend.gain.value, ts); wSend.gain.linearRampToValueAtTime(w * IPH, td); wSend.gain.setTargetAtTime(0, td, tail * IPH); }
     if ((w = wt(S, 'nz'))) { var ns = c.createBufferSource(); ns.buffer = noiseBuf(); ns.loop = true; ns.connect(nzBP); ns.start(ts); ns.stop(td + tail);
       nzBP.frequency.setValueAtTime(FLO * Math.pow(PHI, PHI * PHI * PHI * PHI), ts); nzBP.frequency.exponentialRampToValueAtTime(FHI * IPH * IPH, td);   // phi: riser band PHI^PHI^4 x FLO -> PHI^-2 x FHI
-      nzG.gain.setValueAtTime(0, ts); nzG.gain.linearRampToValueAtTime(w * Math.pow(PHI, -5), td); nzG.gain.setTargetAtTime(0, td, Math.pow(PHI, -4)); }   // phi: riser at most PHI^-5 (the noise stays under the music)
+      nzG.gain.setValueAtTime(0, ts); nzG.gain.linearRampToValueAtTime(w * Math.pow(PHI, -5) * (1 - Math.pow(PHI, -5)), td); nzG.gain.setTargetAtTime(0, td, Math.pow(PHI, -4)); }   // phi: riser at most PHI^-5 (the noise stays under the music), trimmed x (1 - PHI^-5) = 0.910, -0.82 dB (risertrim1, Danny 15:02 AWST 30 Oct: 'trimming down a bit by roughly 10% ... about 15% max ... just the noise part of the riser')
     var fade = dk && o.fade > 0 ? o.fade : bar * Math.pow(PHI, S.fade);   // a desk change: his own fade
     setTimeout(function () { go({ at: td, fade: fade, swap: true, style: S.n }); }, Math.max(0, (td - c.currentTime - Math.pow(PHI, -2)) * MS));   // phi: hand over PHI^-2 s before the drop
     setTimeout(function () { txBusy = false; }, (td - c.currentTime + tail) * MS);
