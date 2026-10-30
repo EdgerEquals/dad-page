@@ -1,4 +1,4 @@
-# Decisions: the 15 shortlisted ideas
+# Decisions: the 15 shortlisted ideas, plus harmonics and the musical ↔ clinical dial
 
 Status: **decided by Ed, 30 Oct 2026.** These are decisions on *what* the system does. Nothing is designed or built yet. The hardware each one implies is listed in [hardware-concepts.md](hardware-concepts.md).
 
@@ -84,6 +84,23 @@ The stack and the room mic (or a valve or tape loop) feed back on purpose, held 
 - **Cone excursion sensing** on Ed's own stack: a retroreflective dot on each cone, read by camera (the same IR approach as the knobs), to measure excursion and limit it.
 - **Cone breakup on a dial:** some breakup sounds good, so allow a controlled amount deliberately, within safe excursion limits. "Turning a problem into a solution."
 - Note: a normal camera keeps up with slow, large sub excursion. Faster midrange and horn drivers need a high-speed camera or a per-driver IR/laser distance sensor. Breakup itself happens too fast to film; it's controlled indirectly through drive, with excursion as the safety measure.
+
+## Decisions after the final round (30 Oct 2026)
+
+### 16. Harmonics: ACCEPTED
+From Ed's thesis and the final reviewer round ([harmonics.md](harmonics.md)).
+- **Variable damping per amp:** output impedance set by mixed current and voltage feedback, **on the low-voltage feedback side only**. Never by touching high-voltage bias or supply.
+- **The harmonic knob = room coupling + an analog harmonic stage.** Room coupling is the damping (tight ↔ loose). The harmonic stage is a valve or waveshaper with an **amount** control and **all-pass phase** relative to the fundamental. **Two knobs first; one calibrated macro later.**
+- **Harmonic tracking via the room mic:** the engine follows harmonic amplitude and phase relative to the fundamental and decides when to lean in or back off (energy and ratio thresholds, as always).
+- **Speaker voltage and current sensing at each amp output** (isolated) to read impedance and back-EMF directly. A piezo on the transformer or baffle is optional.
+- **No global negative feedback;** local feedback only where needed.
+- **Dead rooms:** push the analog drive stages (the Tube Zone and similar) harder before the amps, within the sliding scale.
+- The coupling loop sits under the hardware ceiling. Its state is logged like everything else.
+
+### 17. Musical ↔ clinical dial: ACCEPTED
+- **Every piece of hardware, and each of its parameters, gets a tag** for where it sits on a spectrum from clinical/measurement to musical/artistic. Microphones are the example: an SPL measurement mic is clinical, a ribbon mic is musical, and condensers sit in between.
+- **One dial, or a digital switching touch bar,** shifts the whole architecture along that spectrum: hardware routing through the analog switching patchbay, plus software settings. Turn it towards musical when things sound too clinical, or towards clinical and rigid to build tension.
+- **The measurement mic is always on analysis duty,** whatever the dial says. (Ed owns a Behringer measurement mic; model to confirm.)
 
 ## Left behind (and why, briefly)
 - **Anti-phase nulling of standing waves, including on a house PA:** a null holds in one spot only and moves with every body; risky on someone else's PA.

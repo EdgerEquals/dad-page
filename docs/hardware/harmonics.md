@@ -1,6 +1,6 @@
 # Harmonics: Ed's thesis (SPECULATIVE)
 
-Status: **an open question for the final speculative round, 30 Oct 2026.** This is Ed's idea in his own words (lightly cleaned up from dictation), followed by a few careful starting thoughts. Nothing here is decided except that Ed wants a **harmonic knob** on the system.
+Status: **final round done, 30 Oct 2026.** The kept parts are now [decision 16](decisions.md#16-harmonics-accepted). This is Ed's idea in his own words (lightly cleaned up from dictation), followed by a few careful starting thoughts. Nothing here is decided except that Ed wants a **harmonic knob** on the system.
 
 ## In Ed's words
 From about the age of 18 I've had experiences with music where some of them would really light me up inside, and others would be a letdown, or just sound bad. I always asked why. I'm much older now, and I've had many experiences of acoustic music, some with orchestras and many, many acoustic experiences. When you bring in amplification, it's probably an order of magnitude less often that it's a good experience. The thing I've learned is that **it's about harmonics.**
@@ -33,3 +33,28 @@ These are a first pass for the reviewers to push on, not conclusions.
 - How do we test harmonic-phase audibility fairly on this rig?
 - What else in acoustics, psychoacoustics, instrument building or music history explains why acoustic music in good rooms so often "lights people up" and amplified music so rarely does?
 - Go as speculative as you like, but flag which parts you believe are physics and which are poetry.
+
+## Final round: what we kept and left behind (30 Oct 2026)
+Both reviewers agreed on the core: the coupling between room, speaker and amp through a low damping factor (back-EMF and acoustic loading) is real, and **variable damping is the lever.** Ed accepted this filter.
+
+### Kept
+- **Variable damping-factor (output impedance) control**, via mixed current and voltage feedback on the **low-voltage side**, per amp or as a master. This is the core of the harmonic knob.
+- **The harmonic knob has two dimensions:** room coupling (damping, tight ↔ loose) and a harmonic stage (valve or waveshaper amount, plus all-pass phase relative to the fundamental). Two separate knobs first; a calibrated single macro later.
+- **Harmonic analysis in the engine:** the room mic tracks harmonic amplitude and phase relative to the fundamental, and the engine decides when to lean in or back off.
+- **Direct coupling measurement:** sense the speaker voltage and current at the amp output (low-voltage, isolated sensing) to read impedance and back-EMF directly. A piezo on the output transformer or baffle is an optional extra.
+- **No global negative feedback;** tuned local feedback is allowed where needed (Ed's "buffering where needed").
+- **Dead, absorbent rooms:** push more harmonics from the analog drive stages before the amp (the Tube Zone and similar), within the sliding-scale rule.
+- **A hardware ceiling on the coupling loop** (already decided).
+- **"Harmonic state" capture** is already covered by the record button and logging.
+
+### Left behind
+- **The engine dropping the valve amps' high-tension (HT) voltage by 10-15% ("phi-sag"):** that's engine control of high voltage, the same safety cut as remote valve biasing.
+- **Raising idle-valve bias for a room-matched hum:** high-voltage bias adjustment, and deliberate hum breaks the noise rule.
+- **A motorised baffle moving compression drivers by millimetres:** the alignment only holds for one listening spot, and it's heavy.
+- **EEG "frisson" unlocking the harmonic knob:** the headband can't detect it reliably, and the EEG work is focused on the drop.
+- **A micro-delay to align back-EMF phase:** not a meaningful control.
+
+### Short corrections
+- Room-mode sound pressure doesn't grow "exponentially".
+- Back-EMF doesn't really modulate valve bias to make even harmonics. Those come mainly from single-ended valve transfer curves and the output transformer.
+- There are no digital effects in Ed's live path to bypass. It's analog end to end.
