@@ -1,4 +1,8 @@
 # Dev tool only (not loaded by any page). Renders media/space-loop.webm|mp4 + poster (portrait) and, with ORIENT=land, media/space-loop-land.* ; reads js/phi-sun.js via PHI_SUN.
+# Loop v6, stars only (Danny 11:4x AWST 30 Oct 2026, solarsys3: "Re-render the background video without the planets, keep the
+#   stars"): the planets now live in code (js/solar-system.js + js/solar-model.js), so by default the render draws only the
+#   gradient, the star field and the vortex falling stars (same seed, same paths, same 8 s loop, same encode as v5). No Sun,
+#   orbit lines, Saturn, Uranus or teal system. PLANETS=1 renders the old v5 frames unchanged. Poster: frame 95, as v5.
 # Saturn loop v5 (Danny 14:58 AWST 26 Oct 2026): the falling stars spiral down vortex funnels (see 'vortex falling stars'),
 #   five instead of three, each unique, with a spectrum dispersion trail and a glow map that only blooms at one high-Q peak.
 # Encode (v5): frames/%04d.png at 24 fps -> webm: libvpx-vp9 -crf 47 -b:v 0, yuv420p; mp4: libx264 -preset veryslow -crf 31 (land 32),
@@ -21,6 +25,7 @@ GA = IP * IP                                     # golden angle as a fraction of
 REF = json.load(open('/workspace/orbit-ref-data-draft.json'))['ringed_planet']
 SKYC = json.loads(re.sub(r'//[^\n]*', '', open(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.environ.get('PHI_SUN', '../js/phi-sun.js'))).read().split('/*SKY*/')[1]))
 W, H, FPS = 720, 1280, 24                        # anchor: the existing loop's frame size and frame rate (media/space-loop.webm)
+PLANETS = os.environ.get('PLANETS') == '1'          # v6 default: stars only; PLANETS=1 reproduces v5
 LAND = os.environ.get('ORIENT') == 'land'           # landscape variant (media/space-loop-land.*): the same frame turned on its side
 if LAND: W, H = H, W
 SEC = SKYC['loopSec']
@@ -239,6 +244,7 @@ def frame(f):
     gl = Image.eval(gl, lambda c: min(A8, int(c * gain))).resize((SW, SH), Image.BILINEAR)
     im = ImageChops.screen(im, gl)
     im.paste(ov, (0, 0), ov)
+    if not PLANETS: return im.resize((W, H), Image.LANCZOS)   # v6: stars only (solarsys3)
     # the Sun and the two orbits (rule 13 anchor)
     ov = Image.new('RGBA', (SW, SH), (0, 0, 0, 0)); d = ImageDraw.Draw(ov); orbit_lines(d); sun(d); im.paste(ov, (0, 0), ov)
     # Uranus pass (Kepler-slower), then Saturn pass, both on near-side arcs around the Sun
