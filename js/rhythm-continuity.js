@@ -197,11 +197,7 @@
   // Tap-rung beat: quick feedback = B x PHI^-10 (shared.md timing table), with the dashboard's breath slot B = PHI^5 (rule 3 loop slot)
   // -> PHI^-5 s, the first phi rung inside the 0.1 s tap rail.
   var TAP = Math.pow(PHI, 5) * Math.pow(PHI, -10), TOP = 5, LOGK = 'dadRhythm.audiolog.v1', LOGN = 89;   // phi: B x PHI^-10, B = PHI^5; ladder to PHI^5 beats; Fibonacci log
-  // audioresume (Danny 21:49 AWST 26 Oct, 'still not resuming play after interrupting'): iOS WebKit can leave resume() pending for ever
-  // (bugs 281566 / 276016 / 273511) and every step waited on it. Now HANG with no answer = refused, a hung context is kicked (suspend,
-  // resume a beat later), a running context with a still clock counts as stuck, and the first tap rebuilds a hung one inside the gesture.   // resume3: rebased onto main after ms1 / guard1 (Danny 09:09 AWST 30 Oct 'Yes, rebase and test the resume fix first, then show me')
-  var HANG = TAP * Math.pow(PHI, 5), KICK = TAP * Math.pow(PHI, 2);   // phi: B x PHI^-5 (1 s) to call a resume hung; a PHI^-3 s gap between suspend and resume   // resume3 (Danny 09:09 AWST 30 Oct 'Yes, rebase and test the resume fix first, then show me')
-  var AU = { park: false, hold: null, bgInt: false, ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
+  var AU = { bgInt: false, ctx: null, el: null, rung: 0, n: 0, t: 0, wait: 0, down: false, sounded: false, built: false, btn: null, g: 0, log: [] };
   try { AU.log = JSON.parse(root.localStorage.getItem(LOGK) || '[]') || []; } catch (e) { AU.log = []; }
   function kit() { var D = root.DadAutoDJ; return D && D._kit ? D : null; }
   function wanted() { var D = kit(); return !!(D && D.playing); }
@@ -210,41 +206,7 @@
   function note(m) { var line = [Date.now(), m]; AU.log.push(line); if (AU.log.length > LOGN) AU.log.splice(0, AU.log.length - LOGN);
     try { console.log('[dj-resume] ' + m); } catch (e) {} try { root.localStorage.setItem(LOGK, JSON.stringify(AU.log)); } catch (e) {} }
   function direct() { var B = root.DadAutoDJ && root.DadAutoDJ.bridge; return !!(B && B.direct); }   // the DJ's dry path straight to the speakers (it reconnects when the bridge pauses)
-  function ticking() {                                                             // a 'running' context whose clock moves (WebKit 276016: running, frozen, silent)
-    var c = AU.ctx; if (!c || c.state !== 'running') return false; var w = Date.now() / MS, t = c.currentTime, s = AU.clk;
-    if (!s || s.c !== c) { AU.clk = { c: c, w: w, t: t, ok: true }; return true; }
-    var dw = w - s.w; if (dw > CADENCE * PHI || dw < 0) { AU.clk = { c: c, w: w, t: t, ok: true }; return true; }   // a stale reading (away, asleep): start again
-    if (dw < KICK) return s.ok;                                   // too soon to tell: keep the last reading
-    s.ok = doc.hidden || (t - s.t) > dw * IP; s.w = w; s.t = t; if (!s.ok) note('clock frozen: running, currentTime still');   // phi: at least PHI^-1 of real time
-    return s.ok;
-  }
-  // alarm1 (Danny 10:56 AWST 30 Oct: 'my alarm ... went off and I closed it and then it didn't restart'): Apple's audio session guide
-  // says a begun interruption may never get its end ('There is no guarantee that a begin interruption will have a corresponding end
-  // interruption'), and WebKit only clears navigator.audioSession 'interrupted' on that end or on a successful reactivation
-  // (AudioSession.cpp endInterruption / tryToSetActive). So an 'interrupted' session seen with the page on screen is trusted less the
-  // longer it lasts: the hold fades after PHI^4 s (the beat check), and after each try made through it the next wait is PHI x longer.
-  function held() { var as = navigator.audioSession; if (doc.hidden) { AU.hold = null; return true; }   // iOS still holds the audio (call, Siri, another app): wait, don't kick
-    if (!(as && as.state === 'interrupted')) { AU.hold = null; return false; }
-    var w = Date.now() / MS, h = AU.hold || (AU.hold = { w: w, m: 0 });
-    return w - h.w < CADENCE * Math.pow(PHI, h.m);                                // phi: PHI^4 s, then PHI^5, PHI^6 ... between tries through a stale hold
-  }
-  function through() { var h = AU.hold; if (!h || held()) return; note('session still interrupted after ' + (Date.now() / MS - h.w).toFixed(1) + ' s on screen: try through it'); h.w = Date.now() / MS; h.m++; }
-  // micresume1 (DRAFT; Danny 12:26 / 12:28 AWST 30 Oct: the mic in another app, the send arrow needs two presses, the sound drops and
-  // sometimes never comes back): since resume3 a pending resume() no longer stops the ladder (settle), so with the page in the background
-  // and another app holding the audio (mic / dictation) every rung still called ctx.resume() + bridge.play(), up to once a second, for
-  // as long as he spoke. On iOS each of those asks WebKit to make Safari's session active again (AudioContext.cpp willBeginPlayback ->
-  // setActive / clientWillBeginPlayback), competing with the mic app: the 17:40 26 Oct lesson (micswitch cbcbd79) come back by another
-  // road. Now, hidden + interrupted = PARKED: no tries, no pushes, no 'hung' marks; the ladder waits for the end itself (WebKit resumes
-  // the context on an end with ShouldResume, AudioSessionIOS.mm interruption handler -> AudioContext::mayResumePlayback(true); without
-  // it the context drops to 'suspended', which is an end too), the session's statechange, or his return to the page.
-  function parked() { var as = navigator.audioSession; return doc.hidden && (st() === 'interrupted' || !!(as && as.state === 'interrupted')); }
-  function hung() { var c = AU.ctx; return !!(c && (c.__hung || (AU.clk && AU.clk.c === c && !AU.clk.ok))); }
-  function settle(p, f) {                                                          // resume()'s promise, or HANG with no answer = refused (marks the context hung)
-    var c = AU.ctx, fired = false; function go() { if (fired) return; fired = true; clearTimeout(tm); f(); }
-    var tm = setTimeout(function () { if (fired) return; if (c && c.state !== 'running' && !parked()) { c.__hung = (c.__hung || 0) + 1; note('resume pending after ' + HANG.toFixed(2) + ' s: hung (' + c.state + ')'); } go(); }, HANG * MS);
-    if (p && p.then) p.then(go, go); else setTimeout(go, 0);
-  }
-  function done() { return AU.ctx && AU.ctx.state === 'running' && ticking() && (elOn() || direct()); }   // audible: the bridge plays, or the context runs on the direct path (Danny 17:40: a paused bridge
+  function done() { return AU.ctx && AU.ctx.state === 'running' && (elOn() || direct()); }   // audible: the bridge plays, or the context runs on the direct path (Danny 17:40: a paused bridge
   // after an app switch kept the ladder pushing play() and the audio session every beat, forever, so the first mic press lost the session; the bridge re-arms on his next tap)
   function fadeIn() {
     var D = kit(), g = D && D._kit.duck, c = AU.ctx; if (!g || !c || (root.LogoRadio && root.LogoRadio.holding)) return;   // js/logo-radio.js holds it silent under the zoom
@@ -257,8 +219,8 @@
     try { if (D._kit.stalled) D._kit.resumeTap(); else D._kit.wake(); } catch (e) {}
     try { var m = navigator.mediaSession; if (m) m.playbackState = 'playing'; } catch (e) {}
   }
-  function finish() { AU.park = false; clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; if (AU.down) note('ok after try ' + AU.n + ': ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused, direct path')); AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
-  function drop() { AU.park = false; clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
+  function finish() { clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; if (AU.down) note('ok after try ' + AU.n + ': ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused, direct path')); AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
+  function drop() { clearTimeout(AU.t); AU.t = 0; clearTimeout(AU.wait); AU.wait = 0; AU.down = false; AU.rung = 0; AU.n = 0; AU.built = false; hideBack(); }
   function playEl() { if (!AU.el) return null; try { var q = AU.el.play(); if (q && q.catch) q.catch(function (er) { note('bridge play refused: ' + (er && er.name)); }); return q; } catch (e) { return null; } }
   function rebuild(why) {
     var D = kit(); if (!D || !D._kit.rebuild) return; note('rebuild (' + why + ') from ' + st()); AU.built = true;
@@ -271,28 +233,23 @@
     if (done()) { if (AU.down) { sound(); finish(); } return; }
     if (!AU.down) { AU.down = true; AU.sounded = false; AU.rung = 0; AU.n = 0; mute(); note('down (' + why + '): ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused')); }
     if (st() === 'closed') { rebuild('closed'); }
-    if (parked()) { clearTimeout(AU.t); AU.t = 0; if (!AU.park) { AU.park = true; note('parked (' + why + '): hidden, ' + st() + ', session ' + ((navigator.audioSession || {}).state || '?') + ': no tries until the interruption ends or the page is back'); } return; }   // micresume1
-    if (AU.park) { AU.park = false; note('unparked (' + why + '): ' + st()); }
     var before = st(), n = ++AU.n;
     try { var as = navigator.audioSession; if (as && as.type !== 'playback') as.type = 'playback'; } catch (e) {}   // only when it changed: no session rewrite on every try
     if (AU.el && AU.el.paused && n > 2 && AU.el.srcObject) { try { var s = AU.el.srcObject; AU.el.srcObject = null; AU.el.srcObject = s; } catch (e) {} }   // a stale bridge: re-attach its stream
-    var c = AU.ctx, kick = hung() && n > 1 && !held(); if (kick) through();                     // a hung context: suspend, then resume a beat later (WebKit 281566 workaround)
-    function go() { if (c !== AU.ctx) return; var p = null; try { p = c.resume(); } catch (e) {} playEl(); settle(p, after); }
-    if (kick) { note('kick: suspend, resume in ' + KICK.toFixed(2) + ' s'); try { c.suspend(); } catch (e) {} if (AU.clk) AU.clk.c = null; setTimeout(go, KICK * MS); } else go();
+    var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (e) {}
+    playEl();
     function after() {
-      if (c !== AU.ctx) return;
-      if (st() === 'running' && c.__hung) { c.__hung = 0; }
       note('try ' + n + ' (' + why + '): ' + before + ' -> ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused'));
       if (st() === 'running') sound();
       if (done()) { finish(); return; }
-      if (st() !== 'running') { try { if (!D._kit.stalled) D._kit.wake(); } catch (e) {} }
-      if ((st() !== 'running' || hung()) && !doc.hidden) showBack();   // refused, or 'running' with a still clock (alarm1: that showed nothing): the one gentle button + any tap
+      if (st() !== 'running') { try { if (!D._kit.stalled) D._kit.wake(); } catch (e) {} if (!doc.hidden) showBack(); }   // refused: the one gentle button + any tap
       ladder();
     }
+    if (p && p.then) p.then(after, after); else setTimeout(after, 0);
   }
   function ladder() {
-    if (AU.t || !AU.down || AU.park) return;
-    if (AU.rung > TOP && !AU.built && st() === 'suspended' && !hung() && !held()) { through(); rebuild('stuck after the ladder'); }   // audioresume: never under an interruption (a fresh context without a tap can't start, and the old one returns when iOS lets go); a hung one waits for the tap
+    if (AU.t || !AU.down) return;
+    if (AU.rung > TOP && !AU.built && st() !== 'running') rebuild('stuck after the ladder');
     var k = Math.min(AU.rung, TOP); AU.rung++;
     AU.t = setTimeout(function () { AU.t = 0; attempt('ladder'); }, TAP * Math.pow(PHI, k) * MS);   // phi: beat x PHI^k, k = 0 .. 5
   }
@@ -302,24 +259,19 @@
   var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp,#dj-desk';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
     var tg = e && e.target; if (tg && tg.closest && tg.closest(OWN)) return;
-    hook(); if (!wanted()) return;
-    if (!AU.ctx) { var K = kit(); if (K && actv(e)) { note('gesture ' + e.type + ': DJ on, no engine: rebuild'); rebuild('gesture, no engine'); } return; }   // micresume1: a torn-down engine comes back on a tap, no reload
+    hook(); if (!wanted() || !AU.ctx) return;
     var ok = done() && !AU.down; if (ok && elOn()) return;                        // all well: the tap is not a resume
     var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift   // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
     if (ok) { note('gesture ' + e.type + ': re-arm bridge'); try { kit()._kit.wake(); } catch (er) {} return; }   // sound is there on the direct path: the tap only re-arms the bridge, inside the gesture (no timer retries it)
-    AU.park = false; AU.hold = null;                                              // micresume1: his tap overrides the park and alarm1's growing waits (they only pace the automatic tries)
-    var act = actv(e);
-    note('gesture ' + e.type + ': ' + st() + (hung() ? ', hung' : '') + (act ? '' : ', no activation yet'));
-    if (st() === 'closed' || (act && (hung() || AU.rung > TOP || st() === 'interrupted'))) { rebuild('gesture, ' + (st() === 'closed' ? 'closed' : hung() ? 'resume hung' : st() === 'interrupted' ? 'interrupted, no end' : 'still stuck after the ladder')); clearTimeout(AU.t); AU.t = 0; setTimeout(function () { attempt('gesture'); }, 0); return; }   // inside the gesture: a fresh context can start; WebKit's resume() waits for ever on an interrupted one (AudioContext.cpp resumeRendering: addReaction(Running))
-    var c = AU.ctx, p = null; try { p = c.resume(); } catch (er) {} playEl();
-    if (!act) return;                                                             // micresume1: a touch press is not an activation (it may scroll): a plain try only; the lift does the rest, so no engine is built that could not start
+    note('gesture ' + e.type + ': ' + st()); if (st() === 'closed') rebuild('gesture, closed');
+    var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (er) {} playEl();
+    var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck) rebuild('gesture, still stuck after the ladder'); }   // a plain resume first; rebuild only if that fails too
+    if (p && p.then) p.then(chk, chk);
     var D = kit(); try { if (D && D._kit.stalled) D._kit.resumeTap(); } catch (er) {}
-    settle(p, function () { if (c === AU.ctx && wanted() && c.state !== 'running') rebuild('gesture, resume gave no sound in ' + HANG.toFixed(2) + ' s'); });   // micresume1: one tap is enough: still silent after HANG (1 s, inside WebKit's 5 s transient activation, LocalDOMWindow.cpp defaultTransientActivationDuration) -> a fresh engine on the same activation
     clearTimeout(AU.t); AU.t = 0; setTimeout(function () { attempt('gesture'); }, 0);
   }
-  function actv(e) { return !!e && (e.type !== 'pointerdown' || e.pointerType === 'mouse'); }   // HTML activation-triggering input: a touch counts on its lift, a mouse on its press, keys on keydown
   ['pointerdown', 'pointerup', 'touchend', 'keydown'].forEach(function (n) { doc.addEventListener(n, function (e) {   // iPhone unlock (S-0017): touch on lift, mouse on press, keys
-    if (e.type === 'pointerup' && e.pointerType === 'mouse') return; gesture(e); }, { capture: true, passive: true }); });   // micresume1: passive, never preventDefault / stopPropagation: the tap still does its own job   // touch pointerdown kept as a try too (df8d082 behaviour): a touch that scrolls #home-main ends in pointercancel/touchcancel, never a lift
+    if (e.type === 'pointerup' && e.pointerType === 'mouse') return; gesture(e); }, true); });   // touch pointerdown kept as a try too (df8d082 behaviour): a touch that scrolls #home-main ends in pointercancel/touchcancel, never a lift
   // the one gentle button: fixed just under the header (measured), palette colours, reader text size; the DJ's pulse rests while it shows
   function showBack() {
     if (AU.btn) return; var b = doc.createElement('button'); b.type = 'button'; b.className = 'sound-back'; b.textContent = 'tap to bring the sound back';
@@ -336,7 +288,7 @@
   function hook() {                                                                // attach to the DJ's context and bridge once they exist (and after a rebuild)
     var D = kit(); if (!D) return; var c = D._kit.ctx, a = D._kit.el;
     if (c && c !== AU.ctx) { AU.ctx = c; if (!c.__djResume) { c.__djResume = 1;   // one listener per context
-      c.addEventListener('statechange', function () { if (c !== AU.ctx) return; note('state: ' + c.state); AU.clk = null; if (c.state === 'running') c.__hung = 0;
+      c.addEventListener('statechange', function () { if (c !== AU.ctx) return; note('state: ' + c.state);
         if (c.state !== 'running') { if (doc.hidden) AU.bgInt = true; } else if (AU.bgInt) { AU.bgInt = false; endInt('context running'); }
         if (c.state === 'running') { if (AU.down) attempt('state'); } else if (wanted()) later('state'); }); } }
     if (a && a !== AU.el) { AU.el = a; if (!a.__djResume) { a.__djResume = 1;
@@ -350,15 +302,14 @@
   // when that interruption ENDS (the context back to running, or the audio session out of 'interrupted', while hidden), the bridge gets
   // ONE play: never a timer, so nothing pushes at the session while he is still speaking (the 17:40 26 Oct lesson).
   function endInt(why) { if (!doc.hidden || !wanted() || !AU.el || !AU.el.paused) return; note('interruption over (' + why + '), hidden: bridge play once'); playEl(); }
-  try { var ASn = navigator.audioSession; if (ASn && 'state' in ASn && ASn.addEventListener) ASn.addEventListener('statechange', function () { note('session: ' + ASn.state + ' (' + ASn.type + ')'); AU.hold = null;   // alarm1: every session change starts the hold afresh
-    if (ASn.state === 'interrupted') { if (doc.hidden) AU.bgInt = true; return; } if (AU.bgInt) { AU.bgInt = false; endInt('session ' + ASn.state); } poke('session')(); }); } catch (e) {}   // resume3: one listener: dictation's bridge play once, then the call / Siri / other app hands the session back to the ladder (Danny 09:09 AWST 30 Oct 'Yes, rebase and test the resume fix first, then show me')
+  try { var ASn = navigator.audioSession; if (ASn && 'state' in ASn && ASn.addEventListener) ASn.addEventListener('statechange', function () { note('session: ' + ASn.state);
+    if (ASn.state === 'interrupted') { if (doc.hidden) AU.bgInt = true; } else if (AU.bgInt) { AU.bgInt = false; endInt('session ' + ASn.state); } }); } catch (e) {}
   function poke(why) { return function () { hook(); if (!wanted()) { drop(); return; } if (AU.down || !done()) later(why); }; }
-  doc.addEventListener('visibilitychange', function () { AU.clk = null; if (!doc.hidden) { poke('visible')(); setTimeout(poke('visible'), HANG * MS); } });   // the second look reads the clock
-  root.addEventListener('pageshow', function (e) { AU.clk = null; poke('pageshow')(e); });
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden) poke('visible')(); });
+  root.addEventListener('pageshow', poke('pageshow'));
   root.addEventListener('focus', poke('focus'));
   doc.addEventListener('resume', poke('resume'));
-  try { var MD = navigator.mediaDevices; if (MD && MD.addEventListener) MD.addEventListener('devicechange', function () { note('route: devicechange'); poke('route')(); setTimeout(poke('route'), HANG * MS); }); } catch (e) {}   // Bluetooth / headphones in or out
-  ['touchend', 'click', 'keydown'].forEach(function (n) { doc.addEventListener(n, function () { setTimeout(hook, 0); }, { capture: true, passive: true }); });   // the DJ builds its context on a tap
+  ['touchend', 'click', 'keydown'].forEach(function (n) { doc.addEventListener(n, function () { setTimeout(hook, 0); }, true); });   // the DJ builds its context on a tap
   setInterval(function () { if (!doc.hidden || !AU.down) poke('beat')(); }, CADENCE * MS);   // phi: a PHI^4 s check catches a silent interruption end
   // RELOADS BY THE PHONE (Danny 14:15 AWST 28 Oct, Claude chat: 'if you just listening at some point it times out I think the website
   // reloads'): nothing in the site reloads the page, so a reload mid-listen is iOS ending the tab (memory or energy) and Safari loading it
@@ -375,7 +326,7 @@
   doc.addEventListener('visibilitychange', function () { hbWrite(false); });
   try { var MSn = navigator.mediaSession; if (MSn) { var sa = MSn.setActionHandler.bind(MSn);   // the lock screen / Control Center play button also starts the ladder
     MSn.setActionHandler = function (k, f) { return sa(k, k === 'play' && f ? function (d) { note('session: play'); var r = f(d); setTimeout(poke('session-play'), 0); return r; } : f); }; } } catch (e) {}
-  root.RhythmContinuity.audio = { note: function (m) { note(String(m)); }, info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, hung: hung(), hold: AU.hold ? AU.hold.m : null, el: AU.el ? { paused: AU.el.paused } : null }; },
+  root.RhythmContinuity.audio = { note: function (m) { note(String(m)); }, info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },
     log: function () { return AU.log.map(function (l) { return new Date(l[0]).toTimeString().slice(0, 8) + ' ' + l[1]; }); }, clearLog: function () { AU.log = []; try { root.localStorage.removeItem(LOGK); } catch (e) {} },
     retry: function () { poke('manual')(); } };
 })(window);
