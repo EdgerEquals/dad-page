@@ -66,6 +66,14 @@ Please answer this before you read any further, including the rest of this page.
 
 *Answered? Read on.*
 
+## Where we are (30 Oct 2026)
+Three brainstorm rounds are done, about 111 ideas were filtered to a shortlist of 15, and Ed has now decided all 15 (accepted, changed or folded), with a set of global rules that apply to everything. The hardware those decisions imply is listed as concepts, before any detailed design. We're now asking for **one final, deliberately speculative round**, on the decisions and the hardware concepts, and **especially on harmonics**: Ed's thesis that the way harmonics build in a room is what makes music transcendent, and his wanted harmonic knob. After this round, building starts.
+
+**New, read these first:**
+- [decisions.md](decisions.md): the global rules and all 15 decisions, with Ed's changes, plus what was left behind.
+- [hardware-concepts.md](hardware-concepts.md): every piece of hardware the decisions imply (dials, buttons, patchbay, sensors, recording, noise rules), marked decided or open.
+- [harmonics.md](harmonics.md): Ed's harmonics thesis in his words, starting thoughts and questions. **SPECULATIVE.**
+
 Status: **design draft, 30 Oct 2026.** Nothing here is built yet. It's written for outside reviewers.
 Owner: Ed ([EdgerEquals](https://github.com/EdgerEquals)). The hardware described here is meant to become a product. The music engine stays Ed's own software.
 
@@ -81,6 +89,9 @@ Ed's music engine (this repo, plain JavaScript and Web Audio) currently plays on
 | [architecture.md](architecture.md) | How it fits together: main unit, bus, hubs, smart knobs, camera read-back, room mic, sync, plus a block diagram and the build roadmap |
 | [ideas.md](ideas.md) | **SPECULATIVE.** 15 new-territory ideas and 13 "Stratosphere" performance concepts |
 | [open-questions.md](open-questions.md) | What's still unknown or unverified |
+| [decisions.md](decisions.md) | The 15 decisions and the global rules (30 Oct) |
+| [hardware-concepts.md](hardware-concepts.md) | Hardware concepts the decisions imply, decided or open |
+| [harmonics.md](harmonics.md) | **SPECULATIVE.** Ed's harmonics thesis and the harmonic knob |
 
 ## Labels used
 - **[verified]**: checked against a manufacturer manual, spec page or the code. Sources are linked.
@@ -95,3 +106,4 @@ The questions we'd most like help with:
 3. The hub module: isolation, VCAs, the CV range and switchable compressor inserts. (architecture.md)
 4. Camera-based knob read-back for synths that can't report their own settings. (architecture.md)
 5. Which of the ideas in ideas.md are realistic, and which are hand-waving.
+6. Final round: the decisions, the hardware concepts, and harmonics (harmonics.md). Be as speculative as you like.
