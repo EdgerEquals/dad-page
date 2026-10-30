@@ -305,7 +305,7 @@
     var m = navigator.mediaSession; if (!m) return;
     try {
       if (!msWired) { msWired = true;
-        m.setActionHandler('play', function () { if (stalled || pend) resumeTap(); else if (!playing) start(held); });
+        m.setActionHandler('play', function () { if (stalled || pend) resumeTap(true); else if (heal('lock-screen play')) paint(compute()); else if (!playing) start(held); });
         m.setActionHandler('pause', function () { if (playing) stop(); });
         m.setActionHandler('stop', function () { if (playing) stop(); }); }
       if (state === 'playing' && window.MediaMetadata) m.metadata = new MediaMetadata({ title: (document.documentElement.getAttribute('data-who')||'Dad') + "'s DJ", artist: 'EdgerEquals', album: cur && cur.genre ? cur.genre : '' });
@@ -1254,7 +1254,7 @@
     if (!ensure()) { paint(compute()); return; }
     try { ctx.resume && ctx.resume(); } catch (e) {}
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-    playing = true; pend = null; stalled = false; var c = compute(); bus.gain.cancelScheduledValues(ctx.currentTime); bus.gain.setValueAtTime(c.vol, ctx.currentTime);
+    playing = true; pend = null; stalled = false; ctx.__on = 1; var c = compute(); bus.gain.cancelScheduledValues(ctx.currentTime); bus.gain.setValueAtTime(c.vol, ctx.currentTime);
     sp = sp && sp.genre ? advance(sp, c) : null;
     var tr = startTrack(c, PHI, sp); tr.trackLen = sp && sp.len > 0 ? sp.len : lenOf(tr, c); cur = c; cur.genre = tr.genre;   // first tap: a quick PHI^1 s fade-in (crossfades use PHI^(3.5+s))
     elPlay(); session('playing'); save(); clearTimeout(idleT);
@@ -1349,8 +1349,26 @@
     function kick() { mixBtn.classList.remove('is-tapping'); void mixBtn.offsetWidth; mixBtn.classList.add('is-tapping'); }
     mixBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
-  function resumeTap() {
+  // playrebuild2: one health check for every play path (the DJ's switch, the music pill that presses it, the lock-screen play, the tap-to-resume
+  // catcher). suspect = a context that has played and is not running, is closed / interrupted, has a frozen clock, or an audio session no longer
+  // 'playback' (RhythmContinuity.audio.suspect, taprebuild1's tap rule). Only inside a real user gesture (navigator.userActivation where WebKit
+  // has it), never while hidden, and only from the gesture handlers themselves (press, tap catcher, lock-screen play): no timer ever rebuilds. Playing or stalled -> the DJ's own rebuild at its wall-clock place, done (true);
+  // stopped or pending -> the dead context is dropped so the start that follows builds a fresh one inside this same gesture (false).
+  // A context this rule already rebuilt is not rebuilt again by a press while playing, so off is always one press away.
+  function gest() { var u = navigator.userActivation; return !document.hidden && (!u || u.isActive); }
+  function suspectCtx() { if (!ctx) return false; var RA = window.RhythmContinuity && RhythmContinuity.audio, as = navigator.audioSession;
+    return (ctx.__on && ctx.state !== 'running') || ctx.state === 'closed' || !!(RA && RA.suspect && RA.suspect(ctx)) || !!(ctx.__on && as && as.type && as.type !== 'playback'); }
+  function heal(why) {
+    if (!ctx || !gest() || !suspectCtx()) return false;
+    var RA = window.RhythmContinuity && RhythmContinuity.audio, as = navigator.audioSession, was = playing || stalled, why2 = why + ': rebuild (' + ctx.state + (as && as.type ? ', ' + as.type : '') + (as && as.state ? ', session ' + as.state : '') + (was ? ', showing playing' : '') + ')';
+    if (was && ctx.__pr && ctx.state !== 'closed' && !(ctx.currentTime > IPH)) return false;   // a press already rebuilt this one and it never got going (phi: PHI^-1 s of clock): this press is his stop
+    if (RA) RA.note(why2);
+    if (was) { if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); } playing = true; rebuild(); if (ctx) ctx.__pr = 1; return true; }
+    var pp = pend; rebuild(); pend = pp; return false;
+  }
+  function resumeTap(g) {                                                  // g: called from inside a real gesture handler (never from a timer or promise)
     disarm(); if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }
+    if (g && heal('resume tap')) { paint(compute()); return; }   // playrebuild2: inside a gesture a dead context is rebuilt there, not resumed
     if (stalled && playing && ctx) { stalled = false; try { ctx.resume(); } catch (e) {} elPlay(); jump(); tick(); session('playing'); paint(compute()); return; }
     if (pend) start(pend);
   }
@@ -1358,7 +1376,7 @@
   // djbtnfix (Danny 21:0x AWST 26 Oct, 'the buttons are just behaving erratically'): the DJ's own controls (music button, pop-up, header
   // Random, export) are never a 'tap anywhere' resume, so each tap does only its own job; anywhere else on the page still brings the sound back.
   var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp,#dj-desk';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
-  function onGesture(e) { var t = e.target; if (t && t.closest && t.closest(OWN)) return; if (pend || stalled) resumeTap(); else disarm(); }
+  function onGesture(e) { var t = e.target; if (t && t.closest && t.closest(OWN)) return; if (pend || stalled) resumeTap(true); else disarm(); }
   function arm() { if (armed) return; armed = true; GEST.forEach(function (n) { document.addEventListener(n, onGesture, true); }); }
   function disarm() { if (!armed) return; armed = false; GEST.forEach(function (n) { document.removeEventListener(n, onGesture, true); }); }
   // register with js/rhythm-continuity.js (save cadence, lifecycle hooks, catch-up and the daily restart live there)
@@ -1455,7 +1473,11 @@
     if (!btn || !read) return;
     genRow(); c8Row();
     btn.addEventListener('click', function () {
-      if (pend || stalled) { resumeTap(); return; }
+      // playrebuild1/2 (Danny 14:11 and 15:06 AWST 30 Oct: 'I stopped the play ... I started it again but nothing'; 'when I end this and press go
+      // it doesn't always [resume]'): a press on a suspect context is healed inside this press (heal()). If the DJ shows playing (or waiting)
+      // but its context is dead, the press brings the sound back instead of stopping; a second press on that same fresh context stops as usual.
+      if (heal('press')) return;
+      if (pend || stalled) { resumeTap(true); return; }
       if (playing) { stop(); return; }
       if (!masterOn()) { var sw = soundSwitch(); if (sw) sw.click(); }        // the page's sound switch is the master: Dad's DJ turns it on
       start();

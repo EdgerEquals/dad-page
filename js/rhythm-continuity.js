@@ -232,7 +232,7 @@
     if (!AU.ctx) return;
     if (done()) { if (AU.down) { sound(); finish(); } return; }
     if (!AU.down) { AU.down = true; AU.sounded = false; AU.rung = 0; AU.n = 0; mute(); note('down (' + why + '): ' + st() + ', bridge ' + (elOn() ? 'playing' : 'paused')); }
-    if (st() === 'closed') { rebuild('closed'); }
+    if (st() === 'closed') { note('closed: the next tap rebuilds it (no timer builds a context)'); if (!doc.hidden) showBack(); return; }   // playrebuild2: attempt runs from timers and events, never a gesture
     var before = st(), n = ++AU.n;
     try { var as = navigator.audioSession; if (as && as.type !== 'playback') as.type = 'playback'; } catch (e) {}   // only when it changed: no session rewrite on every try
     if (AU.el && AU.el.paused && n > 2 && AU.el.srcObject) { try { var s = AU.el.srcObject; AU.el.srcObject = null; AU.el.srcObject = s; } catch (e) {} }   // a stale bridge: re-attach its stream
@@ -249,7 +249,7 @@
   }
   function ladder() {
     if (AU.t || !AU.down) return;
-    if (AU.rung > TOP && !AU.built && st() !== 'running') rebuild('stuck after the ladder');
+    // playrebuild2: the ladder (a timer) no longer rebuilds when stuck: a context made outside a gesture starts suspended in WebKit; the next tap rebuilds
     var k = Math.min(AU.rung, TOP); AU.rung++;
     AU.t = setTimeout(function () { AU.t = 0; attempt('ladder'); }, TAP * Math.pow(PHI, k) * MS);   // phi: beat x PHI^k, k = 0 .. 5
   }
@@ -257,12 +257,16 @@
   // djbtnfix (Danny 21:0x AWST 26 Oct, 'erratic'): a press on the DJ's own controls is theirs alone. Before, a stalled DJ was resumed
   // here on the touch press and then the switch's own click saw 'playing' and stopped it again (one tap, two flips, net silence).
   var OWN = '#dj-pill,#dj-edit,#qh-djpop,#dj-mix,#dj-exp,#dj-desk';   // + the edit button (editbtn1, Danny 14:12 AWST 27 Oct)
+  // playrebuild2 (Danny 15:06 AWST 30 Oct, 'it doesn't always [resume]'): a context is only ever built inside a real gesture (WebKit's rule);
+  // a timer or promise that finds it closed or stuck shows the one gentle button and waits for his next tap (a context made there starts suspended).
+  var TOG = '#dj-pill,#qh-djpop';   // the on/off switches heal their own press (the DJ's heal()); the other DJ controls (desk, edit, Random, export) heal a dead context on their tap too
   function mark() { var c = AU.ctx, k = AU.ck; if (c && (!k || k[0] !== c || k[1] !== c.currentTime)) AU.ck = [c, c.currentTime, Date.now()]; }   // the clock sample a frozen-clock tap compares with (an unchanged clock keeps its first sample)
   function gesture(e) {                                                            // finger lift (pointerup / touchend), mouse press or key anywhere: inside the gesture, resume + play now
-    var tg = e && e.target; if (tg && tg.closest && tg.closest(OWN)) return;
+    var tg = e && e.target, own = !!(tg && tg.closest && tg.closest(OWN)); if (own && tg.closest(TOG)) return;
     hook(); if (!wanted() || !AU.ctx) return;
     var c = AU.ctx, tn = Date.now(), ck = AU.ck, fz = c.state === 'running' && ck && ck[0] === c && c.currentTime === ck[1] && tn - ck[2] > IP * MS; mark();   // frozen clock: running, but currentTime has not moved since the return to the page or a tap more than PHI^-1 s ago
     var ok = done() && !AU.down && !fz; if (ok && elOn()) return;                 // all well: the tap is not a resume
+    if (own && !(st() === 'closed' || st() !== 'running' || fz || (navigator.audioSession && navigator.audioSession.state === 'interrupted'))) return;   // playrebuild2: a DJ control's tap does its own job unless the context is dead
     var now = Date.now(), lift = e.type === 'touchend' || e.type === 'pointerup' || e.type === 'keydown'; if (now - AU.g < IP * MS && !(lift && AU.gt === 'pointerdown')) return; AU.g = now; AU.gt = e.type;   // a lift after a touch press still counts: iOS honours the lift   // phi: one tap = one gesture (pointerdown / touchend / click within PHI^-1 s)
     if (ok) { note('gesture ' + e.type + ': re-arm bridge'); try { kit()._kit.wake(); } catch (er) {} return; }   // sound is there on the direct path: the tap only re-arms the bridge, inside the gesture (no timer retries it)
     note('gesture ' + e.type + ': ' + st()); var as = navigator.audioSession, lift2 = e.type !== 'pointerdown' || e.pointerType === 'mouse';
@@ -271,7 +275,7 @@
     // here, inside the tap (WebKit's user-gesture rule), at the track's wall-clock position (the DJ's own rebuild -> start(spec())).
     if (st() === 'closed' || (lift2 && (st() !== 'running' || fz || (as && as.state === 'interrupted')))) { rebuild('tap, ' + (fz ? 'frozen clock' : st()) + (as && as.state ? ', session ' + as.state : '')); finish(); return; }
     var p = null; try { p = AU.ctx && AU.ctx.resume(); } catch (er) {} playEl();
-    var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck) rebuild('gesture, still stuck after the ladder'); }   // a plain resume first; rebuild only if that fails too
+    var stuck = AU.rung > TOP; function chk() { if (st() !== 'running' && stuck && !doc.hidden) showBack(); }   // a touch press (not a lift): a plain resume; if that fails the button shows and the lift or next tap rebuilds
     if (p && p.then) p.then(chk, chk);
     var D = kit(); try { if (D && D._kit.stalled) D._kit.resumeTap(); } catch (er) {}
     clearTimeout(AU.t); AU.t = 0; setTimeout(function () { attempt('gesture'); }, 0);
@@ -332,7 +336,9 @@
   doc.addEventListener('visibilitychange', function () { hbWrite(false); });
   try { var MSn = navigator.mediaSession; if (MSn) { var sa = MSn.setActionHandler.bind(MSn);   // the lock screen / Control Center play button also starts the ladder
     MSn.setActionHandler = function (k, f) { return sa(k, k === 'play' && f ? function (d) { note('session: play'); var r = f(d); setTimeout(poke('session-play'), 0); return r; } : f); }; } } catch (e) {}
-  root.RhythmContinuity.audio = { note: function (m) { note(String(m)); }, info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },
+  function suspect(c) { var as = navigator.audioSession, k = AU.ck, fz = !!c && c.state === 'running' && !!k && k[0] === c && c.currentTime === k[1] && Date.now() - k[2] > IP * MS; if (c === AU.ctx) mark();   // playrebuild1: the DJ's own press asks the same tap health check
+    return !!c && (c.state === 'closed' || c.state === 'interrupted' || fz || !!(as && as.state === 'interrupted')); }
+  root.RhythmContinuity.audio = { suspect: suspect, note: function (m) { note(String(m)); }, info: function () { return { state: st(), down: AU.down, tries: AU.n, rung: AU.rung, button: !!AU.btn, el: AU.el ? { paused: AU.el.paused } : null }; },
     log: function () { return AU.log.map(function (l) { return new Date(l[0]).toTimeString().slice(0, 8) + ' ' + l[1]; }); }, clearLog: function () { AU.log = []; try { root.localStorage.removeItem(LOGK); } catch (e) {} },
     retry: function () { poke('manual')(); } };
 })(window);
