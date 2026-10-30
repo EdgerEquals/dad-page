@@ -762,12 +762,12 @@
   }
   function RPAT(tr, k, home) { var p = tr.rp; if (!p || !p.pat) return home; if (k === 'kick' || k === 'snare') return p.pat[k] || home; if (k === 'hat') return p.pat.hat || home; return home; }
   function rduck(tk, t) { if (!tk.dk || !tk.rp) return; var b = SPM / tk.bpm; [tk.dk, tk.dkB].forEach(function (d) { if (!d) return; d.gain.setTargetAtTime(tk.rp.dk, t, Math.pow(PHI, -7)); d.gain.setTargetAtTime(1, t + Math.pow(PHI, -6), b * Math.pow(PHI, -1 - tk.rp.drv)); }); }
-  function hitW(x) { return function (L, k, t, v, a) { if (!chOn('drums')) return; var tk = L.tk || L, p = tk.rp; if (!fOn(tk, 'drums', k)) return; var q = RQ('drum:' + k, tk, t, v, 0, 0); if (!(q > 0)) return; act('drums', t, q, tk);
+  function hitW(x) { return function (L, k, t, v, a) { if (!chOn('drums')) return; var tk = L.tk || L, p = tk.rp; if (!fOn(tk, 'drums', k)) return; var q = RQ('drum:' + k, tk, t, v, 0, 0); if (!(q > 0)) return; act('drums', t, q, tk); vact(k, t, q, tk); if (tk.g && tk.g.bank) RSEEN['808'] = t;
     var d16 = SPM / tk.bpm / SPB, s16 = tk.step % 16;
     if (p && k === 'snare') t += p.lb;
     if (k === 'kick') rduck(tk, t);
-    if (p && k === 'hat' && p.roll && s16 >= 12) { if (p.rollN === 2) { x.hit(L, k, t, q * IPH); x.hit(L, k, t + d16 / 2, q); } else if (s16 % 4 === 0) { for (var j = 0; j < 6; j++) x.hit(L, k, t + j * d16 * SPB / 6, q * Math.pow(PHI, -(5 - j) * IPH * IPH)); } return; }
-    x.hit(L, k, t, q, a);
+    if (p && k === 'hat' && p.roll && s16 >= 12) { if (p.rollN === 2) { hx(x, L, k, t, q * IPH); hx(x, L, k, t + d16 / 2, q); } else if (s16 % 4 === 0) { for (var j = 0; j < 6; j++) hx(x, L, k, t + j * d16 * SPB / 6, q * Math.pow(PHI, -(5 - j) * IPH * IPH)); } return; }
+    hx(x, L, k, t, q, a);
     if (p && k === 'snare' && s16 % 4 === 0 && p.ghost > 0) { /* ghost layer is scheduled per step below */ }
   }; }
   function ghostStep(tr, t) { if (GRD.g >= 2) return; var p = tr.rp, s16 = tr.step % 16; if (!p || !p.smask || !X || !X.hit || p.rest['drum:snare'] || !(p.ghost > 0)) return; if (p.stop && s16 >= 16 - p.L16) return;
@@ -903,7 +903,7 @@
   // it rises on each hit and falls between them; shown on a soft ceiling 1 - PHI^-(PHI V).
   function lgain(tk, ch) { var L = !tk ? null : ch === 'arp' ? tk.x : tk.L && tk.L[ch]; return (L && L.out ? L.out.gain.value : 1) * levelG(ch); }   // the meter reads after the channel's level
   function act(ch, t, v, tk) { var q = AQ[ch] || (AQ[ch] = []), now = ctx ? ctx.currentTime : 0; if (!tk) tk = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0];
-    q.push(t, v * lgain(tk, ch) * (tk ? gAt(tk, t) : 1)); while (q.length && q[0] < now - PHI * PHI) q.splice(0, 2); }   // phi: keep PHI^2 s of pulses
+    q.push(t, v * lgain(tk, ch) * (tk ? gAt(tk, t) : 1)); while (q.length && q[0] < now - PHI * PHI) q.splice(0, 2); CSEEN[ch] = t; }   // phi: keep PHI^2 s of pulses; CSEEN: the desk API's 'playing'
   function chMeter(ch) { var q = AQ[ch], now = ctx ? ctx.currentTime : 0, tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0], tau = (tr ? SPM / tr.bpm : 1) * IPH, V = 0, i;
     if (q) for (i = 0; i < q.length; i += 2) if (q[i] <= now) V += q[i + 1] * Math.exp(-(now - q[i]) / tau);
     return 1 - Math.pow(PHI, -V * PHI); }                               // phi: a soft ceiling, one PHI-loud note reads ~0.7
@@ -1079,7 +1079,7 @@
     if (VH) try { VH('bass', tr.L.bass, m, t, d, v); } catch (er) {}
     rec('bass', m, t, d, v * gAt(tr, t));
   }
-  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch) || !fOn(tr.tk || tr, ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d, ch); if (!(q > 0)) return; v = q; act(ch, t, v, tr.tk || tr); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
+  function pl(part, inst, tr, m, t, d, v) { var ch = chOf(part, tr); if (!chOn(ch) || !fOn(tr.tk || tr, ch)) return; var q = RQ(part, tr.tk || tr, t, v, m, d, ch); if (!(q > 0)) return; v = q; act(ch, t, v, tr.tk || tr); rseen(inst, t); if (part === 'chords' && (tr.tk || tr).rp && d < SPM / (tr.tk || tr).bpm) t += (tr.tk || tr).rp.lb; inst(tr, mtof(m), t, d, v); if (VH) try { VH(part, tr, m, t, d, v); } catch (e) {} rec(part, m, t, d, v * gAt(tr.tk || tr, t)); }   // VH: the voice hears the notes   // logged at the track's crossfade level
   var TL = [];                                                            // tempo map for the export: [wall ms, bpm] when a track takes over (crossfade midpoint)
   function stepLen(tr) { var d = SPM / tr.bpm / SPB, sw = Math.pow(PHI, -3) * tr.u * Math.pow(PHI, -2 * Math.max(0, vbV()) * clamp(DIAL.vbY, 0, 1)); return tr.step % 2 ? d * (1 - sw) : d * (1 + sw); }   // phi: golden swing x drive
 
@@ -1644,7 +1644,75 @@
     live: function () { var tr = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; var fx = tr && tr.fx; return tr ? { form: fx ? { name: fx.F.name, sec: fx.s.n, bar: fx.bi + 1, bars: fx.s.b, next: fx.next ? fx.next.n : null, i: fx.i, n: fx.F.S.length, pump: fx.F.em ? formPumps(tr) : null } : null, e: tr.e, genre: tr.genre, bass: tr.g && tr.g.bass === 'acid' ? acidPat(tr).shape : null, bpm: tr.bpmTo || tr.bpm, rp: tr.rp ? { ghost: tr.rp.ghost, roll: tr.rp.roll, drv: tr.rp.drv, spc: tr.rp.spc, x: tr.rp.x, dk: tr.rp.dk, stop: !!tr.rp.stop } : null, phrase: Math.floor(tr.step / 64) % SPB + 1, home: tr.g && tr.g.home ? tr.g.home.slice() : null, lead: tr.lr ? { all: tr.lr.all.slice(), names: tr.lr.all.map(function (k) { return LNAME[k] || k; }), mid: tr.lr.mid, peak: tr.lr.peak, bd: tr.lr.bd, now: fOn(tr, 'lead') ? lVoice(tr) : null, nowName: fOn(tr, 'lead') ? LNAME[lVoice(tr)] || lVoice(tr) : null, role: lRole(tr), solo: soloOn(tr), sk: tr.skNow || 0 } : null } : null; },
     get read() { return read ? read.textContent : ''; }, get colc() { return colC(); }, get pending() { return pendX; },
     toLive: function () { Object.keys(nudge).forEach(function (k) { nudge[k] = 0; }); glide(); save(); } };
-  window.DadAutoDJ = { desk: DESK, _kit: { guard: function () { return GRD.g; }, health: function () { return { guard: GRD.g, ratio: GRD.ratio, lookAhead: lookAhead() }; }, vibe: function () { return { v: vbV(), d: clamp(DIAL.vbD, 0, 1), y: clamp(DIAL.vbY, 0, 1), t: clamp(DIAL.vbT, 0, 1), s: clamp(DIAL.vbS, 0, 1) }; }, dimX: function (w) { return dimX(w); }, emerge: function (nm, seed, drive, u) { return emerge(nm, { seed: seed, dm: { drive: drive } }, u || SPB).map(function (q) { return { n: q.n, b: q.b, f: q.f, lv: q.lv, P: q.P }; }); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
+  // DESK API (Danny 14:31 AWST 30 Oct, via Dashboard Bot: "Let's get the VU panels and get all that finished and pushed live"; the shape
+  // agreed with Dashboard Bot 30 Oct, its mock js/dj-api-mock.js). Data only: Dashboard Bot's panel draws it; nothing here changes the sound
+  // until someone moves a control, and then only through the paths the desk already uses (DESK.dial / level / boxSet) or a drum voice's level.
+  //   DadAutoDJ.params() -> every desk knob, from js/dj-desk.js's own specs (loaded on the first ask; [] until then, then 'dj:params' on
+  //     window and paramsReady(cb)). DadAutoDJ.set(id, v): the nearest step, logged like a tap; returns the value set or null.
+  //   DadAutoDJ.mixer() -> the channels (CHS), each { id, label, level (its rung, -6 off .. +5 drive), energy(), playing, children, steps,
+  //     labels, def }; drums -> its seven voices, kick -> the 808 units, bass -> the 303, chords -> Jupiter, arp + pad -> Juno, lead -> DX7,
+  //     voice -> singer / machine / choir. DadAutoDJ.setLevel(id, rung): a channel's level rung (DESK.level), a drum voice's own rung, a
+  //     rack unit on (0) or off (-6, its mute). Returns the level set or null. The same objects every call (getters), no allocation.
+  //   energy(): the channel meters' capacitor (every note a charge pulse x level x arc x crossfade, tau PHI^-1 beat; no audio measured), per
+  //     drum voice the same pulses for that voice alone; playing: a note within the last PHI^4 s (~6.9 s) while the DJ plays.
+  //   DRUM VOICE LEVELS: no node exists until a voice's rung leaves 0; then that voice's hits go through one GainNode (PHI^k) per track.
+  var CSEEN = {}, VQ = {}, VSEEN = {}, RSEEN = {}, MXW = Math.pow(PHI, 4), KVL = 'dadMix.voice.v1', VLEV = null, KHX = 'dadDesk.hist.v1';   // phi: 'playing' window PHI^4 s
+  function curTr() { for (var i = 0; i < tracks.length; i++) if (!tracks[i].dead && !tracks[i].leaving) return tracks[i]; return null; }
+  function qMeter(q) { if (!q || !ctx) return 0; var now = ctx.currentTime, tr = curTr(), tau = (tr ? SPM / tr.bpm : 1) * IPH, V = 0; for (var i = 0; i < q.length; i += 2) if (q[i] <= now) V += q[i + 1] * Math.exp(-(now - q[i]) / tau); return 1 - Math.pow(PHI, -V * PHI); }   // chMeter's formula, without the per-call filter
+  function vlevs() { if (!VLEV) { try { VLEV = JSON.parse(localStorage.getItem(KVL) || '{}') || {}; } catch (e) { VLEV = {}; } } return VLEV; }
+  function vRung(id) { var v = vlevs()[id]; return isFinite(v) ? clamp(Math.round(+v), -LVMAX, DRMAX) : 0; }
+  function rungG(k) { return k <= -LVMAX ? 0 : Math.pow(PHI, k); }
+  function vact(k, t, v, tk) { var q = VQ[k] || (VQ[k] = []), now = ctx ? ctx.currentTime : 0; q.push(t, v * lgain(tk, 'drums') * (tk ? gAt(tk, t) : 1) * rungG(vRung('drums.' + k))); while (q.length && q[0] < now - PHI * PHI) q.splice(0, 2); VSEEN[k] = t; }   // act()'s pulses, per drum voice
+  function vgain(L, k) { if (!L || !L.out) return null; var m = L.vg, g = m && m[k]; if (g && g.context === L.out.context) return g; var r = vRung('drums.' + k); if (r === 0) return null;
+    g = L.out.context.createGain(); g.gain.value = rungG(r); g.connect(L.out); (L.vg || (L.vg = {}))[k] = g; return g; }
+  function hx(x, L, k, t, v, a) { var g = vgain(L, k); if (!g) return x.hit(L, k, t, v, a); var o = L.out; L.out = g; try { return x.hit(L, k, t, v, a); } finally { L.out = o; } }   // untouched voices call x.hit exactly as before
+  function rseen(inst, t) { if (!inst) return; if (inst === INST.dx) RSEEN.dx = t; else if (inst === INST.jup) RSEEN.jup = t; else if (inst === INST.juno || inst === INST.junopad) RSEEN.juno = t; }
+  function hlog(id, v) { try { var h = JSON.parse(localStorage.getItem(KHX) || '[]') || []; h.push([Date.now(), id, typeof v === 'number' ? +v.toFixed(4) : v]); if (h.length > 1597) h.splice(0, h.length - 1597); localStorage.setItem(KHX, JSON.stringify(h)); } catch (e) {} }   // the desk's own move history (js/dj-desk.js log)
+  var LVK = [], LVL = []; for (var lk0 = -LVMAX; lk0 <= DRMAX; lk0++) { LVK.push(lk0); LVL.push(lk0 <= -LVMAX ? 'off' : lk0 === 0 ? '0 dB' : (lk0 > 0 ? '+' : '\u2212') + (Math.abs(lk0) * 20 * Math.log10(PHI)).toFixed(1) + ' dB' + (lk0 > 0 ? ' drive' : '')); }   // the desk's level ladder and labels
+  var ONOFF = [-LVMAX, 0], ONOFFL = ['off', '0 dB'], FIXK = [0], FIXL = ['0 dB'];
+  function seen(t0) { return playing && !!ctx && t0 != null && t0 > ctx.currentTime - MXW; }
+  var VMODE = { t: -1, m: 'none' };   // the voice's role, read at most every PHI^-5 s (its plan builds an object)
+  function vmode() { var n = Date.now(); if (n - VMODE.t > Math.pow(PHI, -5) * MS) { VMODE.t = n; var V = window.DadAutoDJ && DadAutoDJ.voice, m = 'none'; try { m = V && V.mode ? V.mode() : 'none'; } catch (e) {} VMODE.m = m || 'none'; } return VMODE.m; }
+  function rackUse(r) { var tr = curTr(); return r === '808' ? seen(RSEEN['808']) : r === '303' ? !!(tr && tr.g && tr.g.bass === 'acid') : seen(RSEEN[r]); }
+  var TREE = null;
+  function mnode(id, label, lvl, on, en, kids, st, lb) { return { id: id, label: label, get level() { return lvl(); }, energy: en, get playing() { return on(); }, children: kids || [], steps: st || LVK, labels: lb || LVL, def: 0, _set: null }; }
+  function boxes(pre, rack, labs, parent) { return labs.map(function (lab, u) { var on = function () { return parent.playing && rackUse(rack) && boxOn(rack, u); };
+    var n = mnode(pre + '.' + rack + '.' + u, lab, function () { var b = MX.b[rack]; return b && b.m && b.m[u] ? -LVMAX : 0; }, on, function () { return on() ? parent.energy() : 0; }, [], ONOFF, ONOFFL);
+    n._set = function (k) { var off = k <= -LVMAX / 2; DESK.boxSet(rack, u, 'm', off); return off ? -LVMAX : 0; }; return n; }); }
+  function chNode(ch, label) { return mnode(ch, label, function () { return rungOf(ch); }, function () { return seen(CSEEN[ch]); }, function () { return qMeter(AQ[ch]); }); }
+  function tree() { if (TREE) return TREE; var R = { '808': ['driftbox', 'ours', 'sub', 'snap'], '303': ['driftbox', 'ours', 'drive'], dx: ['DX7 bell', 'our bell', 'DX7 tine'], jup: ['Jupiter', 'old stab', 'unison'], juno: ['chorus I', 'dry', 'chorus II'] };   // the desk's racks (js/dj-desk.js RK)
+    var dr = chNode('drums', 'drums'), DV = [['kick', 'kick'], ['snare', 'snare'], ['clap', 'clap'], ['hat', 'hi-hat'], ['shaker', 'shaker'], ['tom', 'tom'], ['cow', 'cowbell']];
+    dr.children = DV.map(function (x) { var k = x[0], id = 'drums.' + k, n = mnode(id, x[1], function () { return vRung(id); }, function () { return seen(VSEEN[k]); }, function () { return qMeter(VQ[k]); });
+      n._set = function (r) { r = clamp(Math.round(+r), -LVMAX, DRMAX); vlevs()[id] = r; try { localStorage.setItem(KVL, JSON.stringify(VLEV)); } catch (e) {} var now = ctx ? ctx.currentTime : 0;
+        tracks.forEach(function (tr) { var L = tr.L && tr.L.drums, g = L && L.vg && L.vg[k]; if (g) g.gain.setTargetAtTime(rungG(r), now, Math.pow(PHI, -5)); }); return r; };   // phi: glide PHI^-5 s; new hits make the node if it is missing
+      return n; });
+    dr.children[0].children = boxes('drums.kick', '808', R['808'], dr.children[0]);
+    var bs = chNode('bass', 'bass'); bs.children = boxes('bass', '303', R['303'], bs);
+    var cd = chNode('chords', 'chords'); cd.children = boxes('chords', 'jup', R.jup, cd);
+    var ar = chNode('arp', 'arp'); ar.children = boxes('arp', 'juno', R.juno, ar);
+    var pd = chNode('pad', 'pad'); pd.children = boxes('pad', 'juno', R.juno, pd);
+    var ld = chNode('lead', 'lead'); ld.children = boxes('lead', 'dx', R.dx, ld);
+    var an = chNode('answer', 'answer'), vo = chNode('voice', 'voice');
+    vo.children = [['singer', 'singer'], ['machine', 'machine'], ['choir', 'choir']].map(function (x) { var on = function () { return vo.playing && vmode() === x[0]; };
+      return mnode('voice.' + x[0], x[1], function () { return 0; }, on, function () { return on() ? vo.energy() : 0; }, [], FIXK, FIXL); });   // no level of its own yet: a single step
+    var by = {}; [dr, bs, cd, ar, pd, ld, an, vo].forEach(function (n) { by[n.id] = n; });
+    TREE = CHS.map(function (c) { return by[c]; }).filter(Boolean); return TREE; }
+  function nfind(L, id) { for (var i = 0; i < L.length; i++) { if (L[i].id === id) return L[i]; var x = nfind(L[i].children, id); if (x) return x; } return null; }
+  function apiSetLevel(id, v) { if (!isFinite(v)) return null; var n = nfind(tree(), String(id)); if (!n) return null; var k = n.steps[0], o = n.level, i;
+    for (i = 1; i < n.steps.length; i++) if (Math.abs(n.steps[i] - v) < Math.abs(k - v)) k = n.steps[i];
+    var r; if (CHS.indexOf(n.id) >= 0) r = DESK.level(n.id, k); else if (n._set) r = n._set(k); else return null;
+    hlog(CHS.indexOf(n.id) >= 0 ? 'level.' + n.id : 'mix.' + n.id, r); var D = window.DjDesk; if (D && D.paint && !D.vumock) try { D.paint(); } catch (e) {} return r; }
+  var DREGQ = [], dregT = 0, DURL = 'js/dj-desk.js?v=deskapi1';
+  function regLoad(cb) { var R = window.DjDeskRegistry; if (R) { if (cb) cb(R); return; } if (cb) DREGQ.push(cb); if (dregT) return; dregT = 1;
+    var done = function () { dregT = 0; var R2 = window.DjDeskRegistry || null; DREGQ.splice(0).forEach(function (f) { try { f(R2); } catch (e) {} }); if (R2) try { window.dispatchEvent(new CustomEvent('dj:params')); } catch (e) {} };
+    var s = document.querySelector('script[src*="js/dj-desk.js"]'); if (s && window.DjDesk && !window.DjDesk.vumock) { done(); return; }   // already ran (an older desk without the registry)
+    if (!s) { s = document.createElement('script'); s.src = DURL; s.async = true; document.head.appendChild(s); } s.addEventListener('load', done); s.addEventListener('error', done); }
+  function apiParams() { var R = window.DjDeskRegistry; if (!R) { regLoad(); return []; } return R.params(); }
+  function paramsReady(cb) { if (typeof cb !== 'function') return; regLoad(function (R) { cb(R ? R.params() : []); }); }
+  function apiSet(id, v) { var R = window.DjDeskRegistry; return R ? R.set(id, v) : null; }
+  DESK.energy = function (ch) { return qMeter(AQ[ch]); };   // chMeter without the per-call filter (the registry's channel energy)
+  DESK.trackE = function () { var tr = curTr(); return playing && tr && tr.e != null ? clamp(tr.e, 0, 1) : 0; };   // the playing track's arc (or its form section's energy)
+  window.DadAutoDJ = { desk: DESK, params: apiParams, paramsReady: paramsReady, set: apiSet, mixer: function () { return tree(); }, setLevel: apiSetLevel, _kit: { guard: function () { return GRD.g; }, health: function () { return { guard: GRD.g, ratio: GRD.ratio, lookAhead: lookAhead() }; }, vibe: function () { return { v: vbV(), d: clamp(DIAL.vbD, 0, 1), y: clamp(DIAL.vbY, 0, 1), t: clamp(DIAL.vbT, 0, 1), s: clamp(DIAL.vbS, 0, 1) }; }, dimX: function (w) { return dimX(w); }, emerge: function (nm, seed, drive, u) { return emerge(nm, { seed: seed, dm: { drive: drive } }, u || SPB).map(function (q) { return { n: q.n, b: q.b, f: q.f, lv: q.lv, P: q.P }; }); }, voiceHook: function (f) { VH = typeof f === 'function' ? f : null; }, resumeDial: function (v) { if (isFinite(v)) RK = clamp(+v, 3, 7); return RK; }, resumeW: function (e) { return resumeW(e); }, rhythmDial: function (k, v) { if (RD.hasOwnProperty(k) && isFinite(v)) RD[k] = clamp(+v, k === 'energy' ? -1 : 0, 1); return RD[k]; }, bassRoot: function () { var t = tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]; return t && t.g && t.g.br ? { f: t.g.br, w: t.dm ? t.dm.weight : 1 / 2 } : null; }, keyTravel: function () { return lastBx && lastBx.kt != null ? lastBx.kt : 0; }, dimsOf: dimsOf, every: every, never: never, wv: wv, chip: function () { return chip(tracks.filter(function (x) { return !x.dead && !x.leaving; })[0]); }, grid: grid, reroll: reroll, nextMix: function () { nextMix(); }, defMix: function () { remix(null); }, kseed: kseed, extras: extras, fx: fxIn, ir: function () { return X && X.ir ? X.ir() : null; }, voice: function () { return voice.apply(null, arguments); }, osc: function () { return osc.apply(null, arguments); }, env: env,
       INST: INST, get ctx() { return ctx; }, LADDER: LADDER, eff: eff, liveOf: liveOf, nudge: nudge, setTo: setTo, compute: compute, paint: paint, save: save,
       idle: function (c) { if (!playing) cur = c; }, get el() { return el; }, get duck() { return duck; }, wake: function () { wake(); }, resumeTap: function () { resumeTap(); }, rebuild: function () { return rebuild(); }, get stalled() { return stalled; }, recCC: recCC, mixGo: function () { mixGo(); }, get voices() { return nlive; }, soph: soph, pwave: pwave, set sOver(v) { sOver = v; }, get sOver() { return sOver; } },
     compute: compute, pumps: pumps, streams: streams, get dims() { return dimsOf(dimX(null)); }, get signs() { return JSON.parse(JSON.stringify(sign)); },

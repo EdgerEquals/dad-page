@@ -13,6 +13,7 @@
    time (mutes and solos too, as arrangement events) so after weeks the record shows where he settles. */
 (function (root, doc) {
   'use strict';
+  if (root.DjDeskRegistry) return;                                       // loaded once (the pill and the desk API both may ask for it)
   var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
   var CSS = 'css/dj-desk.css?v=knob1';
@@ -114,7 +115,7 @@
   function strip(host, id, title, note, chs) {
     var s = E('section', 'dk-s'), h = E('button', 'dk-sh'), b = E('div', 'dk-sb'); h.type = 'button';
     var t = E('b', null, title); h.appendChild(t); if (note) h.appendChild(E('small', null, note)); h.appendChild(E('span', 'dk-fold', '▾'));
-    s.setAttribute('data-strip', id); if (folded(id)) s.classList.add('is-folded'); h.setAttribute('aria-expanded', folded(id) ? 'false' : 'true');
+    s.setAttribute('data-strip', id); s._chs = chs || null; if (folded(id)) s.classList.add('is-folded'); h.setAttribute('aria-expanded', folded(id) ? 'false' : 'true');
     h.addEventListener('click', function () { var f = !s.classList.contains('is-folded'); s.classList.toggle('is-folded', f); h.setAttribute('aria-expanded', f ? 'false' : 'true'); UI.fold[id] = f ? 1 : 0; sv(KUI, UI); });
     s.appendChild(h); s.appendChild(b); host.appendChild(s); if (chs && chs.length && DK()) stripMS(s, h, id, chs); return b;
   }
@@ -142,7 +143,7 @@
       c.appendChild(ms);
       // NO SENDS (Danny 07:48 AWST 28 Oct: 'Remove effect sends'): the echo and wash send faders are gone from the channels; any that
       // were up go back to off, so nothing hidden stays routed. The effects' own returns (the Effects strip) are untouched.
-      ['e', 'w'].forEach(function (k) { if (((k === 'e' ? D.mx.e : D.mx.w)[ch] | 0) > 0) D.send(ch, k, 0); });
+      if (!HEADLESS) ['e', 'w'].forEach(function (k) { if (((k === 'e' ? D.mx.e : D.mx.w)[ch] | 0) > 0) D.send(ch, k, 0); });   // not from the API's out-of-sight build: only opening the desk does this
       // LEVEL (Danny 08:43 'lost my ability to change the volumes'; 08:49 'build them in'): a loss knob, 0 dB down a rung at a time to off,
       // with the channel's stereo VU on its left (the energy in the circuit after the level; mono channels move both sides together)
       // DRIVE (Danny 09:44 AWST 28 Oct: 'I need to be able to turn things up ... overdrive everything'): the level knob now goes both ways,
@@ -449,6 +450,42 @@
     host.appendChild(E('p', 'dk-note', 'Coming with the cascade: the layer stack, every group as its emoji at the layer it is awake on, live.'));
   }
 
+  // ---------- REGISTRY for the desk API (Danny 14:31 AWST 30 Oct via Dashboard Bot: "Let's get the VU panels and get all that finished and
+  // pushed live"): DadAutoDJ.params() / set(id, v) read this. Every fader's own spec (id, ladder, labels, default, note, get / set / live)
+  // as data, in the fields of Dashboard Bot's mock (js/dj-api-mock.js): { id, label, info, type 'ladder', min, max, step, value, energy(),
+  // steps, labels, def, panel, panelLabel, section, kind, kindName, panelNote, disabled, live } + energySrc. When this desk has not been
+  // built, the same pages are built once out of sight (never attached, no timers, no sends reset); a built desk's own faders are used as
+  // they are. energy(): the fader's own live reading when it has one, else the energy of the channels its strip plays (the mixer's
+  // capacitor meters), else the playing track's arc; visual faders 0. Read at most every PHI^-5 s per item (the desk's own meter rate).
+  var HEADLESS = false, RG = null, RGV = false, KINDN = { R: 'rung', C: 'coupling', V: 'threshold', L: 'loss', N: 'pump count' };
+  function rgStrip(e) { return e && e.closest ? e.closest('[data-strip]') : null; }
+  function rgTitle(s) { var h = s && s.querySelector('.dk-sh'), b = h && h.querySelector('b'), m = h && h.querySelector('small'); return { t: b ? b.textContent : '', n: m ? m.textContent : '' }; }
+  function rgSec(e) { var c = e.closest ? e.closest('.dk-ch') : null; if (c) { var n = c.querySelector('.dk-chn'); if (n) return n.textContent; }
+    var b = e.closest ? e.closest('.dk-bank') : null; for (var q = b && b.previousElementSibling; q; q = q.previousElementSibling) if (q.classList.contains('dk-sub')) return q.textContent; return ''; }
+  function rgItem(o) { var f = o.f, s = rgStrip(o.el), pid = s ? s.getAttribute('data-strip') : '', vis = pid.charAt(0) === 'v' && pid !== 'vibe' && pid !== 'voice', tt = rgTitle(s), chs = s && s._chs, sec = rgSec(o.el);
+    var src = vis ? 'none' : f.live ? 'live' : chs && chs.length ? 'channel' : 'track', ce = 0, ct = -1, lab = [];
+    try { lab = f.L.map(function (v) { return String(f.lab(v)); }); } catch (e) { lab = f.L.map(String); }
+    function raw() { var x = null, D = DK(); if (vis || !D) return 0; if (f.live) { try { x = f.live(); } catch (e) {} if (x != null && isFinite(x)) return x; }
+      if (chs && chs.length && D.energy) { var m = 0; chs.forEach(function (c) { m = Math.max(m, D.energy(c)); }); return m; } return D.trackE ? D.trackE() : 0; }
+    return { id: f.id, label: f.id.indexOf('vspeed.') === 0 ? sec : f.name, info: f.note || '', type: 'ladder', min: f.L[0], max: f.L[f.L.length - 1], step: null,
+      get value() { var v = null; try { v = f.get(); } catch (e) {} return v == null ? (f.def != null ? f.L[near(f.L, f.def)] : f.L[0]) : v; },
+      energy: function () { var n = performance.now(); if (n - ct >= MSTEP * MS) { ct = n; var x = +raw(); ce = isFinite(x) ? clamp(x, 0, 1) : 0; } return ce; }, energySrc: src,
+      steps: f.L, labels: lab, def: f.def == null ? null : f.def, panel: (vis ? 'visual.' : '') + pid, panelLabel: (vis ? 'Visual ' : '') + tt.t, panelNote: tt.n, section: sec,
+      kind: f.k, kindName: KINDN[f.k] || '', get disabled() { var g = ''; try { g = f.greyFn ? f.greyFn() : f.grey; } catch (e) {} return typeof g === 'string' ? g : ''; }, live: !!f.live, _o: o }; }
+  function rgBuild(fn) { var sF = FD, sM = MIX, sK = KV, sR = [TXL, BSLF, MBLF, FMLF, BXLF, VPLF, LDLF, TPLF, LGLF], out; FD = []; MIX = []; KV = []; HEADLESS = true;
+    try { fn(doc.createElement('div')); out = FD; } finally { FD = sF; MIX = sM; KV = sK; HEADLESS = false; TXL = sR[0]; BSLF = sR[1]; MBLF = sR[2]; FMLF = sR[3]; BXLF = sR[4]; VPLF = sR[5]; LDLF = sR[6]; TPLF = sR[7]; LGLF = sR[8]; }
+    return out; }
+  function rgFaders(L) { return L.filter(function (o) { return o.f && o.f.L && o.f.id.indexOf('level.') !== 0; }).map(rgItem); }
+  function registry() { var A = root.AnimTiles && root.AnimTiles.desk;
+    if (!RG) { if (!DK()) return []; var snd, vis = null;
+      if (el && tabs.sound) { snd = FD.filter(function (o) { return tabs.sound.p.contains(o.el); }); if (tabs.visual.p.childNodes.length) vis = FD.filter(function (o) { return tabs.visual.p.contains(o.el); }); }
+      else snd = rgBuild(soundPage);
+      RG = rgFaders(snd); RGV = false; if (vis && vis.length) { RG = RG.concat(rgFaders(vis)); RGV = true; } }
+    if (!RGV && A) { RG = RG.concat(rgFaders(rgBuild(visualPage))); RGV = true; }   // the animations' desk lands later than the sound
+    return RG; }
+  function rgSet(id, v) { var L = registry(), p = null; for (var i = 0; i < L.length; i++) if (L[i].id === id) { p = L[i]; break; } if (!p || p.disabled || !isFinite(v)) return null;
+    var f = p._o.f, nv = f.L[near(f.L, +v)]; f.set(nv); log(f.id, nv); try { p._o.paint(); } catch (e) {} if (el) paintAll(); return nv; }
+
   // ---------- page, tabs, meters ----------
   var el = null, body = null, readEl = null, tabs = {}, mT = 0, lastFocus = null;
   var TXL = null, BSLF = null, MBLF = null, FMLF = null, BXLF = null, VPLF = null, LDLF = null, TPLF = null, LGLF = null;
@@ -507,5 +544,7 @@
   function close(refocus) { if (!isOpen()) return; full(false); de.removeAttribute('data-desk'); clearTimeout(mT); clearTimeout(fT); var main = doc.getElementById('home-main'); if (main) main.scrollTop = keep; sync(false);
     if (refocus) { var b = doc.getElementById('dj-edit'); if (b) b.focus({ preventScroll: true }); } }
   function sync(o) { var b = doc.getElementById('dj-edit'); if (b) b.setAttribute('aria-expanded', o ? 'true' : 'false'); }
-  root.DjDesk = { open: open, close: close, toggle: function () { isOpen() ? close(false) : open(); }, get isOpen() { return isOpen(); }, history: function () { return ld(KH, []); }, paint: paintAll };
+  var FACE = { open: open, close: close, toggle: function () { isOpen() ? close(false) : open(); }, get isOpen() { return isOpen(); }, history: function () { return ld(KH, []); }, paint: paintAll };
+  if (!root.DjDesk) root.DjDesk = FACE;   // another desk face (Dashboard Bot's VU panel) may already own the faders button; this file then only serves the registry
+  root.DjDeskRegistry = { params: registry, set: rgSet, face: FACE };
 })(window, document);
