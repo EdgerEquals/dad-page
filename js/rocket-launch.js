@@ -18,6 +18,16 @@
         and 208c6e4 moved it to the very top (height^2), which together read as a straight line.
      4. liftoff blast: js/rocket-blast.js plays a drawn launch blast at the pad the moment the climb starts.
    Start column and drift come from the diagonal-axes frame (js/phi-axes.js); climb time, pad time and shake size are pumped.
+     5. launchbooms (Danny 09:02 AWST 30 Oct, t278u: 'Explosions shouldn't be a fixed number ... anywhere between no extra ones and three
+        extra ones and have them fire with the density towards the start of it so there's a larger gap between each time of fires'; t254u
+        26 Oct: more explosions as it climbs, each with the trailing collision smoke, smaller as it climbs). After the liftoff blast
+        (explosion 0) each launch adds n = 0..3 extra explosions in the air, n from a pump node ('rocket:booms', 3 modes on PHI^5.. s, read
+        at liftoff, their mean stretched by PHI so the whole range is reached). Gaps grow in phi steps: extra j fires PHI^(j-5) of the climb
+        time after the one before (PHI^-4, PHI^-3, PHI^-2: dense near the pad, wider further out), at the rocket where it is drawn then.
+        Each is one PHI^-1 step smaller than the last (S PHI^-j, S = the rocket's drawn size): the burst glow, Fibonacci-fewer sparks and
+        smoke puffs (5, 3, 2) drawn with js/rocket-blast.js's pieces in its layer; the smoke FOLLOWS the rocket on its own path, each puff
+        PHI^-5 of the smoke's life further behind (as rocketboom c349097), swelling and fading, on one rAF loop only while puffs live.
+        Skipped once the rocket is hit (hidden) or the tab is hidden. The inline first launch gets them too (picked up when this file loads).
    Skipped while hidden; nothing under reduced motion. */
 (function () {
   'use strict';
@@ -68,11 +78,48 @@
     var up = el.animate([{ transform: 'none' }, { transform: 'translateY(' + (-H - h) + 'px)' }], { duration: D, delay: S, easing: CLIMB, fill: 'both' }); up.onfinish = later;
     gl.animate(path(bend, H + h), { duration: D, delay: S, easing: 'linear', fill: 'both' });   // the Sun's pull, sampled from the climb
     if (root.RocketBlast) RocketBlast.sync(up, el, kk);                    // liftoff blast at the pad
+    booms(up, kk);                                                         // launchbooms: 0..3 more on the climb
     gl.animate(shake(kk, S + D * IP), { duration: S + D * IP, easing: 'linear' });   // phi: shake spans the pad + PHI^-1 of the climb (= D), liftoff at S
   }
+  // ---------- launchbooms: 0..3 extra explosions on the climb ----------
+  var FIB = [1, 1, 2, 3, 5, 8], NX = 3, bp = null, plans = [], SM = [], sraf = 0, HS = [];   // spec: Danny t278u 'between no extra ones and three extra ones' (NX = 3); Fibonacci piece counts
+  function extras() { var P = root.PhiPumps, m = null; if (P && !bp) bp = P.node('rocket:booms', 3, 5, 1, P.page, 34);   // phi: 3 pumps, rungs PHI^5.. s (11 s+, about a launch apart), Fibonacci seed
+    try { m = bp ? bp.modes() : null; } catch (e) {}
+    if (m == null) m = 2 * fr(count * IP) - 1;                             // phi: no pumps: the golden sequence of the launch number
+    return Math.max(0, Math.min(NX, Math.round(NX / 2 * (1 + Math.max(-1, Math.min(1, m * PHI)))))); }   // phi: the modes' mean stretched by PHI, mapped onto 0..3
+  function tail() { var r = gl.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 * (1 + IP), S: parseFloat(getComputedStyle(el).fontSize) || r.height, on: r.width > 0 && getComputedStyle(gl).visibility !== 'hidden' }; }   // phi: the exhaust, PHI^-1 of the half-box below its centre; hidden = hit by emoji-collide
+  function at(t) { for (var i = HS.length - 1; i >= 0; i--) if (HS[i][0] <= t) return HS[i]; return HS[0]; }
+  function smoke(now) { sraf = 0; var p = tail(), K = RocketBlast.kit; HS.push([now, p.x, p.y]); while (HS.length > 144) HS.shift();   // phi: 144 samples (Fibonacci) of where it was
+    SM = SM.filter(function (q) { var u = (now - q.t0) / q.life; if (u >= 1 || !q.e.isConnected) { q.e.remove(); return false; }
+      var h = now - q.lag > q.t0 ? at(now - q.lag) : null;               // unit: its place on the rocket's path, lag behind (the boom point until the path gets there)
+      q.e.style.transform = K.T(h ? h[1] : q.x, (h ? h[2] : q.y) - q.S * IP * u, 0, IP + (PHI - IP) * Math.sqrt(u)); q.e.style.opacity = (1 - Math.pow(IP, 3)) * (1 - u) * Math.pow(IP, q.k * IP);   // phi: rises PHI^-1 of its size, swells PHI^-1 -> PHI, older puffs fainter
+      return true; });
+    if (SM.length && !doc.hidden) sraf = requestAnimationFrame(smoke); else { SM.forEach(function (q) { q.e.remove(); }); SM = []; HS = []; } }
+  function boom(j, kk, ln) {                                               // extra explosion j (1..3) at the rocket, PHI^-j of its size
+    var B = root.RocketBlast, K = B && B.kit, p = tail(); if (!K || !p.on || doc.hidden) return;
+    var S = p.S * Math.pow(IP, j), life = MS * kk, x = p.x, y = p.y, i, e, c = FIB[5 - j], now = performance.now();   // phi: one PHI^-1 step smaller each time; 5, 3, 2 pieces
+    e = K.piece('rb-fg', S * PHI * PHI, S * PHI * PHI);                    // the burst glow blooms PHI^-2 -> 1 -> PHI and fades, left behind as it climbs
+    K.run(e, [{ transform: K.T(x, y, 0, IP * IP), opacity: 1 }, { offset: IP * IP, transform: K.T(x, y, 0, 1), opacity: 1 }, { transform: K.T(x, y, 0, PHI), opacity: 0 }], life, 0, 'ease-out');
+    for (i = 0; i < c; i++) { var a = TAU * (i / c + K.jit(i, ln + j) * IP * IP), d = S * PHI * (IP + (1 + K.jit(i, j)) / 2 * IP);   // phi: sparks round the circle, golden jitter, about PHI sizes out
+      e = K.piece('rb-dot', S * IP * IP, S * IP * IP);
+      K.run(e, [{ transform: K.T(x, y, 0, 1), opacity: 1 }, { transform: K.T(x + Math.cos(a) * d, y + Math.sin(a) * d, 0, IP), opacity: 0 }], life * IP, 0, 'cubic-bezier(0,' + IP + ',' + IP + ',1)'); }   // phi: decelerate in the air
+    if (!HS.length) HS.push([now, x, y]);
+    for (i = 0; i < c; i++) { var sl = life * PHI * PHI; e = K.piece('rb-puff', S * IP, S * IP); e.style.opacity = 0; e.style.transform = K.T(x, y, 0, IP);   // phi: smoke lives PHI^2 s (pumped)
+      SM.push({ e: e, t0: now, life: sl, lag: (i + 1) * Math.pow(IP, 5) * sl, x: x, y: y, S: S, k: i }); }   // phi: each puff PHI^-5 of its life further behind on the rocket's path (rocketboom)
+    if (!sraf) sraf = requestAnimationFrame(smoke);
+    if (B.note) B.note({ at: Math.round(now), x: Math.round(x), y: Math.round(y), size: Math.round(S), j: j, launch: ln });   // footpush reads fired: a boom near the lead sets the critters off
+  }
+  function booms(climb, kk) {                                              // from liftoff (the end of the climb's delay): n extras, gap j = PHI^(j-5) x the climb time
+    if (!climb || !climb.effect) return;
+    (climb.ready || Promise.resolve()).then(function () {
+      var tm = climb.effect.getTiming(), D = +tm.duration || RISE * MS * kk, wait = (tm.delay || 0) - (climb.currentTime || 0), nx = extras(), ln = count, t = 0, ts = [], j;   // phi: the climb time (PHI^3 s pumped) if unknown
+      for (j = 1; j <= nx; j++) { t += D * Math.pow(IP, 5 - j); ts.push(Math.round(t)); if (wait + t > 0) (function (j) { setTimeout(function () { if (climb.playState !== 'idle') boom(j, kk, ln); }, wait + t); })(j); }   // phi: gaps PHI^-4, PHI^-3, PHI^-2 of the climb (growing); a boom already past (late load) is skipped
+      plans.push({ launch: ln, extras: nx, at: ts, climb: Math.round(D) }); if (plans.length > 13) plans.shift();
+    }, function () {}); }
   var t = 0; function later() { clearTimeout(t); t = setTimeout(launch, GAP * MS * k()); }
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden && !t) later(); });
   var a = el.getAnimations ? el.getAnimations({ subtree: true }) : [];
   if (a.length) Promise.all(a.map(function (x) { return x.finished; })).then(later, later); else later();   // adopt: wait out the inline launch (climb + shake)
-  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP }; }, launch: launch };
+  a.forEach(function (x) { if (x.animationName === 'rkY') booms(x, 1); });   // launchbooms: the inline first launch's climb gets its extras too
+  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length }; }, launch: launch };
 })();

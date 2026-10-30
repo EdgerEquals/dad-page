@@ -63,6 +63,6 @@
     var el = doc.getElementById('rk1'); if (!el || !el.getAnimations) return;
     var a = el.getAnimations().filter(function (x) { return x.animationName === 'rkY'; })[0]; if (a) sync(a, el, 1);
   }
-  root.RocketBlast = { sync: sync, blast: blast, info: function () { return { fired: fired.slice() }; } };
+  root.RocketBlast = { sync: sync, blast: blast, info: function () { return { fired: fired.slice() }; }, note: function (f) { fired.push(f); }, kit: { piece: piece, run: run, T: T, jit: jit } };   // launchbooms: js/rocket-launch.js draws the climb explosions with these pieces in this layer and notes them here (footpush reads fired)
   adopt();
 })();
