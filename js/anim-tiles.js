@@ -54,7 +54,7 @@
   // x 390), and the one whose centre is nearest the tap, measured in its own size, wins. Taps on buttons, links, fields, the ticker / tty /
   // footer items (QuizPopups) or an open box never get here. The full-screen textures (space loop, code drift, matrix rain) have no piece to
   // tap; they stay on Ed's desk (Visual) and their #anim= links.
-  var TAPS = { rain: ['.rain>i'], comet: ['.es-comet'], rocket: ['#rk1>i'], sun: ['.pl-sun', '.pl-small', '.tsl-layer>*'],
+  var TAPS = { rain: ['.rain>i'], comet: ['.es-comet'], rocket: ['#rk1>i'], sun: ['.pl-sun', '.pl-small', '.sm-n:not(.sm-dizzy)', '.tsl-layer>*'],
     earth: ['.pl-big', '.pl-moon', '.pl-sat', '.pl-ast'], ping: ['.pl-scope', '.pl-dish'], sky: ['.es-layer>*:not(.es-comet)'], ring: ['.qs-layer>*'] };
   var ROOTS = /^(HTML|BODY|MAIN)$/;
   function showing(el) { if (el.classList && el.classList.contains('ec-gone')) return false; if (el.checkVisibility) return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });

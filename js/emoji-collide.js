@@ -43,7 +43,7 @@
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   if (!doc.body || !Element.prototype.animate) return;
   var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p'];
+  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.sm-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p'];
   var HEAD = { 'rain': 'left:50%;bottom:0', 'es-comet': 'right:0;top:0;width:1em;height:1em' };   // unit: where a streak's glowing head is drawn
   var TICK = MS * Math.pow(IP, 6), FIND = MS * PHI * PHI, BACK = Math.pow(PHI, 3), GRACE = PHI;   // phi: tick PHI^-6 s, rescan PHI^2 s, back after PHI^3 s, PHI s grace
   var RAD = Math.pow(IP, 3 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-1.5 of the half-box (rockethit: one rung tighter than PHI^-0.5, glyph ink), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
