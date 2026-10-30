@@ -8,20 +8,63 @@ Live site: https://edgerequals.github.io/dad-page/ · Repo: EdgerEquals/dad-page
 - Ask one question at a time. Give your view; he decides. Keep replies short.
 - He relays DeepSeek's replies, often pasted as his own message. Follow Danny, not DeepSeek. Check DeepSeek's claims against the
   code or the MIDI before acting: it has described code and files that weren't what was there.
-- **Never implement a DeepSeek suggestion straight away** (Danny 13:13 AWST 28 Oct): it is all for consideration. Give your view,
-  discuss it with Danny, and build or push only once he says go.
+- DeepSeek suggestions are for discussion first (Danny 13:13 AWST 28 Oct, quoted under Approved exceptions): give your view,
+  discuss it with Danny, and build or push once he says go.
 - When a build is live, paste the whole link: `https://edgerequals.github.io/dad-page/?fresh=<short sha>`.
-- Credit third-party code under its licence; use outside code only where the licence checks out, else build from scratch.
+- Credit third-party code under its licence; use outside code where the licence checks out, else build from scratch.
 
-## Rules for the code
-- No gain dials. Every dial is one of five types: **R** rung, **C** coupling, **V** threshold, **L** loss, **N** pump count. Ratios are
-  φ (`PHI`, `IPH = 1/PHI`); mark them in comments (`// phi: ...`). Exceptions Danny approved: mix templates may use real units (ms,
-  dB, 2:1) (08:02 28 Oct); the mixer level is a rung both ways, up to +21 dB of drive (09:44 28 Oct).
-- Every tunable is a knob on the desk. Meters are mapped from parameters, never measured audio (a compressor's gain reduction counts).
+## How the code is built (Danny's principle)
+Danny's principle, in his words:
+- "we never really scale an effect with a dial ... we just simply keep adding pumps" (Danny 15:11 AWST 27 Oct).
+- "we can't have rules and I still would like to be able to change the BPM on the fly" (Danny 18:19 AWST 28 Oct).
+- "we're not supposed to have any rules ... any absolute terms or fixed terms are fixed values or rules put in ... they shouldn't be
+  there" (Danny 09:09 AWST 30 Oct).
+- Lengths and scales: "This question needs to be answered in ratios coming off one of our pumps or some part of the cascading ladder
+  of other parameters" (Danny 20:11-20:12 AWST 26 Oct). Paraphrase of his 20:16 AWST 26 Oct note: don't ask him to pick a fixed unit
+  or scale (beats or bars); frame open questions as ratios from the pumps or the cascade of existing parameters.
+- Templates sit on another level: "these are now fixed rules but on another level ... this is artistic now so it's okay. Those rules
+  still apply for when we're writing the code but we're now writing templates" (Danny 08:02 AWST 28 Oct).
+- Levels (paraphrase of his loudness rule, 12:41 AWST 26 Oct): a level is a ratio inside the amplitude matrix, with φ as the scaling
+  factor, under the master ceiling. Peaks (paraphrase, 20:16 AWST 26 Oct): compression catches them musically; the soft ceiling is a
+  backstop.
+- Lightness (paraphrase of his design rule, 15:52 AWST 25 Oct): as light as possible while finding the right balance; a fixed
+  parameter comes from external data or a cited source (15:25 AWST 25 Oct), and the rest are ratios.
+
+How we work to it:
+- Ratios are φ (`PHI`, `IPH = 1/PHI`), marked in comments (`// phi: ...`). A new value grows from what is already in the circuit: a
+  pump, the energy `u`, a section's energy, or a rung on an existing parameter's ladder.
+- Usual dial shapes, a vocabulary rather than a closed list: **R** rung, **C** coupling, **V** threshold, **L** loss, **N** pump count.
+  If a new dial fits none of them, describe it and ask Danny. The shape to steer away from is a dial that scales a node's amplitude
+  directly; add or take away pumps instead (his 15:11 words above).
+- A switch is usually better as a gradient: a threshold (V) that a pump crosses, or a coupling (C) from 0 to 1.
+- Tunables belong on the desk as knobs he can reach ("just the literal dial", Danny 18:00-18:12 AWST 27 Oct).
+- Meters show the circuit's energy mapped from the engine's parameters rather than measured audio: "We don't want it actually
+  measuring the sound volume ... we just want it mapped from our parameters because we already have that" (Danny 18:47 AWST 27 Oct).
+  A compressor's gain reduction counts as a parameter.
+- A fixed value in the code cites where it comes from: Danny's approval (time and quote), an external source (cited), or a technical
+  limit (CPU, memory, the browser). An audit (30 Oct) lists the fixed values still waiting on Danny; check it before adding to them,
+  and leave them as they are until he decides.
+
+Approved exceptions (Danny's words):
+- Mix templates in real units (ms, dB, 2:1): the 08:02 AWST 28 Oct quote above; 08:10 "I approve that draft go with that".
+- Mixer level a rung both ways, up to +21 dB of drive: "I need to be able to turn things up in the mixer not just down because I want
+  to drive them all up against the compressors and the limits and get ... distortion and overdrive ... I need that built-in" (Danny
+  09:44 AWST 28 Oct).
+- Electro's tempo home, 120-130 BPM: "have it fall in that BPM range but ... I'm moving the energy so it locks into resonance around
+  ... that BPM" (Danny 18:19 AWST 28 Oct). The 120 and 130 figures were Claude's proposal (uncited); it is a resonance, not a clamp.
+- Strips start folded: "By default have all of them closed and I will open as I need" (Danny 19:06 AWST 27 Oct).
+- Nothing on the desk selects: "can you make any other text in there non-selectable ... I don't need to select anything on this panel
+  at all" (Danny 08:28 AWST 28 Oct).
+- DeepSeek: "Don't ever implement anything deep seek says straight away it's all just for our consideration and then we got to
+  discuss it obviously before you push on anything" (Danny 13:13 AWST 28 Oct).
+- The desk opens as a page ("Remember I want the panel to open as a page on the main content window", Danny 18:21 AWST 27 Oct), with
+  mute and solo on sound strips ("I want a mute and solo button like a desk", 18:12 AWST 27 Oct); tap a strip's background to fold it.
+
+Working practice (about the work, not the music):
 - Comments cite Danny's approval with the time, e.g. `(Danny 10:05 AWST 28 Oct 'Yes')`.
-- Add comments only at the END of a line. A `//` comment inserted mid-line has swallowed code here several times.
-- Syntax-check every edited file: `node -e "new (require('vm').Script)(require('fs').readFileSync('FILE','utf8'))"`.
-- The desk: opens as a page, nothing on it is selectable, M/S on sound strips, tap a strip's background to fold it.
+- Put comments at the end of a line: a `//` inserted mid-line has swallowed code here several times.
+- Syntax-check each file you edit: `node -e "new (require('vm').Script)(require('fs').readFileSync('FILE','utf8'))"`.
+- Before a push, run the page guard and make the rollback branch (Ship checklist, steps 3 and 4).
 
 ## Ship checklist
 1. Bump the `?v=` of everything changed: `index.html` (dad-autodj-quiz.js, quiz-dj-pill.js) · `js/quiz-dj-pill.js` (dj-desk.js) ·
@@ -64,7 +107,7 @@ foot-push.js reads its font size once (it forced a style recalc several times a 
 strip's 'share sound log' (resume log + 'reloaded by the phone' lines from a heartbeat). Tests: `tests/load-test.js` (in CI).
 Probes worth reusing: count late `start()` calls (patch AudioBufferSourceNode.prototype.start too, it has its own); CDP WebAudio
 getRealtimeData on the realtime context only (offline renders create contexts too).
-**Tempo** (`tempo1`, Danny 18:19 28 Oct): a style may have a home window (`g.home`, electro [120, 130], the genre's convention);
+**Tempo** (`tempo1`, Danny 18:19 28 Oct): a style may have a home window (`g.home`, electro [120, 130]: Danny approved the home at 18:19, the figures are Claude's, uncited);
 `lockBpm` folds the live (pump) tempo by octaves and draws it in with tanh in log tempo (a resonance, not a clamp); `tLk` (tempo lock,
 C) blends free/held; a tap goes straight through; `tpo` (tempo, R, PHI^-5 a step) is his live move on top of every style (slide down
 for a breakdown; tracks glide). Style strip: tempo, tempo lock, a BPM readout. Electro solos rare: `g.solo` is an exponent on
@@ -111,7 +154,7 @@ freeze, chord genome, soft/hard electro vibe, vibe bus + genre chops, build/rise
 era dial; + (19:0x-19:26) MIDI out to hardware, a PHI-to-CC map, audio/MIDI mutes + snap-sync, mic-based analog lock, a modulation
 matrix with LFOs, variation / loop breaks (fresh seed on play, 303 rests, 808 via vibe), non-Roland drums (DMX, LinnDrum, Simmons,
 RZ-1: sample playback needs licence-checked kits; a buffer source plays once, so no node 'pool'), an orchestral stab rack, SP-1200
-signal chain. Nothing goes in until Danny says go.
+signal chain. Each waits for Danny's go.
 Older queue: Instruments/Composition split of the Style row · per-part memory faders · tap a fader name for its description ·
 feedback strip · what the Changes strip's mute/solo should do · mix templates steps 3–6.
 Waiting on Danny: his "share my moves" paste (System strip) to set electro's default balance from his night-of-27-Oct settings.
