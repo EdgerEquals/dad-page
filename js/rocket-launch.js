@@ -71,6 +71,7 @@
   var count = 1, pump = null;
   function k() { var P = root.PhiPumps; if (P && !pump) pump = P.node('rocket', 3, 6, Math.pow(IP, 4), P.page, 21); try { return pump ? pump.out() : 1; } catch (e) { return 1; } }   // phi: 3 pumps, rungs 6.., depth PHI^-4
   function fr(x) { return x - Math.floor(x); }
+  var VS = fr((performance.timeOrigin || Date.now()) * IP);              // rocketfirst2 (Danny t327u): a per-visit golden seed for the no-pumps fallback (the pumps load late, rule 22), so the first launch varies visit to visit; the inline pad shake in index.html seeds the same way
   // rocketpumps (Danny t319u 30 Oct: 'all the parameters ... coming from our pumps and how we stack the pumps. We stack more if we want
   // higher frequency ... nothing fixed, just within boundaries, but boundaries are still ratios'). Every explosion / wobble parameter is
   // PHI^(lo..hi) x an existing quantity, the exponent freewheeling on its own stack of PhiPumps modes (child of the page node), read at
@@ -87,8 +88,8 @@
   function band(name, n, k0, seed, lo, hi, dt, salt) { var P = root.PhiPumps, m = null, q = BN[name];
     if (P && !q) q = BN[name] = P.node('rocket:' + name, n, k0, 1, P.page, seed);
     try { m = q ? q.modes(P.now() + (dt || 0) / MS) : null; } catch (e) {}
-    if (m == null) m = 2 * fr(count * PHI + (seed + (salt || 0)) * IP) - 1;
-    m = Math.max(-1, Math.min(1, m * PHI));                               // phi: the modes' mean stretched by PHI (as the booms count) so the bounds are reached
+    if (m != null) m = Math.max(-1, Math.min(1, m * PHI));                // phi: the modes' mean stretched by PHI (as the booms count) so the bounds are reached
+    else m = 2 * fr(VS + count * PHI + (Math.round(Math.log(seed * Math.sqrt(5)) / Math.log(PHI)) + (salt || 0)) * IP + (dt || 0) / MS * IP) - 1;   // phi: no pumps: golden sequence of the visit, launch, the seed's Fibonacci index (Fibonacci seeds x PHI^-1 are near-integers, so the seed itself would move every parameter together) and its moment
     return Math.pow(PHI, lo + (hi - lo) * (m + 1) / 2); }
   function shake(amp, span, wp) {                                              // pad shake + wobble, then shrink to zero with the climb; span = pad + PHI^-1 climb (ms)
     var f = [], L = PAD / (PAD + IP);                                       // phi: liftoff at the pad's share of the span (= PHI^-2 of it)
@@ -134,7 +135,7 @@
   var FIB = [1, 1, 2, 3, 5, 8], NX = 3, bp = null, plans = [], SM = [], sraf = 0, HS = [];   // spec: Danny t278u 'between no extra ones and three extra ones' (NX = 3); Fibonacci piece counts
   function extras() { var P = root.PhiPumps, m = null; if (P && !bp) bp = P.node('rocket:booms', 3, 5, 1, P.page, 34);   // phi: 3 pumps, rungs PHI^5.. s (11 s+, about a launch apart), Fibonacci seed
     try { m = bp ? bp.modes() : null; } catch (e) {}
-    if (m == null) m = 2 * fr(count * IP) - 1;                             // phi: no pumps: the golden sequence of the launch number
+    if (m == null) m = 2 * fr(VS + count * IP) - 1;                             // phi: no pumps: the golden sequence of the launch number
     return Math.max(0, Math.min(NX, Math.round(NX / 2 * (1 + Math.max(-1, Math.min(1, m * PHI)))))); }   // phi: the modes' mean stretched by PHI, mapped onto 0..3
   function tail() { var r = gl.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 * (1 + IP), S: parseFloat(getComputedStyle(el).fontSize) || r.height, on: r.width > 0 && getComputedStyle(gl).visibility !== 'hidden' }; }   // phi: the exhaust, PHI^-1 of the half-box below its centre; hidden = hit by emoji-collide
   function at(t) { for (var i = HS.length - 1; i >= 0; i--) if (HS[i][0] <= t) return HS[i]; return HS[0]; }
@@ -165,7 +166,7 @@
   var DA = Math.pow(IP, 1 / 8), DP = Math.pow(IP, 1 / 16), BACKP = Math.pow(PHI, 4);   // phi: speed x PHI^-1/8 at the far point, x PHI^-1/16 at the closest; back on the pad after PHI^4 s
   var lp = null, lraf = 0, RATE = 1, lpump = null, flights = [], lastD = RISE * MS;   // RATE: test hook only (an accelerated clock)
   function lturn() { var P = root.PhiPumps, m = null; if (P && !lpump) lpump = P.node('rocket:loops', 3, 5, 1, P.page, 55); try { m = lpump ? lpump.modes() : null; } catch (e) {}   // phi: 3 pumps, rungs PHI^5.. s, Fibonacci seed
-    if (m == null) m = 2 * fr(count * PHI + (lp ? lp.apo : 0) * IP) - 1;   // phi: no pumps: golden sequence
+    if (m == null) m = 2 * fr(VS + count * PHI + (lp ? lp.apo : 0) * IP) - 1;   // phi: no pumps: golden sequence
     return Math.PI * PHI * m; }                                            // phi: up to PHI half-turns either way
   function sunAt() { var W = innerWidth, H = innerHeight, s = root.PhiSun ? PhiSun.px() : { x: W * (1 - Math.pow(IP, 5)), y: H * Math.pow(IP, 4) }, n = doc.querySelector('.pl-sun .pl-p'), r = n && n.getBoundingClientRect();
     return { x: s.x, y: s.y, R: r && r.width ? Math.min(r.width, r.height) / 2 * IP : Math.min(W, H) * Math.pow(IP, 5) / 2 }; }   // phi: the Sun's drawn disc (glyph ink PHI^-1 of its box), or PHI^-5 of the short side
@@ -219,7 +220,7 @@
   var sp = null;
   function sideAt(j, dt) { var P = root.PhiPumps, m = null; if (P && !sp) sp = P.node('rocket:sides', 3, 2, 1, P.page, 89);   // phi: rungs PHI^2.. s (~ the gaps, so sides mix)
     try { m = sp ? sp.modes(P.now() + dt / MS) : null; } catch (e) {}
-    if (m == null) m = fr((count + j) * PHI) - 1 / 2;   // phi: no pumps: golden sequence
+    if (m == null) m = fr(VS + (count + j) * PHI) - 1 / 2;   // phi: no pumps: golden sequence
     return m < 0 ? -1 : 1; }
   var KICK = TAU / 34, KS = WP * Math.pow(PHI, 4) * MS, KN = 377;   // phi: base kick TAU/34 (pumped per launch); KS: a liftoff missed by more than PHI^4 base periods gets no kick; 377 keys (Fibonacci)
   function kicks(K, wait, D, bend, S) {                                    // one damped-pendulum track for the launch: K = [[t from liftoff ms, size ratio, side]]; D climb ms, bend px, S rocket px
