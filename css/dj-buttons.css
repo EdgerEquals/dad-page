@@ -97,7 +97,8 @@ html[data-theme="light"] .q-head .dj-pill.djb.is-playing .djp-ico{animation:djb-
    uses to re-read the BPM, so it keeps that name and timing) becomes a slowly turning palette wheel that fades in and out over the fill, so
    the colour drifts without strobing; the button swells (scale), hops (translate) every beat and sways (rotate) over two beats.
    Transform + opacity only, so the compositor moves it and nothing re-lays out. Every amount is a phi power from css/dj-buttons.css. */
-.q-head .dj-pill.djb:not(.is-playing){border-color:var(--djb-r);color:var(--djb-i);box-shadow:0 0 0 1px var(--djb-m),inset 0 0 8px var(--djb-m)}
+.q-head .dj-pill.djb:not(.is-playing){border-color:var(--djb-r);color:var(--djb-h);box-shadow:0 0 0 1px var(--djb-a4),0 0 6px var(--djb-a4),inset 0 0 6px var(--djb-a4)}   /* musicbtnoff (Danny 11:15 AWST 30 Oct: 'slightly too dim when it's off ... it needs to look like the other buttons'): the same resting look as the faders / mix / export buttons (.q-head .dj-mix above): #9DBCCE note, #1F5478 ring, their glow */
+.q-head .dj-pill.djb:not(.is-playing) .djp-ico:not(.djp-ico2){opacity:1;filter:drop-shadow(0 0 2px var(--djb-a3))}
 .q-head .dj-pill.djb:not(.is-playing)::before,.q-head .dj-pill.djb:not(.is-playing) .djp-ico2{animation:none;opacity:0}   /* still when off */
 .q-head .dj-pill.djb.is-playing{--djb-g:var(--mx-g,#00FF41);--djb-e:#00E5A8;   /* matrix green / emerald, the terminal's (css/quiz-term-status.css) */
   border-color:var(--djb-h);color:var(--djb-k);
