@@ -27,7 +27,7 @@
 (function () {
   'use strict';
   var D = window.DadAutoDJ, K = D && D._kit; if (!K || !K.ctx || D.voice || !K.voiceHook) return;
-  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPB = 4, OCT = 12;   // phi; unit: ms per s, sixteenths per beat, semitones per octave
+  var PHI = RatioCore.R, IPH = 1 / PHI, PHI0 = RatioCore.PHI, IPH0 = 1 / PHI0, MS = 1e3, SPB = 4, OCT = 12;   // R: the base ratio, from js/ratio-core.js (ratiocore1; phi today); φ-only: step 2 (PHI0 / IPH0: phi itself, for the golden draws and the phi-algebra spots); unit: ms per s, sixteenths per beat, semitones per octave
   // cited data (rule 11): Peterson-Barney female formant averages (Hz), vowels from closed to open
   var VOW = [[370, 950, 2670], [590, 920, 2710], [850, 1220, 2810]];   // cite: /u/, /o/, /a/ (Peterson & Barney 1952, Table II)
   var VIB = { lo: 50, hi: 100, rlo: 5, rhi: 7 };                        // cite: vibrato 50-100 cents peak to peak, 5-7 Hz (Sundberg, KTH)
@@ -72,7 +72,7 @@
   var SH = null;
   function shared() {
     var c = K.ctx; if (!c) return null; if (SH && SH.c === c) return SH;
-    var n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0), r = 0x9E3779B9;   // unit: one second; its own golden-hash stream, so the music's draws are untouched
+    var n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0), r = 0x9E3779B9;   // unit: one second; its own golden-hash stream, so the music's draws are untouched   // φ-only: step 2 (0x9E3779B9 is 2^32 / phi typed as a hash constant)
     for (var j = 0; j < n; j++) { r ^= r << 13; r ^= r >>> 17; r ^= r << 5; d[j] = (r >>> 0) / 4294967296 * 2 - 1; }   // xorshift32 white noise
     var lfo = c.createOscillator(); lfo.frequency.value = VIB.rlo; lfo.start();
     return (SH = { c: c, nb: b, lfo: lfo });
@@ -106,7 +106,7 @@
         bp.Q.value = Math.pow(PHI, 2 + j); o.connect(bp); bg.connect(bp); bp.connect(env);
       });
       env.gain.setValueAtTime(0, t); env.gain.setTargetAtTime(lvl, t, ta); env.gain.setTargetAtTime(0, t + dur, tr); env.connect(bus(lay));
-      o.start(t); o.stop(end); nz.start(t, frac(sung * IPH)); nz.stop(end); live++; sung++;   // golden offset into the breath buffer
+      o.start(t); o.stop(end); nz.start(t, frac(sung * IPH0)); nz.stop(end); live++; sung++;   // golden offset into the breath buffer   // φ-only: step 2 (golden draw: breath offset)
       o.onended = function () { live--; try { Z.lfo.disconnect(vd); env.disconnect(); } catch (e) {} };   // let the note's nodes go
     } catch (e) {}
   }
@@ -130,12 +130,12 @@
       var nz = c.createBufferSource(); nz.buffer = Z.nb; nz.loop = true; nz.connect(bg);
       F.forEach(function (fv, j) { var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fv; bp.Q.value = Math.pow(PHI, 1 + j * IPH); o.connect(bp); bg.connect(bp); bp.connect(env); });   // phi: Q PHI^1, PHI^1.6, PHI^2.2
       env.gain.setValueAtTime(0, t); env.gain.setTargetAtTime(lvl, t, ta); env.gain.setTargetAtTime(0, t + dur, tr); env.connect(bus(lay));
-      o.start(t); o.stop(end); nz.start(t, frac(sung * IPH)); nz.stop(end); live++; sung++;
+      o.start(t); o.stop(end); nz.start(t, frac(sung * IPH0)); nz.stop(end); live++; sung++;   // φ-only: step 2 (golden draw: breath offset)
       o.onended = function () { live--; try { env.disconnect(); } catch (e) {} };
     } catch (e) {}
   }
   function mPhrase(tk, blk) {                                          // the track's 2-bar phrase, nudged once per 8-bar block (cached per block)
-    var key = (tk.seed | 0) + ':' + blk; if (tk.__mvk === key) return tk.__mv; var sd = (tk.seed | 0) >>> 0, g = function (k) { return frac(sd * IPH * IPH + k * IPH); }, P = [];
+    var key = (tk.seed | 0) + ':' + blk; if (tk.__mvk === key) return tk.__mv; var sd = (tk.seed | 0) >>> 0, g = function (k) { return frac(sd * IPH0 * IPH0 + k * IPH0); }, P = [];   // φ-only: step 2 (golden draw: voice motif)
     var st = 0;
     for (var i = 0; i < 32; i++) { var w = i % 4 === 0 ? IPH : i % 2 === 0 ? IPH * IPH : Math.pow(IPH, 4), on = i === 0 || g(i) < w;   // phi: beats PHI^-1, eighths PHI^-2, sixteenths PHI^-4 (about ten syllables)
       if (!on) { P.push(null); continue; }
@@ -152,7 +152,7 @@
       var t = G.t + (mNext - G.step) * d16; if (t - K.ctx.currentTime > ahead) break; if (t < K.ctx.currentTime) { mNext++; continue; }
       var st = mNext, s32 = st % 32, ph = Math.floor(st / 32), blk = Math.floor(ph / SPB), rp = tk.rp, s16 = st % (SPB * SPB);
       var sd = (tk.seed | 0) >>> 0, kd = kind(tk), every = !plan(tk).force && (kd === 'high' || kd === 'tease');   // VOICE PER TRACK: at a peak and in a tease it speaks every block
-      var speak = (every || frac(sd * IPH + blk * IPH * IPH) < IPH) && (tk.e == null || tk.e >= Math.pow(IPH, 3)) && !(rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0));   // phi: otherwise PHI^-1 of the 8-bar blocks
+      var speak = (every || frac(sd * IPH0 + blk * IPH0 * IPH0) < IPH) && (tk.e == null || tk.e >= Math.pow(IPH, 3)) && !(rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0));   // phi: otherwise PHI^-1 of the 8-bar blocks   // φ-only: step 2 (golden draw: which blocks speak)
       var x = speak ? mPhrase(tk, blk)[s32] : null;
       if (x) { var sc = tk.scNow || tk.sc || [0, 2, 3, 5, 7, 8, 10], ln = sc.length, base = 45 + (((tk.root - 45) % 12) + 12) % 12;   // unit: the male register, the tonic placed from A2 (MIDI 45) up
         var dg = x.st + (ph % SPB === SPB - 1 && s32 >= 24 && x === lastOf(mPhrase(tk, blk)) ? SPB : 0), n = base + sc[((dg % ln) + ln) % ln] + 12 * Math.floor(dg / ln);   // the leap: the block's last phrase ends a fifth-ish up
@@ -176,7 +176,7 @@
   function dl(k) { try { return D.desk && D.desk.dial ? +D.desk.dial(k) || 0 : 0; } catch (e) { return 0; } }
   function plan(tk) {
     var m = dl('voM') | 0, sd = ((tk && tk.seed) | 0) >>> 0, base = tk && VCH[tk.genre] != null ? VCH[tk.genre] : IPH, vp = dl('voP'), ch = vp <= -9 ? 0 : vp >= 9 ? 1 : clamp(base * Math.pow(PHI, vp), 0, 1);
-    var on = m === -1 ? false : m !== 0 ? true : frac(sd * IPH * IPH + Math.pow(IPH, 5)) < ch, f = dl('voF') | 0, fl = f > 0 && f < 4 ? f : 1 + Math.floor(frac(sd * Math.pow(IPH, 3) + IPH) * 3);
+    var on = m === -1 ? false : m !== 0 ? true : frac(sd * IPH0 * IPH0 + Math.pow(IPH0, 5)) < ch, f = dl('voF') | 0, fl = f > 0 && f < 4 ? f : 1 + Math.floor(frac(sd * Math.pow(IPH0, 3) + IPH0) * 3);   // φ-only: step 2 (golden draw: voice on / flavour)
     var force = m === 1 ? 'singer' : m === 2 ? 'machine' : m === 3 ? 'choir' : null;
     return { on: on, flav: fl, force: force, chance: ch, ch: force === 'singer' || force === 'machine' ? force : tk && (tk.genre === 'electro' || tk.genre === 'detroit') ? 'machine' : 'singer' };
   }
@@ -203,7 +203,7 @@
       var nz = c.createBufferSource(); nz.buffer = Z.nb; nz.loop = true; nz.connect(bg);
       F.forEach(function (fv, j) { var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = j ? fv : Math.max(fv, mtof(m)); bp.Q.value = Math.pow(PHI, 2 + j); o.connect(bp); bg.connect(bp); bp.connect(env); });
       env.gain.setValueAtTime(0, t); env.gain.setTargetAtTime(lvl, t, ta); env.connect(bus(lay));
-      var safe = t + Math.pow(PHI, 9); o.start(t); o.stop(safe); nz.start(t, frac(sung * IPH)); nz.stop(safe); live++; sung++;   // phi: a safety stop PHI^9 s (~76 s) on
+      var safe = t + Math.pow(PHI, 9); o.start(t); o.stop(safe); nz.start(t, frac(sung * IPH0)); nz.stop(safe); live++; sung++;   // phi: a safety stop PHI^9 s (~76 s) on   // φ-only: step 2 (golden draw: breath offset)
       o.onended = function () { live--; try { env.disconnect(); } catch (e) {} };
       return { o: o, env: env, bg: bg, nz: nz };
     } catch (e) { return null; }
@@ -252,7 +252,7 @@
       var len = Math.max(1, Math.round(Math.pow(PHI, PHI * (1 - S.I))));   // sixteenths per note: ~2 soft, 1 intense
       var rp = tk.rp, stop = rp && rp.stop && s16 >= SPB * SPB - (rp.L16 || 0);
       var breathe = p > 1 - Math.pow(PHI, -2.5);                          // phi: the last PHI^-2.5 of each arc breathes (a phrase end)
-      if (!stop && !breathe && frac(oNext * IPH + (tk.seed | 0) * IPH * IPH) < Math.pow(PHI, -(1 - S.I))) {   // golden-sequence draw: denser as intensity rises
+      if (!stop && !breathe && frac(oNext * IPH0 + (tk.seed | 0) * IPH0 * IPH0) < Math.pow(PHI, -(1 - S.I))) {   // golden-sequence draw: denser as intensity rises   // φ-only: step 2 (golden draw: note onsets)
         var anchor = lPrev != null ? lPrev : tk.root + 2 * OCT, ceil = OCT * Math.pow(PHI, S.I * VD.soar);   // unit: around the lead's register
         var tgt = anchor - OCT / 2 + ceil * Math.pow(Math.sin(Math.PI * p), IPH), cur = oPrev == null ? Math.round(anchor) : oPrev, n = cur, strong = s16 % SPB === 0;
         var dir = tgt > cur ? 1 : -1, step = Math.abs(tgt - cur) > OCT / 2 ? 2 : 1;   // stepwise, a skip when far from the arc

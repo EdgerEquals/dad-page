@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   var D = window.DadAutoDJ, K = D && D._kit; if (!K) return;
-  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, FLO = 20, FHI = 20000;   // phi: the golden ratio; cite: human hearing 20 Hz - 20 kHz (drum pitches as phi rungs on it)                                       // phi: the golden ratio
+  var PHI = RatioCore.R, IPH = 1 / PHI, PHI0 = RatioCore.PHI, IPH0 = 1 / PHI0, FLO = 20, FHI = 20000;   // R: the base ratio, from js/ratio-core.js (ratiocore1; phi today); φ-only: step 2 (PHI0 / IPH0: phi itself, for the golden draws and the phi-algebra spots); cite: human hearing 20 Hz - 20 kHz (drum pitches as phi rungs on it)                                       // phi: the golden ratio
   var ctx = null, voice = K.voice, osc = K.osc, env = K.env, INST = K.INST, LADDER = K.LADDER, eff = K.eff, liveOf = K.liveOf, nudge = K.nudge,
       setTo = K.setTo, compute = K.compute, paint = K.paint, save = K.save, chips = null;
   function C() { return ctx || (ctx = K.ctx); }
@@ -104,7 +104,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   var D8 = null, d8Req = false, D8URL = 'js/vendor/driftbox-808.js?v=e808a';
   var B8 = { kick: '808.bd', snare: '808.sd', clap: '808.cp', tom: '808.lt', hat: '808.ch', shaker: '808.ma', cow: '808.cb' }, B8V = {};
   var KM = 0.2576;                                                         // data: our kick / driftbox kick, RMS of the first 200 ms, 48 kHz offline render (Claude, 27 Oct)
-  var SHARE = [0, 1, 2, 3].map(function (k) { return Math.pow(PHI, -k) / Math.sqrt(5); });   // phi: ladder shares body, house, sub, snap
+  var SHARE = [0, 1, 2, 3].map(function (k) { return Math.pow(PHI0, -k) / Math.sqrt(5); });   // phi: ladder shares body, house, sub, snap   // φ-only: step 2 (leans on phi's algebra: 1 + phi^-1 + phi^-2 + phi^-3 = sqrt5, the 808 rack sums to one kit)
   var ROLE = [{ tune: 1 / 2, decay: 1 / 2, tone: 1 / 2, colour: 1 / 2 }, null,
               { tune: IPH * IPH, decay: IPH, tone: IPH * IPH, colour: Math.pow(IPH, 4) },    // sub: a golden step down, longer, darker, no click
               { tune: IPH, decay: IPH * IPH, tone: IPH, colour: IPH }];                      // snap: up a step, shorter, brighter, more click
@@ -121,7 +121,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   function fr(x) { return x - Math.floor(x); }
   // rack boxes on the desk (Danny 18:12 AWST 27 Oct: mute / solo like a desk, inside the racks too): a box that is off plays no notes
   function bx(rack, u) { var DK = window.DadAutoDJ && DadAutoDJ.desk; return !DK || DK.box(rack, u); }
-  function char808(tk) { if (tk.c8) return tk.c8; var sd = (tk.seed | 0) >>> 0, g = function (k) { return fr(sd * IPH + k * IPH * IPH) - 1 / 2; };   // phi: golden draws on the track seed, -1/2..1/2
+  function char808(tk) { if (tk.c8) return tk.c8; var sd = (tk.seed | 0) >>> 0, g = function (k) { return fr(sd * IPH0 + k * IPH0 * IPH0) - 1 / 2; };   // phi: golden draws on the track seed, -1/2..1/2   // φ-only: step 2 (golden draw: 808 character)
     return (tk.c8 = { th: g(1), br: g(2), pt: g(3), rot: g(4) + 1 / 2 }); }
   function depth808() { var D = window.DadAutoDJ, d = D && D.dial ? +D.dial('c808') : 1; return isFinite(d) && d >= 0 ? d : 1; }
   function bank(tr, kind, t, v, a) {
@@ -138,7 +138,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
     if (kind === 'hat' && a !== 'x' && tr.oh) { tr.oh.forEach(function (o) { try { o.gain.cancelScheduledValues(t); o.gain.setTargetAtTime(0, t, Math.pow(PHI, -12)); } catch (er) {} }); tr.oh = null; }   // phi: choke over PHI^-12 s
     var VB = K.vibe ? K.vibe() : null, vt = VB ? VB.v * VB.t : 0;   // VIBE: the tone reach on the 808
     on.forEach(function (u) {
-      var R = ROLE[u], k = fr(u * IPH + Math.min(dp, 1) * ch.rot), sp = Math.pow(PHI, 2 * dp * ch.th), cents = (k - 1 / 2) * Math.pow(PHI, 5) * sp, dt = k * Math.pow(PHI, -11) * sp;   // phi: golden cents and ms per unit, spread a rung wider (thick) or narrower (tight) per track
+      var R = ROLE[u], k = fr(u * IPH0 + Math.min(dp, 1) * ch.rot), sp = Math.pow(PHI, 2 * dp * ch.th), cents = (k - 1 / 2) * Math.pow(PHI, 5) * sp, dt = k * Math.pow(PHI, -11) * sp;   // phi: golden cents and ms per unit, spread a rung wider (thick) or narrower (tight) per track   // φ-only: step 2 (golden draw: 808 unit cents / ms)
       var kn = { tune: cl(R.tune + dp * ch.pt * IPH * IPH), decay: cl(R.decay + dp * ch.th * IPH * IPH - vt * IPH * IPH), tone: cl(R.tone + dp * ch.br * IPH * IPH + vt * Math.pow(IPH, 3)), colour: cl(R.colour + dp * ch.br * IPH * IPH) };   // VIBE (Danny 18:57 AWST 28 Oct): hard shortens the decay PHI^-2 and brightens the tone PHI^-3, soft the reverse   // phi: each knob moves up to PHI^-2 x depth / 2
       var pan = kind === 'hat' || kind === 'cow' || kind === 'shaker' ? (u % 2 ? -1 : 1) * Math.pow(IPH, 3) : 0;   // phi: hats a little wide, the rest centred
       var aq = Math.round(acc * 2) / 2, spec = retune(V.build({ tune: kn.tune, decay: kn.decay, tone: kn.tone, colour: kn.colour, level: 1, pan: (1 + pan) / 2 }, aq), Math.pow(2, cents / 1200));   // accent in three steps (off, half, full) so the sound can be kept
@@ -184,7 +184,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   // electro); the filter rises with the arc as a rung (base cutoff PHI^(2 PHI^2 + e PHI) x 20 Hz). Units are golden cents apart and
   // golden ms late, as in the 808 rack. Nothing runs without notes: a rack stops PHI^3 s after its last note.
   var D3 = null, d3Req = false, D3URL = 'js/vendor/driftbox-303.js?v=e303a', SLIDE = Math.pow(PHI, -6);   // phi: slide PHI^-6 s (~56 ms, the 303's fixed slide)
-  var A3 = 0.16 * PHI, ASH = [0, 1, 2].map(function (k) { return Math.pow(PHI, -k) / 2; });   // the rack peak; phi: shares 0.5, 0.31, 0.19
+  var A3 = 0.16 * PHI, ASH = [0, 1, 2].map(function (k) { return Math.pow(PHI0, -k) / 2; });   // the rack peak; phi: shares 0.5, 0.31, 0.19   // φ-only: step 2 (leans on phi's algebra: 1 + phi^-1 + phi^-2 = 2, the 303 rack sums to one voice)
   function load303() { if (d3Req) return; d3Req = true; var sc = document.createElement('script'); sc.src = D3URL; sc.async = true; sc.onload = function () { if (window.Driftbox303) D3 = window.Driftbox303; }; document.head.appendChild(sc); }
   var TANH = {};
   function tanhCurve(k) { if (TANH[k]) return TANH[k]; var n = 1024, a = new Float32Array(n); for (var i = 0; i < n; i++) { var x = i / (n - 1) * 2 - 1; a[i] = Math.tanh(k * x) / Math.tanh(k); } return (TANH[k] = a); }
@@ -237,7 +237,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   //   Ed's Jupiter (stabs)   ours: two saw VCOs golden cents apart (panned apart), VCO 2 cross-modulating VCO 1 a little (its quirk),
   //                   two lowpass stages with a fast brassy sweep; unit 1 the old saw stab (INST.stab), unit 2 a unison voice an
   //                   octave down past PHI^-1.
-  var DXR = { u: [0, 1, 2].map(function (k) { return Math.pow(PHI, -k) / 2; }) }, dxMod = null, dxReq = false;   // phi: rack shares 0.5, 0.31, 0.19
+  var DXR = { u: [0, 1, 2].map(function (k) { return Math.pow(PHI0, -k) / 2; }) }, dxMod = null, dxReq = false;   // phi: rack shares 0.5, 0.31, 0.19   // φ-only: step 2 (leans on phi's algebra: 1 + phi^-1 + phi^-2 = 2, the DX7 rack sums to one voice)
   function dxOp(o) { return Object.assign({ enabled: true, rates: [99, 50, 30, 60], levels: [99, 80, 0, 0], detune: 0, velocitySens: 2, lfoAmpModSens: 0, volume: 99, oscMode: 0, freqCoarse: 1, freqFine: 0, pan: 0 }, o); }
   function dxPatch(ops, extra) { var off = { enabled: false, volume: 0 }; while (ops.length < 6) ops.push(dxOp(off));
     return Object.assign({ algorithm: 5, feedback: 0, lfoSpeed: 30, lfoDelay: 40, lfoPitchModDepth: 0, lfoAmpModDepth: 0, lfoPitchModSens: 0, lfoWaveform: 4, lfoSync: 0,
@@ -323,7 +323,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   function padEnv(b, tk) {
     var VB = K.vibe ? K.vibe() : null, S = PSH[b], ev = { at: S.at * Math.pow(PHI, pdl('padA', 0) - (VB ? Math.min(0, VB.v) * VB.t : 0)), dec: S.dec * Math.pow(PHI, pdl('padD', 0)), sus: clamp(S.sus * Math.pow(PHI, -pdl('padS', 0)), 0, 1), rel: S.rel * Math.pow(PHI, pdl('padR', 0)), fd: Math.max(0, S.fd + pdl('padF', 0)), fT: S.fT * Math.pow(PHI, pdl('padD', 0)) };
     if (S.gate) { var e = tk.e == null ? 1 : tk.e, dens = IPH + (1 - IPH) * e, sd = (tk.seed | 0) >>> 0, bpm = tk.bpm > 0 ? tk.bpm : 120;   // unit: 120 BPM only if the track has none
-      ev.gate = { step: 60 / bpm / 4 * Math.pow(2, Math.round(pdl('padG', 0))), open: clamp(pdl('padO', IPH), Math.pow(IPH, 6), 1 - Math.pow(IPH, 6)), on: function (k) { return k % 16 === 0 || fr(sd * IPH * IPH + (k % 16) * IPH) < dens; } }; }   // unit: a sixteenth = a quarter of a beat; 2^k: 1/32 .. 1/4
+      ev.gate = { step: 60 / bpm / 4 * Math.pow(2, Math.round(pdl('padG', 0))), open: clamp(pdl('padO', IPH), Math.pow(IPH, 6), 1 - Math.pow(IPH, 6)), on: function (k) { return k % 16 === 0 || fr(sd * IPH0 * IPH0 + (k % 16) * IPH0) < dens; } }; }   // unit: a sixteenth = a quarter of a beat; 2^k: 1/32 .. 1/4   // φ-only: step 2 (golden draw: pad gate)
     return ev;
   }
   INST.juno = function (tr, f, t, d, v) { juno(tr, f, t, d, v * 0.07, false); };          // the arp: a rung over the old chip blips (0.045)
@@ -388,7 +388,7 @@ K.nzLast = z;     z.g.gain.setTargetAtTime(z.lvl, t, Math.pow(PHI, -2)); z.sh.ga
   var pSeed = null;
   function pumpDraw(s) {
     pSeed = s; GROUPS.forEach(function (gp, j) { var k = gp[0], L = LADDER[k]; if (!L || !L.length) return;
-      setTo(k, s == null ? liveOf(k) : L[Math.floor(frac((s * GROUPS.length + j) * IPH) * L.length)]); });
+      setTo(k, s == null ? liveOf(k) : L[Math.floor(frac((s * GROUPS.length + j) * IPH0) * L.length)]); });   // φ-only: step 2 (golden draw: pump dice)
     if (s == null) K.defMix(); else K.nextMix();
     var c = compute(); K.idle(c); paint(c); save(); syncChips();
   }

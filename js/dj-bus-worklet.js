@@ -19,7 +19,7 @@
 //   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Their gain computer is the standard soft-knee curve (Giannoulis, Massberg & Reiss, 'Digital Dynamic Range Compressor Design', JAES 2012).
 'use strict';
-const PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, FLO = 20;                                  // phi: the golden ratio; cite: 20 Hz, the bottom of hearing
+const PHI = globalThis.RatioCore.R, IPH = 1 / PHI, FLO = 20;                                  // R: the base ratio, from js/ratio-core.js (ratiocore1; phi today, loaded into the worklet first); cite: 20 Hz, the bottom of hearing
 const L10 = Math.LN10 / 20;
 function db2lin(db) { return Math.exp(db * L10); }
 function lin2db(x) { return Math.log(Math.max(Math.abs(x), 1e-10)) / L10; }

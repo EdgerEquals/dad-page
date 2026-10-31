@@ -14,7 +14,7 @@
 (function (root, doc) {
   'use strict';
   if (root.DjDeskRegistry) return;                                       // loaded once (the pill and the desk API both may ask for it)
-  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60;   // phi: the golden ratio; unit: ms per s, s per minute
+  var PHI = RatioCore.R, IPH = 1 / PHI, PHI0 = RatioCore.PHI, IPH0 = 1 / PHI0, MS = 1e3, SPM = 60;   // R: the base ratio, from js/ratio-core.js (ratiocore1; phi today); φ-only: step 2 (PHI0 / IPH0: phi itself, for the golden draws and the phi-algebra spots); unit: ms per s, s per minute
   var de = doc.documentElement, KUI = 'dadDesk.ui.v2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // unit: history entries kept (a Fibonacci count)
   var CSS = 'css/dj-desk.css?v=knob1';
   function P(n) { return Math.pow(PHI, n); }
@@ -122,7 +122,7 @@
   function tools(host, list) {                                            // reset + dice for a bank of faders
     var row = E('div', 'dk-tools'), rs = E('button', 'dk-mini', 'reset'), dc = E('button', 'dk-mini', '🎲'); rs.type = dc.type = 'button';
     dc.setAttribute('aria-label', 'Roll these faders'); rs.addEventListener('click', function () { list.forEach(function (o) { if (o.f.grey || o.f.def == null) return; o.f.set(o.f.def); o.paint(); }); log('reset', list.map(function (o) { return o.f.id; }).join(',')); });
-    dc.addEventListener('click', function () { var s0 = Date.now() * IPH; list.forEach(function (o, j) { if (o.f.grey) return; var x = (s0 + j) * IPH; x -= Math.floor(x); var i = Math.floor(x * o.f.L.length); o.f.set(o.f.L[i]); o.paint(); }); log('roll', list.map(function (o) { return o.f.id; }).join(',')); });
+    dc.addEventListener('click', function () { var s0 = Date.now() * IPH0; list.forEach(function (o, j) { if (o.f.grey) return; var x = (s0 + j) * IPH0; x -= Math.floor(x); var i = Math.floor(x * o.f.L.length); o.f.set(o.f.L[i]); o.paint(); }); log('roll', list.map(function (o) { return o.f.id; }).join(',')); });   // φ-only: step 2 (golden draw: the strip dice)
     row.appendChild(dc); row.appendChild(rs); host.appendChild(row);
   }
   function bank(host, specs) { var b = E('div', 'dk-bank'), list = specs.map(function (f) { var o = fader(f); b.appendChild(o.el); return o; }); host.appendChild(b); return list; }
@@ -283,7 +283,7 @@
       { id: 'dial.aSwP', name: 'arp swell bars', k: 'R', L: [3, 5, 8, 13], def: 5, note: 'the period of the arp swell', lab: function (v) { return v + ' bars'; }, get: function () { return D.dial('aSwP'); }, set: function (v) { D.dial('aSwP', v); } },
       { id: 'dial.aOut', name: 'arp leaves', k: 'C', L: [P(-2), IPH, 1 - P(-3)], def: IPH, note: 'how much of the ending the arp takes to leave (before the melody)', lab: function (v) { return Math.round(v * 100) + '%'; }, get: function () { return D.dial('aOut'); }, set: function (v) { D.dial('aOut', v); } },
       { id: 'dial.cadE', name: 'ending', k: 'C', L: [0, P(-3), IPH, 1], def: 1, note: 'the song ends: V to i into the outro, the lead on the tonic, layers leaving in reverse order', lab: function (v) { return v === 0 ? 'off' : Math.round(v * 100) + '%'; }, get: function () { return D.dial('cadE'); }, set: function (v) { D.dial('cadE', v); } },
-      { id: 'dial.lenE', name: 'electronic length', k: 'R', L: [1, PHI, PHI * PHI - IPH, PHI * PHI], def: PHI * PHI - IPH, note: 'how long Electronic songs run, times the old length', lab: function (v) { return 'x' + Math.round(v * 100) / 100; }, get: function () { return D.dial('lenE'); }, set: function (v) { D.dial('lenE', v); } }]);   // MELODY BUILD + ENDING + LENGTH (melbuild1, Danny 31 Oct)   // THE MELODY (Danny 12:53 AWST 28 Oct 'lock them in')
+      { id: 'dial.lenE', name: 'electronic length', k: 'R', L: [1, PHI, PHI0 * PHI0 - IPH0, PHI * PHI], def: PHI0 * PHI0 - IPH0, note: 'how long Electronic songs run, times the old length', lab: function (v) { return 'x' + Math.round(v * 100) / 100; }, get: function () { return D.dial('lenE'); }, set: function (v) { D.dial('lenE', v); } }]);   // MELODY BUILD + ENDING + LENGTH (melbuild1, Danny 31 Oct)   // THE MELODY (Danny 12:53 AWST 28 Oct 'lock them in')   // φ-only: step 2 (leans on phi's algebra: the lenE rung phi^2 - phi^-1 = 2 only at phi, as the engine's DIAL.lenE)
     var LDL = E('div', 'dk-hint dk-txl'); me.appendChild(LDL); LDLF = function () { var l = D.live && D.live(), x = l && l.lead, t = '';   // what the lead is doing on this track
       if (x) { var nm = function (k) { return x.names[x.all.indexOf(k)] || k; }; t = 'lead: ' + nm(x.mid) + (x.peak !== x.mid ? ', then ' + nm(x.peak) + ' at the peaks' : '') + (x.bd !== x.mid ? ', ' + nm(x.bd) + ' in breakdowns' : '') + (x.solo ? ' · solos at long peaks' : '') + (x.nowName ? ' — now ' + x.nowName + (x.sk > 0 ? ', soloing ' + Math.round(x.sk * 100) + '%' : '') : ''); }
       if (LDL.textContent !== t) LDL.textContent = t; LDL.hidden = !t; };   // own rhythm: Danny 20:15 'Dial for now'; bells: Danny 10:10 'more sparsely'

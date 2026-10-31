@@ -12,7 +12,7 @@
 (function () {
   'use strict';
   var D = window.DadAutoDJ, K = D && D._kit; if (!K || !K.ctx || D.fx) return;
-  var PHI = (1 + Math.sqrt(5)) / 2, IPH = 1 / PHI, MS = 1e3, SPM = 60, SPB = 4;   // phi: golden ratio; unit: ms per s, s per minute, beats per bar
+  var PHI = RatioCore.R, IPH = 1 / PHI, PHI0 = RatioCore.PHI, IPH0 = 1 / PHI0, MS = 1e3, SPM = 60, SPB = 4;   // R: the base ratio, from js/ratio-core.js (ratiocore1; phi today); φ-only: step 2 (PHI0 / IPH0: phi itself, for the golden draws and the phi-algebra spots); unit: ms per s, s per minute, beats per bar
   var FLO = 20, FHI = 20000;                                              // cite: the range of human hearing, 20 Hz - 20 kHz
   var c = K.ctx, P = window.PhiPumps;
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -83,7 +83,7 @@
   // down by up to PHI^-2 rungs and sways the pump-knob needles.
   var PKS = ['tp', 'wp', 'up', 'mp'], DIM = { roll: ['drive'], filter: ['brightness'], echo: ['space'], wash: ['space'], crush: ['drive', 'tension'], trans: ['drive'] };
   var wseed = {}, uk = {}, bk = 0, T0FX = c.currentTime;               // T0FX: the engine's own PHI^2 s fade-in owns the level until then
-  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return sd == null ? 1 : Math.pow(PHI, 2 * frac((sd * PKS.length + j) * IPH) - 1); }); }
+  function cw(k) { var sd = wseed[k]; return PKS.map(function (x, j) { return sd == null ? 1 : Math.pow(PHI, 2 * frac((sd * PKS.length + j) * IPH0) - 1); }); }   // φ-only: step 2 (golden draw: chain weights)
   function uOf(k, dt) {                                                   // this effect's own dimension (0..1), damped
     var tgt = 1; if (K.dimX) { var X = K.dimX(cw(k)); DIM[k].forEach(function (d) { tgt *= 1 / (1 + Math.pow(PHI, -X[d])); }); } else tgt = energy();
     if (k === 'wash') tgt = 1 - tgt;                                      // wash = (1 - u): more space, more wash
@@ -155,7 +155,7 @@
     if (k < G.step) { n++; k += S; }
     var t = G.t + (k - G.step) * G.d16, ahead = t - c.currentTime;
     if (n === rolled || ahead > Math.pow(PHI, -2) || ahead < 0) return;                  // phi: schedule PHI^-2 s ahead
-    rolled = n; if (frac((n + (seed || 0)) * IPH) > energy() * IPH) return;                 // how often: pump energy x PHI^-1 of the bars
+    rolled = n; if (frac((n + (seed || 0)) * IPH0) > energy() * IPH) return;                 // how often: pump energy x PHI^-1 of the bars   // φ-only: step 2 (golden draw: roll)
     rolls++;
     // WIDTH (Danny 15:08): the slice length moves too, on the same ladder of musical divisions. One base rate r = the trigger rate:
     // rolls come at r, the width sways at r x PHI, the amplitude at r x PHI^2. Sway depth = pump energy x PHI rungs (rounded, so snapped).
@@ -283,7 +283,7 @@
   // the pumped wait / depth keep a PHI^-2 share of the draw. A style picked on the dial is unchanged. Key travel, bridge, bar grid as before.
   var txN = 0;
   function autoSweep() { return !(nudge.trans | 0); }
-  function gdraw(k) { return frac((txN + 1) * IPH + (seed || 0) * IPH * IPH + k * Math.pow(IPH, 3)); }   // golden sequence, stream k
+  function gdraw(k) { return frac((txN + 1) * IPH0 + (seed || 0) * IPH0 * IPH0 + k * Math.pow(IPH0, 3)); }   // golden sequence, stream k   // φ-only: step 2 (golden draw: every gdraw() call reads this)
   function sweepStyle(u) { var n = AUTO.length, w = AUTO.map(function (st, j) { return Math.pow(PHI, -Math.abs(u - j / (n - 1))); }), x = gdraw(1) * w.reduce(function (a, b) { return a + b; }, 0);
     for (var j = 0; j < n; j++) { x -= w[j]; if (x <= 0) return AUTO[j]; } return AUTO[n - 1]; }
   function transition(go, o) {
@@ -379,13 +379,13 @@
   }
   function reroll(f) {                                                    // one effect: a random rung + fresh coupling weights, gliding in
     var sd = Math.floor(Math.random() * Math.pow(2, 32)); wseed[f.k] = sd; uOf(f.k); if (f.k === 'trans') tset = 0;   // unit: 2^32 seeds
-    nudge[f.k] = Math.floor(frac(sd * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, energy())); apply(PHI); save();
+    nudge[f.k] = Math.floor(frac(sd * IPH0) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, energy())); apply(PHI); save();   // φ-only: step 2 (golden draw: fx dice)
   }
   // ---------- random effects (golden-angle genome), hold = live ----------
   function draw(s) {
     var u = energy(); seed = s; if (s == null) FX.forEach(function (f) { delete wseed[f.k]; });   // hold: back to live couplings too
-    FX.forEach(function (f, j) { nudge[f.k] = s == null ? 0 : Math.floor(frac((s * FX.length + j) * IPH) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, u)); });
-    var t0 = nudge.trans | 0, q0 = frac((s || 0) * IPH * IPH); tset = s != null && t0 >= 1 && t0 < STY.length ? pickSet(function () { q0 = frac(q0 + IPH); return q0; }, t0) : 0;   // the dice lands on a set too
+    FX.forEach(function (f, j) { nudge[f.k] = s == null ? 0 : Math.floor(frac((s * FX.length + j) * IPH0) * f.L.length) - (f.kind === 'pick' ? 0 : liveIdx(f, u)); });   // φ-only: step 2 (golden draw: fx dice)
+    var t0 = nudge.trans | 0, q0 = frac((s || 0) * IPH0 * IPH0); tset = s != null && t0 >= 1 && t0 < STY.length ? pickSet(function () { q0 = frac(q0 + IPH0); return q0; }, t0) : 0;   // the dice lands on a set too   // φ-only: step 2 (golden draw: transition-set dice)
     apply(PHI); save();                                                   // rule 6: a new effects mix glides in, tau PHI s
     if (btn) { btn.classList.remove('is-mixing'); void btn.offsetWidth; btn.classList.add('is-mixing'); }
   }
