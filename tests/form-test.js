@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
   const ok = (n, v, x) => console.log((v ? 'PASS ' : 'FAIL ') + n + '  [' + (typeof x === 'string' ? x : JSON.stringify(x)) + ']');
   await p.goto(process.argv[2], { waitUntil: 'load' }); await p.waitForTimeout(3000);
   const bb = await p.locator('#dj-pill').boundingBox(); await p.touchscreen.tap(bb.x + 5, bb.y + 5); await p.waitForTimeout(5000);
-  await p.evaluate(() => { DadAutoDJ.desk.dial('fmM', 0); DadAutoDJ.desk.dial('fmU', 2); DadAutoDJ.desk.setPick('electro'); });   // 1-bar phrases: the whole electro form in 20 bars
+  await p.evaluate(() => { DadAutoDJ.desk.dial('fmM', 0); DadAutoDJ.desk.dial('fmU', 2); DadAutoDJ.desk.dial('lenE', 1); DadAutoDJ.desk.setPick('electro'); });   // 1-bar phrases: the whole electro form in 20 bars (melbuild1: Electronic length x1 here, so it still fits the 80 s watch)
   for (let i = 0; i < 60; i++) { if (await p.evaluate(() => DadAutoDJ.track.genre) === 'electro') break; await p.waitForTimeout(500); }
   await p.evaluate(() => { window.__h = []; DadAutoDJ._kit.voiceHook(function (part, lay) { const tk = lay && (lay.tk || lay.trk); if (!tk || tk.leaving || tk.genre !== 'electro') return; __h.push([tk.fx ? tk.fx.s.n : '-', part, lay && lay.ch || '']); }); });
   const seen = {}; const t0 = Date.now();
