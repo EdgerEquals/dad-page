@@ -77,3 +77,8 @@ html[data-desk][data-vp]:not([data-desk-full]) #home-main{width:fit-content!impo
 .vp-grp .vp-chev{transition:transform .236s}
 .vp-grp[aria-expanded=true] .vp-chev{transform:rotate(90deg)}
 @media (prefers-reduced-motion:reduce){.vp-grp .vp-chev{transition:none}}
+/* vufold1: a style fold's parent (the DJ pop-up's fold, electrofold1): closed with one of its styles picked it reads 'Electronic · detroit'
+   in bold; its styles' rows carry the accent on their left edge, so they read as the fold's own */
+#dj-desk .vp-fold.is-in span:first-child{font-weight:800}
+.vp-fold b{font-weight:800;color:var(--ac)}
+.vp-row.vp-kid{border-left-color:var(--ac)}

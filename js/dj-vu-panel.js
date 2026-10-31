@@ -20,7 +20,7 @@
   var HOLD = PHI;                     // phi rules 8: the peak holds PHI^1 s, then drops
   var REPAINT = PHI;                  // phi: values, playing and greyed states re-read every PHI^1 s while open
   var WAITP = Math.pow(PHI, -1);      // phi: while the DJ engine is still loading, look again every PHI^-1 s
-  var CSS = 'css/dj-vu-panel.css?v=basstidy2', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
+  var CSS = 'css/dj-vu-panel.css?v=vufold1', KH = 'dadDesk.hist.v1', HMAX = 1597;   // the dial face's own move history (js/dj-desk.js KH, HMAX)
   var de = doc.documentElement;
   function api() { var d = root.DadAutoDJ; return d && typeof d.params === 'function' && typeof d.mixer === 'function' ? d : null; }
   function DK() { var d = api(); return d && d.desk; }
@@ -46,7 +46,7 @@
     b.addEventListener('click', function () { try { flip(); } catch (e) {} paintAll(); }); b._sync(); return b; }
 
   // ---------- one row ----------
-  var ROWS = [], io = null;
+  var ROWS = [], HDR = [], io = null;   // HDR: the fold parents' repaints (vufold1)
   function row(o) {   // o: { label, steps, labels, def, get(), set(v), energy(), info() -> [title, lines], drill | null, disabled(), ms: [M, S] | null, out() }
     var r = E('div', 'vp-row'), inf = B('vp-i', 'i', 'About ' + o.label), L = vu('e'), mid = o.drill ? B('vp-mid vp-dr') : E('div', 'vp-mid'), R = vu('s'), ud = E('div', 'vp-ud');
     var nm = E('span', 'vp-nm', o.label), val = E('span', 'vp-val'), up = B('vp-up', '▲', o.label + ' up a step'), dn = B('vp-dn', '▼', o.label + ' down a step');
@@ -82,8 +82,14 @@
   var PMS = [['auto', 0], ['swell', 1], ['stab', 2], ['pluck', 4], ['gate', 8], ['random', -1]];
   var TX = ['auto', 'techno cut', 'trance build', 'echo out', 'scatter roll', 'flanger wash', 'random'];
   var CHOICE = {
-    style: function (D) { sec('style'); body.appendChild(one('style', [['auto', 'auto'], ['random', 'random']].concat((D.genres || []).map(function (g) { return [g, g]; })),
-        function () { return D.pick || 'auto'; }, function (g) { D.setPick(g === 'auto' ? null : g); log('style', g); }, trackE, 'auto = the pumps choose; random = chance'));
+    style: function (D) { sec('style');   // vufold1: the engine's style folds (DadAutoDJ.desk.folds, MIDI Bot electrofold1) drawn as parents under the style row
+      var G = D.genres || [], F = folds(D, G), inF = {}, nm = function (g) { return inF[g] ? inF[g].f.names && inF[g].f.names[g] || g : g; };
+      F.forEach(function (f) { f.k.forEach(function (g) { inF[g] = f; }); });
+      var opts = [['auto', 'auto'], ['random', 'random']].concat(G.filter(function (g) { return !inF[g]; }).map(function (g) { return [g, g]; }));
+      F.forEach(function (f) { f.k.forEach(function (g) { opts.push([nm(g), g]); }); });   // the pop-up's order: the folds after the other styles; ▲ ▼ still reach every style
+      var pick = function (g) { D.setPick(g === 'auto' ? null : g); log('style', g); paintAll(); };
+      body.appendChild(one('style', opts, function () { return D.pick || 'auto'; }, pick, trackE, 'auto = the pumps choose; random = chance' + (F.length ? '; ' + F.map(function (f) { return f.f.lab; }).join(', ') + ' opens below' : '')));
+      F.forEach(function (f) { fold(f, D, nm, pick); });
       sec('form'); body.appendChild(one('form', [['emergent', -3], ['written', 0], ['off', -1], ['random', -2]].concat((D.forms || []).map(function (n, i) { return [n, i + 1]; })),
         function () { return dial('fmM'); }, function (v) { dial('fmM', v); }, trackE, 'emergent = the pumps choose the sections; written = the style’s own; off = one arc per track')); },
     changes: function () { sec('harmony + melody faders'); body.appendChild(one('faders land', [['next track', 0], ['now', 1]], function () { return dial('dkNow'); }, function (v) { dial('dkNow', v); }, trackE,
@@ -110,6 +116,25 @@
       body.appendChild(one('the middle', [['auto', 0], ['events', 1], ['talker', 2], ['choir bed', 3]], function () { return dial('voF'); }, function (v) { dial('voF', v); }, en, 'events: rest, a tease before each change · talker · choir bed')); }
   };
 
+  // vufold1 (MIDI Bot electrofold1, Danny 13:42 AWST 30 Oct: 'a fold down ... all the other genres are under there'): a fold is a parent
+  // button like the bass shape groups (basstidy1); open, its styles are one-of rows (▲ picks it, ▼ goes back to auto); closed with one of
+  // them picked, the parent reads like the DJ pop-up's own fold, 'Electronic · detroit' in bold. Read from desk.folds only; no folds, a flat row.
+  var fOpen = {};
+  function folds(D, G) { var L = []; try { L = D.folds || []; } catch (e) {} if (!Array.isArray(L)) return [];
+    return L.map(function (f) { return f && f.id && Array.isArray(f.kids) ? { f: f, k: f.kids.filter(function (g) { return G.indexOf(g) >= 0; }) } : null; }).filter(function (x) { return x && x.k.length; }); }
+  function fold(F, D, nm, pick) { var f = F.f, h = B('vp-nav vp-grp vp-fold'), lb = E('span'), c = E('span', 'vp-val'), rs = [], en = trackE;
+    lb.appendChild(E('span', null, f.lab || f.id)); var pk = E('b'); lb.appendChild(pk); h.appendChild(lb); h.appendChild(c); h.appendChild(E('span', 'vp-chev', '›'));
+    if (fOpen[f.id] == null) fOpen[f.id] = F.k.indexOf(D.pick) >= 0;   // like the pop-up: open at first sight if the pick is inside
+    h.setAttribute('aria-label', 'Open ' + (f.lab || f.id));
+    var sync = function () { var o = !!fOpen[f.id], k = F.k.indexOf(D.pick) >= 0; h.setAttribute('aria-expanded', o ? 'true' : 'false'); h.classList.toggle('is-in', k);
+      pk.textContent = !o && k ? ' · ' + nm(D.pick) : ''; c.textContent = o || k ? '' : F.k.length + ''; rs.forEach(function (r) { r.hidden = !o; }); };
+    h.addEventListener('click', function () { fOpen[f.id] = !fOpen[f.id]; sync(); });
+    body.appendChild(h); HDR.push(sync);
+    F.k.forEach(function (g) { var r = row({ label: nm(g), steps: [0, 1], labels: ['off', 'on'], def: null, energy: en,
+        get: function () { return D.pick === g ? 1 : 0; }, set: function (v) { pick(v ? g : 'auto'); },
+        info: function () { return [nm(g), [(f.lab || f.id) + ' · one of its ' + F.k.length + ' styles' + (nm(g) !== g ? ' (the engine’s ' + g + ')' : ''), '▲ picks it; ▼ goes back to auto']]; } });
+      r.classList.add('vp-kid'); rs.push(r); body.appendChild(r); });
+    sync(); }
   // the bass shapes page: 'all' + the 13 in phi-split groups (13 -> 8 | 5, 8 -> 5 | 3: no group over F5 = 5), one open at a time, by tap
   function phiSplit(a) { if (a.length <= 5) return [a]; var k = Math.round(a.length * IPH); return phiSplit(a.slice(0, k)).concat(phiSplit(a.slice(k))); }
   var bOpen = -1;
@@ -141,7 +166,7 @@
     root.addEventListener('dj:params', function () { if (isOpen() && body.getAttribute('data-wait')) render(); });
     stack = [{ t: 'menu' }];
   }
-  function clear() { ROWS.forEach(function (r) { if (io) io.unobserve(r.el); }); ROWS = []; body.textContent = ''; body.removeAttribute('data-wait'); body.classList.remove('vp-has-ms'); }
+  function clear() { ROWS.forEach(function (r) { if (io) io.unobserve(r.el); }); ROWS = []; HDR = []; body.textContent = ''; body.removeAttribute('data-wait'); body.classList.remove('vp-has-ms'); }
   function waiting(t) { body.setAttribute('data-wait', '1'); body.appendChild(E('div', 'vp-sec', t));
     if (!waitT) waitT = setTimeout(function () { waitT = 0; if (isOpen() && body.getAttribute('data-wait')) render(); }, WAITP * MS); }
   function render() { clear(); var top = stack[stack.length - 1], A = api(); back.hidden = stack.length < 2; shut();
@@ -207,7 +232,7 @@
     var main = doc.getElementById('home-main'); win.style.top = ((main ? main.scrollTop : 0) + head.offsetHeight) + 'px';   // one layout read, on open only
     el.appendChild(win); x.focus({ preventScroll: true }); }
   function shut() { if (win) { win.remove(); win = null; } }
-  function paintAll() { ROWS.forEach(function (r) { r.paint(); }); }
+  function paintAll() { ROWS.forEach(function (r) { r.paint(); }); HDR.forEach(function (h) { h(); }); }
 
   // ---------- the meter loop ----------
   var raf = 0, last = 0, rp = 0;
@@ -215,7 +240,7 @@
     for (var i = 0; i < ROWS.length; i++) { var r = ROWS[i], m = r.m; if (!r.on) continue; var x = 0; try { x = +r.energy() || 0; } catch (e) {} x = Math.max(0, Math.min(1, x));
       m.y += (x - m.y) * k; var n = Math.round(m.y * SEG); if (n >= m.peak) { m.peak = n; m.hold = HOLD; } else if ((m.hold -= dt) < 0) { m.peak = Math.max(n, m.peak - 1); m.hold = HOLD * IPH * IPH * IPH; }   // phi: after the hold, a segment every PHI^-2 s
       vuLit(m, n, m.peak > 0 ? m.peak - 1 : -1); }
-    if ((rp -= dt) < 0) { rp = REPAINT; for (var j = 0; j < ROWS.length; j++) if (ROWS[j].on) ROWS[j].paint(); }
+    if ((rp -= dt) < 0) { rp = REPAINT; for (var j = 0; j < ROWS.length; j++) if (ROWS[j].on) ROWS[j].paint(); HDR.forEach(function (h) { h(); }); }
     raf = requestAnimationFrame(frame); }
   function loop() { if (!raf && isOpen() && !doc.hidden) { last = 0; rp = REPAINT; raf = requestAnimationFrame(frame); } }
 
