@@ -1614,7 +1614,7 @@
   // inside the worklet (no gain dial), and the glue's trim still keeps the output level at or under the input level. Saturation: a soft
   // clip whose threshold sits PHI^(5 - mbS) x the running level (0 = off), mbH of the threshold's asymmetry for even harmonics.
   var BIN = null, bsNode = null, BSR = null, bsP = null, bsTpl = null, bsOffs = {};             // FOUR BUSES: the four inputs, the worklet node, its last report, what was sent, the palette, each palette's servo offsets
-  var COREURL = 'js/ratio-core.js?v=ratiocore1', BUSURL = 'js/dj-bus-worklet.js?v=ratiocore1', busNode = null, busGR = 0, busMK = 0, busAv = 0, busCtx = null, busP = null;
+  var COREURL = 'js/ratio-core.js?v=ratioexact1', BUSURL = 'js/dj-bus-worklet.js?v=ratiocore1', busNode = null, busGR = 0, busMK = 0, busAv = 0, busCtx = null, busP = null;
   var MBM = [null, { det: 'peak', a: 5, r: 10.5, k: 0, q: 3, t: 0 }, { det: 'peak', a: -3, r: 10, k: 2, q: 4, t: PHI * PHI }, { det: 'rms', a: 5, r: 12, k: 5, q: 2, t: 0, opto: 1 }, { det: 'rms', a: 7, r: 12.5, k: 6, q: 1, t: -PHI, mu: 1 }];   // t: the model's own threshold offset in dB (the FET sits PHI^2 dB higher, it bites hard; the vari-mu PHI dB lower, it is gentle)   // phi exponents: attack / release ms, knee dB, ratio (VCA ~11 ms / 157 ms / 1 dB / 4.2:1; FET 0.24 ms / 123 ms / 2.6 dB / 6.9:1; opto 11 ms / 322 ms / 11 dB / 2.6:1; vari-mu 29 ms / 408 ms / 18 dB / 1.6:1 rising)
   function busLoad(c, from, to) {
     if (!c.audioWorklet || !window.AudioWorkletNode) return; busCtx = c;
