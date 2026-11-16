@@ -1,5 +1,6 @@
 /* Zoom camera (stage 1): the view is a viewing capsule (Apollo CM) flown through the real gravity of js/solar-system.js, with a quiet spell
-   after each pass (about 62% home). Design, citations and the phi choices: docs/zoom-camera.md. Loaded late by js/solar-model.js. */
+   after each pass (about 62% home). Design, citations and the phi choices: docs/zoom-camera.md. Loaded by js/solar-model.js (front of tier 2).
+   firstpass1 (Danny t351u 16 Nov 2026): first visible disc about PHI^5 s after load; early quiet waits for that first close pass. */
 (function (root) {
   'use strict';
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, LP = Math.log(PHI), MS = 1e3;
@@ -22,7 +23,7 @@
   var PLAN = IDS.filter(function (id) { return B[id].kind === 'planet'; });
   function pos(id, D) { return SS.helio(id, D); }
   function vel(id, D) { var a = pos(id, D - 3e4), b = pos(id, D + 3e4); return [(b[0] - a[0]) / 60, (b[1] - a[1]) / 60, (b[2] - a[2]) / 60]; }
-  var P = { r: [0, 0, 0], v: [0, 0, 0], lane: null, hits: [], sub: 0, home: 0, pass: 0, quiet: false, wasPass: false, hs: 0, hb: 0, pc: 0, dead: 0, bound: null, crashes: [], bounces: 0, debris: null };
+  var P = { r: [0, 0, 0], v: [0, 0, 0], lane: null, hits: [], sub: 0, home: 0, pass: 0, quiet: false, wasPass: false, hs: 0, hb: 0, pc: 0, dead: 0, bound: null, crashes: [], bounces: 0, debris: null, close: false };
   function acc(r, v, D, out) {
     var ax = 0, ay = 0, az = 0, tmin = Infinity, d2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2], e2 = RS * RS, s2 = Math.max(d2, e2), q = 1 / (s2 * Math.sqrt(s2));
     ax -= GMS * r[0] * q; ay -= GMS * r[1] * q; az -= GMS * r[2] * q; tmin = Math.sqrt(d2 * Math.sqrt(d2) / GMS);
@@ -159,8 +160,9 @@
     if (!P.lane || (!inW && P.lastIn) || (!inW && !P.lane.hold && laneAt(t).tau * (k32(P.lane.k) - 1) > 0)) pickLane(t);
     var wl = 0; for (var id in WE) wl = Math.max(wl, WE[id]);
     if (wl < HOMEW) { P.home += dt; P.hs += dt; P.pc = 0; } else { if (!P.wasPass) { P.hb = P.hs; P.hs = 0; } P.pass += dt; P.pc += dt; }
-    if (wl < HOMEW && P.wasPass && !P.quiet) { P.quiet = true; hold(t, true); }
-    if (wl >= HOMEW && !P.quiet && P.home < QUIET * P.pass && P.pc > P.hb / QUIET) { P.quiet = true; hold(t, true); }
+    if (!P.close && v && closeOf(v)) P.close = true;   // firstpass1: a visible disc (PHI^3 px) before any quiet may start
+    if (wl < HOMEW && P.wasPass && !P.quiet && P.close) { P.quiet = true; hold(t, true); }
+    if (wl >= HOMEW && !P.quiet && P.close && P.home < QUIET * P.pass && P.pc > P.hb / QUIET) { P.quiet = true; hold(t, true); }
     if (P.quiet && P.home >= QUIET * P.pass) { P.quiet = false; pickLane(t); }
     if (!inW) P.bound = null; P.wasPass = wl >= HOMEW;
     P.lastIn = inW; return SS.clock();
@@ -175,6 +177,8 @@
     return SS.clock();
   }
   var S0 = { id: 'saturn', gap: 22 };
+  var FIRST = Math.pow(PHI, 5);                                          // firstpass1 (Danny t351u): first closest is PHI^5 s out; disc is a few seconds before closest, about PHI^5 s after load
+  function closeOf(v) { var min = Math.pow(PHI, 3) * v.kpp / 2, i; for (i = 0; i < PLAN.length; i++) if (B[PLAN[i]].R >= min) return true; return false; }   // unit: drawn diameter 2R/kmPerPx >= PHI^3 px
   function spawn() {
     var D = SS.date(), b = B[S0.id], rr = len(pos(S0.id, D)), k = 1 - LANE * b.soi / rr, n = 2 * Math.PI / (b.Pyr * 365.25 * 86400);
     P.lane = { id: S0.id, k: k, n: n, tau0: -(k32(k) - 1) * S0.gap * SS.TIME, D0: D, hold: false, side: -1, u: b.soi / rr }; P.quiet = false;
@@ -183,8 +187,8 @@
   SS.advance = advance;
   function start(id, gapS) {
     var D = SS.date(), b = B[id], rr = len(pos(id, D)), k = 1 - LANE * b.soi / rr, n = 2 * Math.PI / (b.Pyr * 365.25 * 86400);
-    S0 = { id: id, gap: gapS }; P.lane = { id: id, k: k, n: n, tau0: -(k32(k) - 1) * gapS * SS.TIME, D0: D, hold: false, side: -1, u: b.soi / rr };
-    P.home = 0; P.pass = 0; P.quiet = false; P.wasPass = false; P.hs = 0; P.hb = 0; P.pc = 0; P.dead = 0; P.bound = null; P.crashes = []; P.bounces = 0; P.debris = null;
+    S0 = { id: id, gap: gapS }; P.lane = { id: id, k: k, n: n, tau0: -(k32(k) - 1) * FIRST * SS.TIME, D0: D, hold: false, side: -1, u: b.soi / rr };   // first pass: already PHI^5 s from closest; later spawn() keeps gapS
+    P.home = 0; P.pass = 0; P.quiet = false; P.wasPass = false; P.hs = 0; P.hb = 0; P.pc = 0; P.dead = 0; P.bound = null; P.crashes = []; P.bounces = 0; P.debris = null; P.close = false;
     var st = laneAt(D); P.r = st.r; P.v = st.v; P.hits = []; V.D = NaN; WE = {};
   }
   root.ZoomCam = { on: false, probe: P, start: function (id, g) { start(id, g); root.ZoomCam.on = true; }, frame: frame, view: function () { return view(SS.baseFrame(), SS.date()); }, lane: function () { return P.lane; }, };

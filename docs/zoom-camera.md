@@ -92,6 +92,7 @@ Constants: CAPR = 1.955e-3 km, CAPM = 5560 kg, VMAX = 9.1e-3 km/s, DEAD = PHI^2 
   golden-sequence distances (scale PHI^4 px), cubic ease-out, fading over DEAD = PHI^2 viewer s, timed by the camera's own clock; nothing is
   reborn. Stranded: no debris. A bounce: 3 sparks for PHI^-1 s. No marker, trail or readout: the capsule is the viewer.
 - The ping layer's display group (Sun glyph, big Earth, Moon) and the display comet fade by 1 - w while away (stage 2 makes them the real ones).
-- zoom-camera.js loads after solar-model's first home draw; reduced motion keeps the still home frame (no camera).
+- zoom-camera.js loads at the front of tier 2 (after first paint, still idle), just before solar-model; reduced motion keeps the still home frame (no camera).
+- firstpass1 (Danny t351u 16 Nov 2026, first visible disc about PHI^5 s after load): zoom-camera loads at the front of tier 2 (after first paint/idle); the camera itself starts at PHI^4 s from load (or at once if the scripts landed later); the first approach starts already PHI^5 s from closest, and both quiet-spell starts wait until a body has reached PHI^3 px on screen; later passes keep the designed 24 s gap and the 62% home rhythm. Reduce motion still leaves the camera off.
 - js/solar-system.js: frame() is the camera's view when ZoomCam.on (else baseFrame(), the home frame); at() places bodies relative to the
   view centre (cx, cy); helio(), baseFrame(), GMS and G are exported for the camera.

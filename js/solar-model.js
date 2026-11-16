@@ -161,12 +161,12 @@
         SS.advance(dt); S.M -= TAU * dt / S.T; draw(); }                 // one global time factor (no pump); minus: clockwise, retrograde like the real Halley (cite: JPL SBDB i = 162.2 deg)
       raf = requestAnimationFrame(tick); }
     function go() { RM = reduced(); if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
-    function zpGo() { if (root.ZoomCam && !ZoomCam.on) { ZoomCam.start('saturn', 24); draw(); } }
-    if (ZP) { if (root.ZoomCam) zpGo(); else if (!zpLoad) { zpLoad = 1; var zs = doc.createElement('script'); zs.src = 'js/zoom-camera.js?v=zoomtrim1'; zs.async = true; zs.onload = zpGo; doc.head.appendChild(zs); } }
+    function zpGo() { if (reduced() || !ZP) return; if (!(root.ZoomCam && !ZoomCam.on)) return; var wait = Math.pow(PHI, 4) * MS - (root.performance && performance.now ? performance.now() : 0); if (wait > 0) { setTimeout(zpGo, wait); return; } ZoomCam.start('saturn', 24); draw(); }   // firstpass1: camera starts at PHI^4 s from load (or at once if we landed later), so the first disc is about PHI^5 s after load
+    if (ZP) { if (root.ZoomCam) zpGo(); else if (!zpLoad) { zpLoad = 1; var zs = doc.createElement('script'); zs.src = 'js/zoom-camera.js?v=firstpass1'; zs.async = true; zs.onload = zpGo; doc.head.appendChild(zs); } }
     draw(); go();
     if (root.Arrivals) P.forEach(function (p) { if (!p.moon) Arrivals.land(p.el, 'pop', 1); });   // rule 14: each planet arrives (after its first draw, so it sweeps up to its own opacity), then a pop
     doc.addEventListener('visibilitychange', function () { tl = 0; if (!doc.hidden) { r = dial('intensity', DEF); go(); } });
-    if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; draw(); } else { ZP = true; if (!root.ZoomCam && !zpLoad) { zpLoad = 1; var zs2 = doc.createElement('script'); zs2.src = 'js/zoom-camera.js?v=zoomtrim1'; zs2.async = true; zs2.onload = zpGo; doc.head.appendChild(zs2); } go(); } });
+    if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; draw(); } else { ZP = true; if (!root.ZoomCam && !zpLoad) { zpLoad = 1; var zs2 = doc.createElement('script'); zs2.src = 'js/zoom-camera.js?v=firstpass1'; zs2.async = true; zs2.onload = zpGo; doc.head.appendChild(zs2); } go(); } });
     addEventListener('resize', function () { requestAnimationFrame(draw); });
     var kids = {}; P.forEach(function (p) { if (!p.moon) kids[p.id] = { layer: 'A', moons: p.b.moons }; });
     kids.earth.glyph = 'ping-layer big Earth'; kids.earth.children = { moon: { anchor: 'moon', layer: 'A', glyph: 'ping-layer Moon', with: ['satellite', 'astronaut'] } }; kids.dizzy = { layer: 'B', axis: 'B' };
