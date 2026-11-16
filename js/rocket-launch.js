@@ -61,7 +61,8 @@
 (function () {
   'use strict';
   var doc = document, root = window, el = doc.getElementById('rk1'), gl = el && el.firstElementChild;
-  if (!el || !gl || !el.animate || (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  if (!el || !gl || !el.animate) return;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); }
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   var NOSE = -TAU / 8;                                                     // anchor: emoji artwork points up-right, an eighth turn
   var RISE = Math.pow(PHI, 3), PAD = Math.pow(IP, 2), GAP = Math.pow(PHI, 6);   // phi: climb PHI^3 s, pad PHI^-2 of it (rockshake: sits and shakes a while), a launch every PHI^6 s
@@ -115,7 +116,7 @@
     return f;
   }
   function launch() {
-    if (doc.hidden) return later();
+    if (doc.hidden || reduced()) return later();
     crew(false);                                                             // padcrew1: clear the pad before the rocket rolls out
     if (lp) { lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; }   // a forced launch ends any flight in progress
     count++; el.style.removeProperty('visibility'); el.style.transform = gl.style.transform = '';
@@ -182,7 +183,7 @@
     crew.want = !!go;
     function run() { try { crew.want ? root.PadCrew.arrive() : root.PadCrew.leave(); } catch (e) {} }
     if (root.PadCrew) return run(); if (crew.ld) return; if (!go) return; crew.ld = 1;
-    var s = doc.createElement('script'); s.src = 'js/pad-crew.js?v=padcrew1'; s.async = true;
+    var s = doc.createElement('script'); s.src = 'js/pad-crew.js?v=reducemotion1'; s.async = true;
     s.onload = function () { run(); }; s.onerror = function () { crew.ld = 0; }; doc.head.appendChild(s); }
   function hideRk() { el.style.setProperty('visibility', 'hidden', 'important'); }   // unit: !important beats the solo view's show rule; the collision engine skips it too
   function orbit() {                                                       // the climb is off the top: hand the rocket to gravity
@@ -252,10 +253,15 @@
       var w = kicks(K, wait, D, bend || 0, parseFloat(getComputedStyle(el).fontSize) || 0);
       plans.push({ launch: ln, extras: nx, at: ts, sides: sd, kicks: K.map(function (q) { return [Math.round(q[0]), +q[1].toFixed(3), q[2], Math.round(q[3]), Math.round(q[4])]; }), wobble: !!w, climb: Math.round(D) }); if (plans.length > 13) plans.shift();
     }, function () {}); }
-  var t = 0; function later(g) { clearTimeout(t); t = setTimeout(launch, (typeof g === 'number' ? g : GAP) * MS * k()); }   // g: the wait in s (default PHI^6; PHI^4 after a flight)
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && !t) later(); });
+  var t = 0; function later(g) { clearTimeout(t); t = 0; if (reduced()) return; t = setTimeout(launch, (typeof g === 'number' ? g : GAP) * MS * k()); }   // g: the wait in s (default PHI^6; PHI^4 after a flight)
+  function calm() { if (lp) { lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; } clearTimeout(t); t = 0; hideRk(); crew(false); }   // reducemotion1: still on the pad, no next launch
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && !t && !reduced()) later(); });
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { if (v) calm(); else if (!t && !lp) later(); });
   var a = el.getAnimations ? el.getAnimations({ subtree: true }) : [];
-  if (a.length) Promise.all(a.map(function (x) { return x.finished; })).then(orbit, later); else later();   // adopt: wait out the inline launch (climb + shake)
-  a.forEach(function (x) { if (x.animationName === 'rkY') booms(x, 1, (innerWidth * (1 - Math.pow(IP, 5)) - (parseFloat(getComputedStyle(el).left) || 0)) * PULL); });   // launchbooms: the inline launch too; bend = its --bx
+  if (reduced()) { a.forEach(function (x) { try { x.cancel(); } catch (e) {} }); hideRk(); }
+  else {
+    if (a.length) Promise.all(a.map(function (x) { return x.finished; })).then(orbit, later); else later();   // adopt: wait out the inline launch (climb + shake)
+    a.forEach(function (x) { if (x.animationName === 'rkY') booms(x, 1, (innerWidth * (1 - Math.pow(IP, 5)) - (parseFloat(getComputedStyle(el).left) || 0)) * PULL); });   // launchbooms: the inline launch too; bend = its --bx
+  }
   root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length, flights: flights.slice(), flight: lp && { t: lp.t, passes: lp.passes, apo: lp.apo, entries: lp.entries, x: lp.x, y: lp.y, onT: lp.onT, log: lp.log.slice(-5), checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(-8), sun: sunGlide(lp) } }; }, launch: launch, end: function (why) { stopLoop(why || 'test'); }, _rate: function (r) { RATE = +r || 1; } };   // end: tests (and the pad crew) force a crash; _rate: tests only (an accelerated clock)
 })();

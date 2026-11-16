@@ -17,7 +17,8 @@
   var doc = document, root = window, pill = doc.getElementById('dj-pill');
   if (!pill || root.DjPillDance || !Element.prototype.animate) return;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, MS = 1e3, CALM = 6;
-  var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   var pw = function (n) { return Math.pow(PHI, n); }, clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
   var frac = function (v) { return v - Math.floor(v); };
   var SOUND = ['\uD83D\uDD0A', '\uD83C\uDFB5', '\uD83C\uDFB6'];
@@ -105,7 +106,7 @@
   }
 
   function beatTick() {
-    if (!on) return; if (!heard()) { if (!paused) { paused = true; calm(); } tick = setTimeout(beatTick, beat() * MS); return; }
+    if (!on) return; RM = reduced(); if (!heard() || doc.hidden) { if (!paused) { paused = true; calm(); } tick = setTimeout(beatTick, beat() * MS); return; }
     if (paused) { paused = false; if (!RM) [0, 1, 2].forEach(driftAxis); }
     var t = trk(), E = energy(), A = 1 - E, pu = pump(); setE(E); st.ticks++;
     var C = root.EmojiCollide, I = null; try { I = C && C.info ? C.info() : null; } catch (e) {}
@@ -128,6 +129,8 @@
   function stop() { if (!on) return; on = false; paused = false; clearTimeout(tick); calm(); pill.classList.remove('dd-on'); }
   function sync() { pill.classList.contains('is-playing') ? start() : stop(); }
   new MutationObserver(sync).observe(pill, { attributes: true, attributeFilter: ['class'] });
+  doc.addEventListener('visibilitychange', function () { if (doc.hidden) { if (on && !paused) { paused = true; calm(); } } else if (on) beatTick(); });
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) calm(); else if (on) [0, 1, 2].forEach(driftAxis); });
   addEventListener('resize', function () { box = null; SZ = pill.offsetWidth || 1; }, { passive: true });
   root.DjPillDance = { info: function () { var o = {}; for (var n in st) o[n] = st[n]; o.on = on; o.drift = drift.length; o.busy = V.busy; o.paused = paused; return o; },
     force: function (o) { F = o || {}; if (on) setE(energy()); },

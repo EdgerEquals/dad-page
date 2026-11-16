@@ -62,6 +62,18 @@
       ric(function(){animOn();done[2]=1;onDrain[2].push(function(){setTimeout(function(){done[3]=1;drain(3);},1618);});drain(2);},{timeout:3000});}
     if(document.readyState==='complete')afterLoad();else addEventListener('load',afterLoad);
   }
-  window.LoadTiers={add:add,script:script,prefetch:prefetch,adapt:adapt,_keep:[],report:function(){return log.slice();}};
+  // reducemotion1 (Danny t344u 16 Nov 2026): one shared flag for the phone's reduce-motion setting, listened for; CSS animations pause while the tab is hidden (visual only).
+  var mq = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+  var reduced = !!(mq && mq.matches), rmFn = [];
+  function setRm(v) {
+    v = !!v; var ch = v !== reduced; reduced = v;
+    if (v) de.setAttribute('data-rm', ''); else de.removeAttribute('data-rm');
+    if (ch) rmFn.slice().forEach(function (f) { try { f(reduced); } catch (e) {} });
+  }
+  setRm(reduced);
+  if (mq) { var onMq = function () { setRm(!!mq.matches); }; if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); }
+  function hid() { de.classList.toggle('lt-hid', !!document.hidden); }
+  hid(); document.addEventListener('visibilitychange', hid);
+  window.LoadTiers={add:add,script:script,prefetch:prefetch,adapt:adapt,rm:function(){return reduced;},onRm:function(f){if(typeof f==='function')rmFn.push(f);},_keep:[],report:function(){return log.slice();}};
   start();
 })();

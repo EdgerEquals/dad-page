@@ -34,7 +34,8 @@
   var doc = document, root = window;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, DEG = TAU / 360;   // phi; unit: a turn, a degree
   var MS = 1e3, PCT = 100, HOUR = 3600, DAY = 86400;                                      // unit: ms/s, percent, s/h, s/day
-  var RM = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   var SUN = root.PhiSun || { k: 4, x: 1 - Math.pow(IP, 4), y: Math.pow(IP, 4) };          // phi: same rung as rule 13
   var SID = 23.9345 * HOUR;                         // cite: NASA Earth fact sheet, sidereal rotation period 23.9345 h
   var SYN = 29.530588861 * DAY;                     // cite: synodic month 29.530588861 d (orbit-ref-data)
@@ -246,8 +247,8 @@
     q.n.op = 0; q.n.o.style.opacity = 0; q.n.o.style.visibility = 'hidden'; return true; }   // unit: gone at once (the collision effect plays in its place)
   for (var sk in SCN) { SCN[sk].block = 0; SCN[sk].arr = 0; SCN[sk].hits = 0; SCN[sk].shown = 0; SCN[sk].v = 1; if (!RM) SCN[sk].n.o.style.transition = 'none'; }   // unit: per-frame sweep replaces the CSS fade
   var raf = 0, last = 0, FRAME = MS * Math.pow(IP, 7);                      // phi: frame cap PHI^-7 s
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; follow(); orbit(now); spinBig(now); presence(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
-  function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
+  function tick(now) { raf = 0; if (doc.hidden || reduced()) return; if (now - last >= FRAME) { last = now; follow(); orbit(now); spinBig(now); presence(now); if (NM) NM.frame(now); } raf = requestAnimationFrame(tick); }
+  function go() { RM = reduced(); if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
 
   // ---------- ping chain ----------
   var pump = null;
@@ -270,7 +271,7 @@
   var hops = ROUTE.map(function (h, i) { return [BY[h[0]], h[1], h[0], i ? ROUTE[i - 1][0] : null]; });
   var count = 0, RUNG = dial('pings', 6);                                 // phi: chain every PHI^6 = 17.9 s by default (sandbox dial)
   function chain() {
-    if (doc.hidden) return later();
+    if (doc.hidden || reduced()) return later();
     count++; var at = 0;
     hops.forEach(function (h) { if (!onScreen(h[0])) return; at += h[1] * pumpOut(); setTimeout(function () { pulse(h[0]); if (h[2] === 'earth' && NM && REAL.earth && REAL.earth.show === 'glyph') NM.ping(h[3]); }, at * MS); });
     setTimeout(function () { if (onScreen(sat)) pulse(sat); ORB.forEach(function (q) { if (q.front && q.peak && onScreen(q.n)) pulse(q.n); }); }, (at + Math.pow(IP, 2)) * MS);   // phi: the ISS answers when shown, the astronaut only in front at peak
@@ -333,6 +334,7 @@
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(soon);
   if (root.ResizeObserver) { var ro = new ResizeObserver(soon), hh = doc.getElementById('q-head'), ff = doc.querySelector('.foot'); if (hh) ro.observe(hh); if (ff) ro.observe(ff); }                  // emoji font box settles after load
   doc.addEventListener('visibilitychange', function () { Lr.classList.toggle('pl-hid', doc.hidden); tLast = 0; if (!doc.hidden) go(); });
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; } else go(); });
   root.PingLayer = { info: function () { return { subLunarLon: G.lon, moonAgeDays: G.age, phase: moon.p.textContent, bigEarthPeriod: TB, iss: REAL.iss ? REAL.iss.show : null, astT: ORB[0].T, tumble: TUM.slice(),
     lightTime: LIGHT, pings: count, chainEvery: Math.pow(PHI, RUNG), front: ORB.map(function (q) { return !!q.front; }), nodeMap: NM ? NM.mix() : null, real: { earth: REAL.earth ? REAL.earth.show : null, moon: REAL.moon ? REAL.moon.show : null, front: A.earth ? A.earth.front : null },
     scenery: Object.keys(SCN).map(function (k) { var q = SCN[k], now = performance.now(); return { k: k, on: q.on, v: q.v, arrivals: q.arr, hits: q.hits, awayLeft: Math.max(0, (q.block - now) / MS), shownS: (q.shown + (q.on ? now - q.since : 0)) / MS, modes: q.pn ? q.pn.modes() : null, thr: THR }; }) }; }, ping: chain, away: away, real: real, anchors: A, spec: SPEC, move: move, resolve: resolve };

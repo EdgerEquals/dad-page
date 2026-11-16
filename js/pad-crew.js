@@ -16,7 +16,8 @@
   var doc = document, root = window;
   if (root.PadCrew) return;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;
-  var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   var N = 8, CELL = 16, FRAME = MS * Math.pow(IP, 4);                     // phi: PHI^-4 s a frame
   var SRC = 'media/pad-crew.webp?v=padcrew1';
   var css = '.pad-crew{position:fixed;inset:0;z-index:2147483645;pointer-events:none;overflow:hidden;contain:strict}' +
@@ -70,7 +71,7 @@
     w.o.style.transform = 'translate3d(' + (x - w.o.offsetWidth / 2) + 'px,' + y + 'px,0) scaleX(' + dir + ')';
   }
   function tick(now) {
-    raf = 0; if (!on) return;
+    raf = 0; if (!on || doc.hidden || reduced()) return;
     var r = range(), T = Math.pow(PHI, 2) * MS, i, x, ph, vx;          // phi: a wander cycle PHI^2 s
     if (!t0) t0 = now;
     for (i = 0; i < W.length; i++) {
@@ -87,7 +88,7 @@
     if (L) L.style.visibility = v ? 'visible' : 'hidden';
   }
   function arrive() {
-    if (RM || !want || !imgOk) return;
+    RM = reduced(); if (RM || !want || !imgOk) return;
     mount();
     fade.forEach(function (a) { try { a.cancel(); } catch (e) {} }); fade = [];
     var r = range();
@@ -123,11 +124,13 @@
   }
 
   root.PadCrew = {
-    arrive: function () { want = true; if (RM) return; ready(arrive); },
+    arrive: function () { want = true; if (reduced()) return; ready(arrive); },
     leave: function () { want = false; leave(); },
     info: function () {
       return { on: on, loaded: imgOk, frame: FRAME / MS, size: W[0] ? W[0].o.offsetWidth : 0,
         workers: W.map(function (w) { return { ec: w.o.dataset.ec, x: Math.round(w.x), y: Math.round(w.y), dir: w.dir, vis: w.o.style.visibility, op: w.o.style.opacity }; }) };
     }
   };
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) leave(); else if (want) ready(arrive); });
+  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && on && !reduced() && !raf) raf = requestAnimationFrame(tick); });
 })();

@@ -53,7 +53,8 @@
   'use strict';
   var doc = document, root = window;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
-  var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   var fcr = doc.getElementById('fcr'), txt = doc.getElementById('footLine');
   if (!fcr || !txt) return;
   // ---------- the box (footspeeds): slim ring in Dad's palette, a translucent backing so the text reads over anything ----------
@@ -68,7 +69,8 @@
     tr.style.animationDuration = m * Math.pow(IP, 2) + 's'; }           // phi: two rungs faster
   room(); speed();
   var rq = 0, needW = true; addEventListener('resize', function () { if (!rq) rq = requestAnimationFrame(function () { rq = 0; fsC = 0; room(); needW = true; geo = null; }); });
-  if (RM || !('translate' in doc.documentElement.style)) { root.FootPush = { info: function () { return { width: fcr.style.width, still: true, box: true }; } }; return; }
+  var canPush = 'translate' in doc.documentElement.style;
+  if (!canPush) { root.FootPush = { info: function () { return { width: fcr.style.width, still: true, box: true }; } }; return; }
   // ---------- forces ----------
   var nc = null, nt = null, feeds = {};
   function sub(n) { try { if (!feeds[n] && root.PhiPumps) feeds[n] = PhiPumps.subscribe(n); var v = feeds[n] ? feeds[n].get() : null; return v == null ? 0 : +v; } catch (e) { return 0; } }
@@ -222,10 +224,11 @@
     seg.forEach(function (e) { e.style.translate = (mlr - tx).toFixed(2) + 'px 0px'; }); txA = tx; mLA = mlr;   // step-aside + recoil ride on translate only (no layout)
   }
   var raf = 0, FRAME = MS * Math.pow(IP, 7);                               // phi: frame cap PHI^-7 s
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { var dt = last ? Math.min(now - last, MS * IP) / MS : 0; last = now; step((now - t0) / MS, dt); }   // unit: dt capped at PHI^-1 s
+  function tick(now) { raf = 0; if (doc.hidden || reduced()) return; if (now - last >= FRAME) { var dt = last ? Math.min(now - last, MS * IP) / MS : 0; last = now; step((now - t0) / MS, dt); }   // unit: dt capped at PHI^-1 s
     raf = requestAnimationFrame(tick); }
-  function go() { if (!raf && !doc.hidden) raf = requestAnimationFrame(tick); }
+  function go() { if (!raf && !doc.hidden && !reduced()) raf = requestAnimationFrame(tick); }
   doc.addEventListener('visibilitychange', function () { last = 0; if (!doc.hidden) go(); });
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; } else go(); });
   build(); segs(); C.forEach(function (c, i) { c.x = i * (reach()); }); go();
   root.FootPush = { info: function () { return { width: fcr.style.width, phase: phase, X: X, coh: coh, takeovers: stats.takeovers, knocks: stats.knocks, pushes: push.n, responses: push.resp, pending: push.open.length, tx: tx,
       xs: C.map(function (c) { return Math.round(c.x); }), side: C.map(function (c) { return c.side; }), ml: ml, ys: C.map(function (c) { return Math.round(c.y); }), st: C.map(function (c) { return c.st; }), rungs: C.map(function (c, i) { return rung(i); }),

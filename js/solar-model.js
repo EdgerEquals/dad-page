@@ -19,7 +19,8 @@
   'use strict';
   var doc = document, root = window;
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
-  var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   // colours (anchor: true-colour imagery; cite in each line) and pump counts n (Fibonacci). Orbits, sizes, masses: js/solar-system.js.
   var LOOK = {
     mercury: '#a8a8a8,#5e5e5e', venus: '#f4e7c3,#c9a96b', mars: '#e2774a,#8f2f12',   // anchor: MESSENGER greys, Mariner 10 cloud deck, Viking rust
@@ -156,15 +157,16 @@
       put(S, S.x, S.y, node, 1, Math.pow(IP, 2) * amp(S.n + r - DEF) * (F.zoom ? 1 - F.zoom.w : 1), null, false);   // phi: Layer B ceiling PHI^-2 (it crosses text)
     }
     var raf = 0, last = 0, tl = 0, FRAME = MS * Math.pow(IP, 7);           // phi: frame cap PHI^-7 s
-    function tick(t) { raf = 0; if (doc.hidden) return; if (t - last >= FRAME) { var dt = tl ? Math.min(t - tl, MS) / MS : 0; tl = t; last = t;   // unit: dt capped at a second
+    function tick(t) { raf = 0; if (doc.hidden || reduced()) return; if (t - last >= FRAME) { var dt = tl ? Math.min(t - tl, MS) / MS : 0; tl = t; last = t;   // unit: dt capped at a second
         SS.advance(dt); S.M -= TAU * dt / S.T; draw(); }                 // one global time factor (no pump); minus: clockwise, retrograde like the real Halley (cite: JPL SBDB i = 162.2 deg)
       raf = requestAnimationFrame(tick); }
-    function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
+    function go() { RM = reduced(); if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
     function zpGo() { if (root.ZoomCam && !ZoomCam.on) { ZoomCam.start('saturn', 24); draw(); } }
     if (ZP) { if (root.ZoomCam) zpGo(); else if (!zpLoad) { zpLoad = 1; var zs = doc.createElement('script'); zs.src = 'js/zoom-camera.js?v=zoomtrim1'; zs.async = true; zs.onload = zpGo; doc.head.appendChild(zs); } }
     draw(); go();
     if (root.Arrivals) P.forEach(function (p) { if (!p.moon) Arrivals.land(p.el, 'pop', 1); });   // rule 14: each planet arrives (after its first draw, so it sweeps up to its own opacity), then a pop
     doc.addEventListener('visibilitychange', function () { tl = 0; if (!doc.hidden) { r = dial('intensity', DEF); go(); } });
+    if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; draw(); } else { ZP = true; if (!root.ZoomCam && !zpLoad) { zpLoad = 1; var zs2 = doc.createElement('script'); zs2.src = 'js/zoom-camera.js?v=zoomtrim1'; zs2.async = true; zs2.onload = zpGo; doc.head.appendChild(zs2); } go(); } });
     addEventListener('resize', function () { requestAnimationFrame(draw); });
     var kids = {}; P.forEach(function (p) { if (!p.moon) kids[p.id] = { layer: 'A', moons: p.b.moons }; });
     kids.earth.glyph = 'ping-layer big Earth'; kids.earth.children = { moon: { anchor: 'moon', layer: 'A', glyph: 'ping-layer Moon', with: ['satellite', 'astronaut'] } }; kids.dizzy = { layer: 'B', axis: 'B' };

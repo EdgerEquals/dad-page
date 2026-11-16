@@ -22,7 +22,8 @@
   var GA = TAU * IP * IP;                                                // phi: the golden angle (137.5 deg)
   var MS = 1e3;                                                          // unit: ms per second
   var PCT = 100;                                                         // unit: percent
-  var RM = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function reduced() { return !!(root.LoadTiers && LoadTiers.rm ? LoadTiers.rm() : (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+  var RM = reduced();
   var PT = root.PhiTiming;
   function fr(x) { return x - Math.floor(x); }
   function slot(n, e) { try { return PT.s(n); } catch (x) { return Math.pow(PHI, e); } }
@@ -86,14 +87,14 @@
     comet.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + head + 'rad) scale(' + (IP + IP * IP * q) + ')';
     comet.style.opacity = op;
   }
-  function tick(now) { raf = 0; if (doc.hidden) return; if (now - last >= FRAME) { last = now; place(now); } raf = requestAnimationFrame(tick); }
-  function go() { if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
+  function tick(now) { raf = 0; if (doc.hidden || reduced()) return; if (now - last >= FRAME) { last = now; place(now); } raf = requestAnimationFrame(tick); }
+  function go() { RM = reduced(); if (!raf && !doc.hidden && !RM) raf = requestAnimationFrame(tick); }
 
   // ---------- clouds (rare, grow to a fade) ----------
   var CLOUD_RUNG = dial('clouds', 10);                                   // phi: rung 10 = 123 s between clouds (sandbox dial)
   var cN = 0, cT = 0;
   function cloud() {
-    cT = 0; if (doc.hidden) return later();
+    cT = 0; if (doc.hidden || reduced()) return later();
     cN++; var c = doc.createElement('span'), b = doc.createElement('span'); c.className = 'es-cloud'; b.className = 'es-cb'; b.textContent = '\uD83D\uDCAD';
     var life = SWEEP * Math.pow(PHI, 2), cs = c.style;                     // phi: two rungs above the float slot
     cs.setProperty('--x', (fr(cN * IP + IP) * PCT) + 'vw'); cs.setProperty('--y', (fr(cN * YK + IP) * PCT) + 'vh');
@@ -106,13 +107,12 @@
   }
   function later() { if (!cT) cT = setTimeout(cloud, Math.pow(PHI, CLOUD_RUNG) * MS); }
 
-  if (RM) {   // one still frame: stars where they sit, comet at its current spot, no clouds
-    L.classList.add('es-still'); doc.body.appendChild(L); measure(); place(performance.now()); return;
-  }
-  doc.body.appendChild(L); measure(); go();
-  setTimeout(cloud, Math.pow(PHI, CLOUD_RUNG) * MS * fr(IP * YK));          // phi: first cloud at a golden fraction of the gap
+  doc.body.appendChild(L); measure();
+  if (RM) { L.classList.add('es-still'); place(performance.now()); }   // one still frame: stars where they sit, comet at its current spot, no clouds
+  else { go(); setTimeout(cloud, Math.pow(PHI, CLOUD_RUNG) * MS * fr(IP * YK)); }          // phi: first cloud at a golden fraction of the gap
   addEventListener('resize', measure);
   doc.addEventListener('visibilitychange', function () { L.classList.toggle('es-paused', doc.hidden); if (!doc.hidden) go(); });
+  if (root.LoadTiers && LoadTiers.onRm) LoadTiers.onRm(function (v) { RM = v; if (v) { if (raf) cancelAnimationFrame(raf); raf = 0; L.classList.add('es-still'); place(performance.now()); } else { L.classList.remove('es-still'); go(); } });
   doc.addEventListener('ratiopump:change', function () { var n = crossing(), now = performance.now(), t = (now - t0) / MS;   // keep the comet's phase
     t0 = now - t * (n / Tc) * MS; Tc = n; });
   root.EmojiScene = { info: function () { return { stars: NSTAR, spin: SPIN, sweep: SWEEP, cometCrossing: Tc, cloudEvery: Math.pow(PHI, CLOUD_RUNG), cloudRung: CLOUD_RUNG }; } };
