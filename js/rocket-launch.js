@@ -116,6 +116,7 @@
   }
   function launch() {
     if (doc.hidden) return later();
+    crew(false);                                                             // padcrew1: clear the pad before the rocket rolls out
     if (lp) { lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; }   // a forced launch ends any flight in progress
     count++; el.style.removeProperty('visibility'); el.style.transform = gl.style.transform = '';
     var A = root.PhiAxes, H = innerHeight, h = el.getBoundingClientRect().height || 1, kk = k();   // unit: measured box
@@ -177,6 +178,12 @@
     q.sf = f; q.sg = s; q.s0 = q.t; q.sI = sunGap(q, r); q.checks++; q.lapC++;
     q.clog.push({ t: +q.t.toFixed(2), r: Math.round(r), gap: +q.sI.toFixed(3), why: why, moved: Math.round(Math.hypot(s.x - f.x, s.y - f.y)) }); if (q.clog.length > 34) q.clog.shift(); }   // phi: 34 log lines (Fibonacci)
   function offscreen(x, y, m) { return x < -m || y < -m || x > innerWidth + m || y > innerHeight + m; }
+  function crew(go) {                                                      // padcrew1: workers arrive after a crash, leave on the next launch
+    crew.want = !!go;
+    function run() { try { crew.want ? root.PadCrew.arrive() : root.PadCrew.leave(); } catch (e) {} }
+    if (root.PadCrew) return run(); if (crew.ld) return; if (!go) return; crew.ld = 1;
+    var s = doc.createElement('script'); s.src = 'js/pad-crew.js?v=padcrew1'; s.async = true;
+    s.onload = function () { run(); }; s.onerror = function () { crew.ld = 0; }; doc.head.appendChild(s); }
   function hideRk() { el.style.setProperty('visibility', 'hidden', 'important'); }   // unit: !important beats the solo view's show rule; the collision engine skips it too
   function orbit() {                                                       // the climb is off the top: hand the rocket to gravity
     var kk = k(), g = gl.getBoundingClientRect(), e = el.getBoundingClientRect();
@@ -216,7 +223,7 @@
   function stopLoop(why) {
     if (lp) { flights.push({ launch: lp.n, end: why, t: +lp.t.toFixed(2), passes: lp.passes, entries: lp.entries, onT: +lp.onT.toFixed(2), turned: lp.turned || 0, checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(), log: lp.log.slice(-21) }); if (flights.length > 8) flights.shift(); }   // phi: 21 log lines (Fibonacci)
     else flights.push({ launch: count, end: why, t: 0, passes: 0 });
-    lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; hideRk(); later(BACKP); }
+    lp = null; if (lraf) cancelAnimationFrame(lraf); lraf = 0; hideRk(); crew(true); later(BACKP); }
   var sp = null;
   function sideAt(j, dt) { var P = root.PhiPumps, m = null; if (P && !sp) sp = P.node('rocket:sides', 3, 2, 1, P.page, 89);   // phi: rungs PHI^2.. s (~ the gaps, so sides mix)
     try { m = sp ? sp.modes(P.now() + dt / MS) : null; } catch (e) {}
@@ -250,5 +257,5 @@
   var a = el.getAnimations ? el.getAnimations({ subtree: true }) : [];
   if (a.length) Promise.all(a.map(function (x) { return x.finished; })).then(orbit, later); else later();   // adopt: wait out the inline launch (climb + shake)
   a.forEach(function (x) { if (x.animationName === 'rkY') booms(x, 1, (innerWidth * (1 - Math.pow(IP, 5)) - (parseFloat(getComputedStyle(el).left) || 0)) * PULL); });   // launchbooms: the inline launch too; bend = its --bx
-  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length, flights: flights.slice(), flight: lp && { t: lp.t, passes: lp.passes, apo: lp.apo, entries: lp.entries, x: lp.x, y: lp.y, onT: lp.onT, log: lp.log.slice(-5), checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(-8), sun: sunGlide(lp) } }; }, launch: launch, _rate: function (r) { RATE = +r || 1; } };   // _rate: tests only (an accelerated clock)
+  root.RocketLaunch = { info: function () { return { launches: count, rise: RISE, pad: PAD, gap: GAP, booms: plans.slice(), smoke: SM.length, flights: flights.slice(), flight: lp && { t: lp.t, passes: lp.passes, apo: lp.apo, entries: lp.entries, x: lp.x, y: lp.y, onT: lp.onT, log: lp.log.slice(-5), checks: lp.checks, laps: lp.laps.slice(), clog: lp.clog.slice(-8), sun: sunGlide(lp) } }; }, launch: launch, end: function (why) { stopLoop(why || 'test'); }, _rate: function (r) { RATE = +r || 1; } };   // end: tests (and the pad crew) force a crash; _rate: tests only (an accelerated clock)
 })();

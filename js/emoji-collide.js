@@ -1,6 +1,6 @@
 /* EMOJI COLLISIONS (Danny 17:18 AWST 26 Oct 2026). Idle tier. Every moving emoji on the home page (lane critters and UFOs, the
    rocket, the header satellite, the satellite and astronaut round the Moon, the space-sweep ring, the top-sweep planets, the drawn
-   falling-star streaks and the comet streak, by their glowing heads) is a circle the size of what is drawn right now. When two
+   falling-star streaks and the comet streak, by their glowing heads, and the pad crew) is a circle the size of what is drawn right now. When two
    circles meet, both vanish and each is replaced, at its own rendered size, by one of five drawn effects:
      burst      a 💥 flash and sparks flung out           (the most violent hits)
      vaporise   it breaks into small copies of itself that scatter
@@ -43,7 +43,7 @@
   var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI, TAU = 2 * Math.PI, MS = 1e3;   // phi; unit: a turn, ms per s
   if (!doc.body || !Element.prototype.animate) return;
   var RM = root.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.sm-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p'];
+  var SEL = ['.lane .it:not(.cli)', '#rk1 > i', '#q-head .sat', '.pl-sat > .pl-p', '.pl-ast > .pl-p', '.qs-op', '.tsl-p', '.sm-p', '.rain i', '.es-comet', '.pl-scope > .pl-p', '.pl-dish > .pl-p', '.pad-crew-w'];
   var HEAD = { 'rain': 'left:50%;bottom:0', 'es-comet': 'right:0;top:0;width:1em;height:1em' };   // unit: where a streak's glowing head is drawn
   var TICK = MS * Math.pow(IP, 6), FIND = MS * PHI * PHI, BACK = Math.pow(PHI, 3), GRACE = PHI;   // phi: tick PHI^-6 s, rescan PHI^2 s, back after PHI^3 s, PHI s grace
   var RAD = Math.pow(IP, 3 / 2), MAXFX = 5, GAPS = PHI;                    // phi: circle PHI^-1.5 of the half-box (rockethit: one rung tighter than PHI^-0.5, glyph ink), a new hit waits until fewer than 5 effect pieces (Fibonacci) are on screen, PHI s between hits
